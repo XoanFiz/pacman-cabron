@@ -235,9 +235,9 @@ class MinHeap {
                 this.items[parent],
                 this.items[index]
             ] = [
-                this.items[index],
-                this.items[parent]
-            ];
+                    this.items[index],
+                    this.items[parent]
+                ];
 
 
             index = parent;
@@ -303,9 +303,9 @@ class MinHeap {
                     this.items[index],
                     this.items[smallest]
                 ] = [
-                    this.items[smallest],
-                    this.items[index]
-                ];
+                        this.items[smallest],
+                        this.items[index]
+                    ];
 
 
                 index = smallest;
@@ -466,10 +466,10 @@ function calculateDomain() {
         let speed = GHOST_SPEED;
 
 
-        /*
-         * Unha fantasma comida ten que regresar á casa
-         * antes de poder reclamar territorio.
-         */
+        /* 
+        * An eaten ghost has to return home 
+        * before you can claim territory. 
+        */
         if (ghost.eaten) {
 
             const distance =
@@ -515,14 +515,14 @@ function calculateDomain() {
 
         const cell =
             domain[
-                current.y
+            current.y
             ][
-                current.x
+            current.x
             ];
 
 
         /*
-         * Esta chegada é peor que outra xa rexistrada.
+         * This arrival is worse than another already registered.
          */
         if (
             current.time >
@@ -533,7 +533,7 @@ function calculateDomain() {
 
 
         /*
-         * Primeira chegada.
+         * First arrival.
          */
         if (
             current.time <
@@ -550,7 +550,7 @@ function calculateDomain() {
 
 
         /*
-         * Empate.
+         * Draw.
          */
         else if (
             Math.abs(
@@ -573,7 +573,7 @@ function calculateDomain() {
 
 
         /*
-         * Propagamos a onda.
+         * We spread the wave.
          */
         for (
             const next of
@@ -587,15 +587,15 @@ function calculateDomain() {
 
             const nextCell =
                 domain[
-                    next.y
+                next.y
                 ][
-                    next.x
+                next.x
                 ];
 
 
             /*
-             * Só interesa propagar se podemos
-             * mellorar a chegada.
+             * We only want to propagate if we can
+             * improve the arrival.
              */
             if (
                 nextTime <
@@ -614,7 +614,7 @@ function calculateDomain() {
 
 
             /*
-             * Tamén propagamos empates.
+             * We also propagate draws.
              */
             else if (
                 Math.abs(
@@ -945,13 +945,13 @@ function evaluateDomain(
 
     const total =
         WEIGHT_NORMAL *
-            normal.normalScore +
+        normal.normalScore +
 
         WEIGHT_PELLET *
-            normal.pelletScore +
+        normal.pelletScore +
 
         WEIGHT_BLUE *
-            blue;
+        blue;
 
 
     return {
@@ -991,11 +991,74 @@ function getPossibleGhostDirections(
     );
 }
 
+function getShortestPathDirection(startX, startY, targetX, targetY) {
+    const start = getWrappedPosition(startX, startY);
+    const target = getWrappedPosition(targetX, targetY);
 
-function chooseGhostDirection(
-    ghost
-) {
+    if (start.x === target.x && start.y === target.y) {
+        return null;
+    }
 
+    const queue = [{
+        x: start.x,
+        y: start.y,
+        firstDirection: null
+    }];
+
+    const visited = new Set();
+
+    const key = (x, y) => `${x},${y}`;
+    visited.add(key(start.x, start.y));
+
+    const directions = [
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 }
+    ];
+
+    let index = 0;
+
+    while (index < queue.length) {
+        const current = queue[index++];
+
+        for (const direction of directions) {
+            const next = getWrappedPosition(
+                current.x + direction.x,
+                current.y + direction.y
+            );
+
+            if (isWall(next.x, next.y)) {
+                continue;
+            }
+
+            const nextKey = key(next.x, next.y);
+
+            if (visited.has(nextKey)) {
+                continue;
+            }
+
+            const firstDirection =
+                current.firstDirection ?? direction;
+
+            if (next.x === target.x && next.y === target.y) {
+                return firstDirection;
+            }
+
+            visited.add(nextKey);
+
+            queue.push({
+                x: next.x,
+                y: next.y,
+                firstDirection
+            });
+        }
+    }
+
+    return null;
+}
+
+function chooseNormalGhostDirection(ghost) {
     const possible =
         getPossibleGhostDirections(
             ghost
@@ -1096,6 +1159,33 @@ function chooseGhostDirection(
     return {
         ...bestDirection
     };
+}
+
+
+function chooseGhostDirection(
+    ghost
+) {
+
+    // Ghost eaten:
+    // mandatory return home via the shortest route.
+    if (ghost.eaten) {
+        const direction = getShortestPathDirection(
+            ghost.x,
+            ghost.y,
+            10,
+            8
+        );
+
+        if (direction) {
+            return direction;
+        }
+
+        return ghost.direction;
+    }
+
+    // This is the current behavior 
+    // of the uneaten ghosts.
+    return chooseNormalGhostDirection(ghost);
 }
 
 
@@ -1535,14 +1625,14 @@ function updateGhost(
             );
 
 
-        const possible =
+        const possibleDirections =
             getPossibleGhostDirections(
                 ghost
             );
 
 
         if (
-            possible.length === 0
+            possibleDirections.length === 0
         ) {
 
             ghost.direction = {
@@ -1560,37 +1650,50 @@ function updateGhost(
 
         if (ghost.eaten) {
 
-            const target =
-                HOUSE;
+            const target = HOUSE;
 
-
-            possible.sort(
+            possibleDirections.sort(
                 (a, b) => {
 
-                    const da =
-                        Math.abs(
-                            ghost.x +
-                            a.x -
-                            target.x
-                        ) +
+                    const nextAX =
+                        wrap(
+                            ghost.x + a.x,
+                            COLS
+                        );
 
-                        Math.abs(
-                            ghost.y +
-                            a.y -
+                    const nextAY =
+                        wrap(
+                            ghost.y + a.y,
+                            ROWS
+                        );
+
+                    const nextBX =
+                        wrap(
+                            ghost.x + b.x,
+                            COLS
+                        );
+
+                    const nextBY =
+                        wrap(
+                            ghost.y + b.y,
+                            ROWS
+                        );
+
+
+                    const da =
+                        shortestDistance(
+                            nextAX,
+                            nextAY,
+                            target.x,
                             target.y
                         );
 
 
                     const db =
-                        Math.abs(
-                            ghost.x +
-                            b.x -
-                            target.x
-                        ) +
-
-                        Math.abs(
-                            ghost.y +
-                            b.y -
+                        shortestDistance(
+                            nextBX,
+                            nextBY,
+                            target.x,
                             target.y
                         );
 
@@ -1601,7 +1704,7 @@ function updateGhost(
 
 
             ghost.direction = {
-                ...possible[0]
+                ...possibleDirections[0]
             };
 
 
@@ -1612,10 +1715,8 @@ function updateGhost(
 
                 ghost.eaten = false;
 
-
                 ghost.frightened =
                     frightenedTimer > 0;
-
 
                 ghost.direction = {
                     x: -1,
@@ -2091,8 +2192,8 @@ function drawGhost(
 
         ctx.fillStyle =
             colors[
-                index %
-                colors.length
+            index %
+            colors.length
             ];
     }
 
@@ -2285,7 +2386,7 @@ document.addEventListener(
         const direction =
             keys[event.key] ||
             keys[
-                event.key.toLowerCase()
+            event.key.toLowerCase()
             ];
 
 
@@ -2315,7 +2416,7 @@ document
 
                 setDirection(
                     DIRECTIONS[
-                        button.dataset.dir
+                    button.dataset.dir
                     ]
                 );
             }
