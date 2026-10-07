@@ -1,5 +1,3 @@
-
-
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -12,40 +10,25 @@ const statusElement = document.getElementById("status");
 // MAP
 // ============================================================
 
-const LEVEL_MAP 
-= [
-    // "####################",
-    // "#........##........#",
-    // "#.####.#.##.#.####.#",
-    // "#o####.#.##.#.####o#",
-    // "#..................#",
-    // "#.####.###.#######.#",
-    // "#......#...#.......#",
-    // "######.#.###.#.######",
-    // "     #.#.....#.#     ",
-    // "######.#.###.#.######",
-    // "............#.......#",
-    // "#.####.###.###.####.#",
-    // "#o..##........##..o#",
-    // "###.##.##.##.##.####",
-    // "#......#....#.......#",
-    // "#.####.#.##.#.####..#",
-    // "#..................#",
-    // "####################"
-
-    "....................",
-    "....................",
-    "....................",
-    "....................",
-    "....................",
-    "....................",
-    "....................",
-    "....................",
-    "....................",
-    "....................",
-    "....................",
-    "....................",
-
+const LEVEL_MAP = [
+    "####################",
+    "#........##........#",
+    "#.####.#.##.#.####.#",
+    "#o####.#.##.#.####o#",
+    "#..................#",
+    "#.####.###.#######.#",
+    "#......#...#.......#",
+    "######.#.###.#.######",
+    "     #.#.....#.#     ",
+    "######.#.###.#.######",
+    "............#.......#",
+    "#.####.###.###.####.#",
+    "#o..##........##..o.",
+    "###.##.##.##.##.####",
+    "#......#....#.......#",
+    "#.####.#.##.#.####..#",
+    "#..................#",
+    "####################"
 ];
 
 const CELL = 28;
@@ -65,19 +48,49 @@ let lives;
 let pellets;
 
 let player;
-
 let ghosts;
 
 let running = false;
 let deathTimer = 0;
-
 let lastTime = 0;
 
 let frightenedTimer = 0;
 
-const FRIGHTENED_DURATION = 7; // seconds
+const FRIGHTENED_DURATION = 7;
 
 let MAP;
+
+
+// ============================================================
+// GHOST AI
+// ============================================================
+
+const PACMAN_SPEED = 7;
+const GHOST_SPEED = 4.5;
+const EATEN_GHOST_SPEED = 8;
+
+const HOUSE = {
+    x: 10,
+    y: 8
+};
+
+
+// Pesos estratéxicos.
+// De momento iguais; poderemos axustalos despois.
+const WEIGHT_NORMAL = 1;
+const WEIGHT_PELLET = 1;
+const WEIGHT_BLUE = 1;
+
+
+// Valor total reservado para todos os pellets restantes.
+// O valor individual é TOTAL / pellets restantes.
+const TOTAL_PELLET_VALUE = 1000;
+
+const EPSILON = 1e-9;
+
+
+// Grafo estático do mapa.
+let graph = null;
 
 
 // ============================================================
@@ -104,7 +117,14 @@ function isWall(x, y) {
     return MAP[y][x] === "#";
 }
 
+
+function wrap(value, size) {
+    return ((value % size) + size) % size;
+}
+
+
 function getWrappedPosition(x, y) {
+
     return {
         x: wrap(x, COLS),
         y: wrap(y, ROWS)
@@ -122,11 +142,960 @@ function canMove(x, y, direction) {
     return !isWall(next.x, next.y);
 }
 
-//wrap(-1, 20)  // 19
-//wrap(20, 20)  // 0
-//wrap(21, 20)  // 1
-function wrap(value, size) {
-    return ((value % size) + size) % size;
+
+// ============================================================
+// GRAPH
+// ============================================================
+
+function buildGraph() {
+
+    graph = Array.from(
+        { length: ROWS },
+        () => Array.from(
+            { length: COLS },
+            () => []
+        )
+    );
+
+
+    for (let y = 0; y < ROWS; y++) {
+
+        for (let x = 0; x < COLS; x++) {
+
+            if (isWall(x, y))
+                continue;
+
+
+            for (const direction of Object.values(DIRECTIONS)) {
+
+                const next =
+                    getWrappedPosition(
+                        x + direction.x,
+                        y + direction.y
+                    );
+
+
+                if (!isWall(next.x, next.y)) {
+
+                    graph[y][x].push({
+                        x: next.x,
+                        y: next.y
+                    });
+                }
+            }
+        }
+    }
+}
+
+
+// ============================================================
+// PRIORITY QUEUE
+// ============================================================
+
+class MinHeap {
+
+    constructor() {
+        this.items = [];
+    }
+
+
+    get length() {
+        return this.items.length;
+    }
+
+
+    empty() {
+        return this.items.length === 0;
+    }
+
+
+    push(item) {
+
+        this.items.push(item);
+
+        let index =
+            this.items.length - 1;
+
+
+        while (index > 0) {
+
+            const parent =
+                Math.floor((index - 1) / 2);
+
+
+            if (
+                this.items[parent].time <=
+                this.items[index].time
+            ) {
+                break;
+            }
+
+
+            [
+                this.items[parent],
+                this.items[index]
+            ] = [
+                this.items[index],
+                this.items[parent]
+            ];
+
+
+            index = parent;
+        }
+    }
+
+
+    pop() {
+
+        if (this.items.length === 0)
+            return null;
+
+
+        const result =
+            this.items[0];
+
+
+        const last =
+            this.items.pop();
+
+
+        if (this.items.length > 0) {
+
+            this.items[0] = last;
+
+            let index = 0;
+
+
+            while (true) {
+
+                const left =
+                    index * 2 + 1;
+
+                const right =
+                    index * 2 + 2;
+
+                let smallest = index;
+
+
+                if (
+                    left < this.items.length &&
+                    this.items[left].time <
+                    this.items[smallest].time
+                ) {
+                    smallest = left;
+                }
+
+
+                if (
+                    right < this.items.length &&
+                    this.items[right].time <
+                    this.items[smallest].time
+                ) {
+                    smallest = right;
+                }
+
+
+                if (smallest === index)
+                    break;
+
+
+                [
+                    this.items[index],
+                    this.items[smallest]
+                ] = [
+                    this.items[smallest],
+                    this.items[index]
+                ];
+
+
+                index = smallest;
+            }
+        }
+
+
+        return result;
+    }
+}
+
+
+// ============================================================
+// SHORTEST PATH
+// ============================================================
+
+function shortestDistance(
+    startX,
+    startY,
+    targetX,
+    targetY
+) {
+
+    if (
+        startX === targetX &&
+        startY === targetY
+    ) {
+        return 0;
+    }
+
+
+    const distances =
+        Array.from(
+            { length: ROWS },
+            () => Array(COLS).fill(Infinity)
+        );
+
+
+    const queue = new MinHeap();
+
+
+    distances[startY][startX] = 0;
+
+
+    queue.push({
+        x: startX,
+        y: startY,
+        time: 0
+    });
+
+
+    while (!queue.empty()) {
+
+        const current =
+            queue.pop();
+
+
+        if (
+            current.time >
+            distances[current.y][current.x]
+        ) {
+            continue;
+        }
+
+
+        if (
+            current.x === targetX &&
+            current.y === targetY
+        ) {
+            return current.time;
+        }
+
+
+        for (
+            const next of
+            graph[current.y][current.x]
+        ) {
+
+            const nextTime =
+                current.time + 1;
+
+
+            if (
+                nextTime <
+                distances[next.y][next.x]
+            ) {
+
+                distances[next.y][next.x] =
+                    nextTime;
+
+
+                queue.push({
+                    x: next.x,
+                    y: next.y,
+                    time: nextTime
+                });
+            }
+        }
+    }
+
+
+    return Infinity;
+}
+
+
+// ============================================================
+// DOMAIN
+// ============================================================
+
+function createDomainCell() {
+
+    return {
+        arrival: Infinity,
+        owners: []
+    };
+}
+
+
+function calculateDomain() {
+
+    const domain =
+        Array.from(
+            { length: ROWS },
+            () => Array.from(
+                { length: COLS },
+                createDomainCell
+            )
+        );
+
+
+    const queue = new MinHeap();
+
+
+    // --------------------------------------------------------
+    // PAC-MAN
+    // --------------------------------------------------------
+
+    queue.push({
+        x: player.x,
+        y: player.y,
+        time: 0,
+        owner: "pacman",
+        speed: PACMAN_SPEED
+    });
+
+
+    // --------------------------------------------------------
+    // GHOSTS
+    // --------------------------------------------------------
+
+    for (let i = 0; i < ghosts.length; i++) {
+
+        const ghost = ghosts[i];
+
+        let x = ghost.x;
+        let y = ghost.y;
+        let time = 0;
+        let speed = GHOST_SPEED;
+
+
+        /*
+         * Unha fantasma comida ten que regresar á casa
+         * antes de poder reclamar territorio.
+         */
+        if (ghost.eaten) {
+
+            const distance =
+                shortestDistance(
+                    x,
+                    y,
+                    HOUSE.x,
+                    HOUSE.y
+                );
+
+
+            time =
+                distance /
+                EATEN_GHOST_SPEED;
+
+
+            x = HOUSE.x;
+            y = HOUSE.y;
+
+            speed = EATEN_GHOST_SPEED;
+        }
+
+
+        queue.push({
+            x,
+            y,
+            time,
+            owner: `ghost${i}`,
+            speed
+        });
+    }
+
+
+    // --------------------------------------------------------
+    // MULTI-SOURCE TEMPORAL FLOOD
+    // --------------------------------------------------------
+
+    while (!queue.empty()) {
+
+        const current =
+            queue.pop();
+
+
+        const cell =
+            domain[
+                current.y
+            ][
+                current.x
+            ];
+
+
+        /*
+         * Esta chegada é peor que outra xa rexistrada.
+         */
+        if (
+            current.time >
+            cell.arrival + EPSILON
+        ) {
+            continue;
+        }
+
+
+        /*
+         * Primeira chegada.
+         */
+        if (
+            current.time <
+            cell.arrival - EPSILON
+        ) {
+
+            cell.arrival =
+                current.time;
+
+            cell.owners = [
+                current.owner
+            ];
+        }
+
+
+        /*
+         * Empate.
+         */
+        else if (
+            Math.abs(
+                current.time -
+                cell.arrival
+            ) <= EPSILON
+        ) {
+
+            if (
+                !cell.owners.includes(
+                    current.owner
+                )
+            ) {
+
+                cell.owners.push(
+                    current.owner
+                );
+            }
+        }
+
+
+        /*
+         * Propagamos a onda.
+         */
+        for (
+            const next of
+            graph[current.y][current.x]
+        ) {
+
+            const nextTime =
+                current.time +
+                1 / current.speed;
+
+
+            const nextCell =
+                domain[
+                    next.y
+                ][
+                    next.x
+                ];
+
+
+            /*
+             * Só interesa propagar se podemos
+             * mellorar a chegada.
+             */
+            if (
+                nextTime <
+                nextCell.arrival -
+                EPSILON
+            ) {
+
+                queue.push({
+                    x: next.x,
+                    y: next.y,
+                    time: nextTime,
+                    owner: current.owner,
+                    speed: current.speed
+                });
+            }
+
+
+            /*
+             * Tamén propagamos empates.
+             */
+            else if (
+                Math.abs(
+                    nextTime -
+                    nextCell.arrival
+                ) <= EPSILON
+            ) {
+
+                queue.push({
+                    x: next.x,
+                    y: next.y,
+                    time: nextTime,
+                    owner: current.owner,
+                    speed: current.speed
+                });
+            }
+        }
+    }
+
+
+    return domain;
+}
+
+
+// ============================================================
+// DOMAIN OWNERS
+// ============================================================
+
+function getGhostOwners(owners) {
+
+    return owners.filter(
+        owner =>
+            owner.startsWith("ghost")
+    );
+}
+
+
+function getGhostIndex(owner) {
+
+    return Number(
+        owner.replace("ghost", "")
+    );
+}
+
+
+// ============================================================
+// NORMAL + PELLET SCORE
+// ============================================================
+
+function calculateNormalAndPelletScore(
+    domain
+) {
+
+    let normalScore = 0;
+    let pelletScore = 0;
+
+
+    const pelletValue =
+        pellets > 0
+            ? TOTAL_PELLET_VALUE / pellets
+            : 0;
+
+
+    for (let y = 0; y < ROWS; y++) {
+
+        for (let x = 0; x < COLS; x++) {
+
+            const cell =
+                MAP[y][x];
+
+
+            if (cell === "#")
+                continue;
+
+
+            const ghostOwners =
+                getGhostOwners(
+                    domain[y][x].owners
+                );
+
+
+            if (ghostOwners.length === 0)
+                continue;
+
+
+            let value;
+
+
+            if (
+                cell === "." ||
+                cell === "o"
+            ) {
+
+                value =
+                    pelletValue;
+
+                pelletScore +=
+                    value /
+                    ghostOwners.length;
+            }
+
+            else {
+
+                value = 1;
+
+                normalScore +=
+                    value /
+                    ghostOwners.length;
+            }
+        }
+    }
+
+
+    return {
+        normalScore,
+        pelletScore
+    };
+}
+
+
+// ============================================================
+// BLUE PELLET DOMAIN
+// ============================================================
+
+function calculateBluePelletValues(
+    domain
+) {
+
+    const values =
+        ghosts.map(() => 0);
+
+
+    const activeBlue =
+        ghosts
+            .map((ghost, index) => ({
+                ghost,
+                index
+            }))
+            .filter(({ ghost }) =>
+                ghost.frightened &&
+                !ghost.eaten
+            );
+
+
+    if (activeBlue.length === 0)
+        return values;
+
+
+    /*
+     * O valor total dos pellets segue sendo repartido
+     * entre os pellets restantes.
+     */
+    const pelletValue =
+        pellets > 0
+            ? TOTAL_PELLET_VALUE / pellets
+            : 0;
+
+
+    for (let y = 0; y < ROWS; y++) {
+
+        for (let x = 0; x < COLS; x++) {
+
+            const cell =
+                MAP[y][x];
+
+
+            if (
+                cell !== "." &&
+                cell !== "o"
+            ) {
+                continue;
+            }
+
+
+            /*
+             * Fantasmas azuis que dominam esta casilla
+             * segundo o dominio normal.
+             */
+            const blueOwners =
+                domain[y][x]
+                    .owners
+                    .filter(owner =>
+                        owner.startsWith("ghost")
+                    )
+                    .filter(owner => {
+
+                        const index =
+                            getGhostIndex(
+                                owner
+                            );
+
+                        return (
+                            ghosts[index].frightened &&
+                            !ghosts[index].eaten
+                        );
+                    });
+
+
+            if (
+                blueOwners.length === 0
+            ) {
+                continue;
+            }
+
+
+            /*
+             * O valor do pellet repártese entre as
+             * fantasmas azuis empatadas.
+             */
+            const share =
+                pelletValue /
+                blueOwners.length;
+
+
+            for (
+                const owner of blueOwners
+            ) {
+
+                const index =
+                    getGhostIndex(
+                        owner
+                    );
+
+
+                values[index] +=
+                    share;
+            }
+        }
+    }
+
+
+    return values;
+}
+
+
+// ============================================================
+// BLUE BALANCED SCORE
+// ============================================================
+
+function calculateBlueScore(
+    domain
+) {
+
+    const values =
+        calculateBluePelletValues(
+            domain
+        );
+
+
+    const activeValues =
+        values.filter(
+            (value, index) =>
+                ghosts[index].frightened &&
+                !ghosts[index].eaten
+        );
+
+
+    if (
+        activeValues.length === 0
+    ) {
+        return 0;
+    }
+
+
+    const total =
+        activeValues.reduce(
+            (sum, value) =>
+                sum + value,
+            0
+        );
+
+
+    if (total === 0)
+        return 0;
+
+
+    const squares =
+        activeValues.reduce(
+            (sum, value) =>
+                sum + value * value,
+            0
+        );
+
+
+    /*
+     * Jain Fairness Index.
+     *
+     * 1 = reparto perfecto
+     * 1/n = todo concentrado nunha soa fantasma
+     */
+    const fairness =
+        total * total /
+        (
+            activeValues.length *
+            squares
+        );
+
+
+    /*
+     * Queremos que importe tanto:
+     *
+     *   - canto territorio de pellets hai
+     *   - como equilibrado está o reparto
+     */
+    return total * fairness;
+}
+
+
+// ============================================================
+// TOTAL DOMAIN EVALUATION
+// ============================================================
+
+function evaluateDomain(
+    domain
+) {
+
+    const normal =
+        calculateNormalAndPelletScore(
+            domain
+        );
+
+
+    const blue =
+        calculateBlueScore(
+            domain
+        );
+
+
+    const total =
+        WEIGHT_NORMAL *
+            normal.normalScore +
+
+        WEIGHT_PELLET *
+            normal.pelletScore +
+
+        WEIGHT_BLUE *
+            blue;
+
+
+    return {
+        normalScore:
+            normal.normalScore,
+
+        pelletScore:
+            normal.pelletScore,
+
+        blueScore:
+            blue,
+
+        total
+    };
+}
+
+
+// ============================================================
+// GHOST MOVE EVALUATION
+// ============================================================
+
+function getPossibleGhostDirections(
+    ghost
+) {
+
+    return [
+        DIRECTIONS.up,
+        DIRECTIONS.down,
+        DIRECTIONS.left,
+        DIRECTIONS.right
+    ].filter(direction =>
+        canMove(
+            ghost.x,
+            ghost.y,
+            direction
+        )
+    );
+}
+
+
+function chooseGhostDirection(
+    ghost
+) {
+
+    const possible =
+        getPossibleGhostDirections(
+            ghost
+        );
+
+
+    if (possible.length === 0) {
+
+        return {
+            x: 0,
+            y: 0
+        };
+    }
+
+
+    let bestDirection =
+        possible[0];
+
+    let bestScore =
+        -Infinity;
+
+
+    for (
+        const direction of possible
+    ) {
+
+        /*
+         * Facemos unha copia da fantasma
+         * na seguinte casilla.
+         */
+        const testGhost = {
+            ...ghost,
+
+            x: wrap(
+                ghost.x +
+                direction.x,
+                COLS
+            ),
+
+            y: wrap(
+                ghost.y +
+                direction.y,
+                ROWS
+            ),
+
+            direction: {
+                ...direction
+            },
+
+            progress: 0
+        };
+
+
+        /*
+         * Substituímos temporalmente a fantasma.
+         */
+        const oldGhosts =
+            ghosts;
+
+
+        ghosts =
+            ghosts.map(
+                current =>
+                    current === ghost
+                        ? testGhost
+                        : current
+            );
+
+
+        const domain =
+            calculateDomain();
+
+
+        const evaluation =
+            evaluateDomain(
+                domain
+            );
+
+
+        ghosts =
+            oldGhosts;
+
+
+        if (
+            evaluation.total >
+            bestScore
+        ) {
+
+            bestScore =
+                evaluation.total;
+
+            bestDirection =
+                direction;
+        }
+    }
+
+
+    return {
+        ...bestDirection
+    };
 }
 
 
@@ -149,74 +1118,120 @@ function resetLevel() {
 
     pellets = 0;
 
-    MAP = [...LEVEL_MAP];
+
+    /*
+     * Normalizamos as filas a COLS.
+     */
+    MAP =
+        LEVEL_MAP.map(
+            row =>
+                row.slice(0, COLS)
+        );
+
 
     for (const row of MAP) {
+
         for (const cell of row) {
-            if (cell === "." || cell === "o") {
+
+            if (
+                cell === "." ||
+                cell === "o"
+            ) {
                 pellets++;
             }
         }
     }
 
+
     player = {
+
         x: 10,
         y: 10,
 
-        // posición actual interpolada
         px: 10,
         py: 10,
 
-        direction: { x: 0, y: 0 },
-        nextDirection: { x: 0, y: 0 },
+        direction: {
+            x: 0,
+            y: 0
+        },
+
+        nextDirection: {
+            x: 0,
+            y: 0
+        },
 
         progress: 0
     };
 
 
     ghosts = [
+
         {
             x: 9,
             y: 8,
+
             px: 9,
             py: 8,
-            direction: { x: 1, y: 0 },
+
+            direction: {
+                x: 1,
+                y: 0
+            },
+
             frightened: false,
             eaten: false,
             progress: 0
         },
+
 
         {
             x: 10,
             y: 8,
+
             px: 10,
             py: 8,
-            direction: { x: -1, y: 0 },
+
+            direction: {
+                x: -1,
+                y: 0
+            },
+
             frightened: false,
             eaten: false,
             progress: 0
         },
 
+
         {
             x: 11,
             y: 10,
+
             px: 11,
             py: 10,
-            direction: { x: 0, y: -1 },
+
+            direction: {
+                x: 0,
+                y: -1
+            },
+
             frightened: false,
             eaten: false,
             progress: 0
         }
     ];
 
+
     running = false;
     deathTimer = 0;
+    frightenedTimer = 0;
+
+
+    buildGraph();
+
 
     statusElement.textContent =
         "Press an arrow to start";
-
-    frightenedTimer = 0;
-
 }
 
 
@@ -226,53 +1241,58 @@ function resetLevel() {
 
 function updatePlayer(dt) {
 
-    const speed = 7; // celas por segundo
+    const speed =
+        PACMAN_SPEED;
 
-    /*
-     * A clave da corrección:
-     *
-     * O xogador sempre se move de centro a centro de cela.
-     * Nunca comprobamos a parede mediante Math.round().
-     *
-     * Antes de iniciar o seguinte tramo comprobamos
-     * explicitamente a cela de destino.
-     */
 
     if (
         player.direction.x === 0 &&
         player.direction.y === 0
     ) {
+
         tryChangeDirection();
+
         return;
     }
 
 
-    player.progress += speed * dt;
+    player.progress +=
+        speed * dt;
 
 
-    while (player.progress >= 1) {
+    while (
+        player.progress >= 1
+    ) {
 
         player.progress -= 1;
 
-        // We have reached the exact center of the next cell.
-        player.x = wrap(
-            player.x + player.direction.x,
-            COLS
-        );
 
-        player.y = wrap(
-            player.y + player.direction.y,
-            ROWS
-        );
+        player.x =
+            wrap(
+                player.x +
+                player.direction.x,
+                COLS
+            );
 
-        player.px = player.x;
-        player.py = player.y;
+
+        player.y =
+            wrap(
+                player.y +
+                player.direction.y,
+                ROWS
+            );
+
+
+        player.px =
+            player.x;
+
+        player.py =
+            player.y;
 
 
         eatPellet();
 
 
-        // Try to turn immediately at the intersection.
         if (
             canMove(
                 player.x,
@@ -280,14 +1300,13 @@ function updatePlayer(dt) {
                 player.nextDirection
             )
         ) {
+
             player.direction = {
                 ...player.nextDirection
             };
         }
 
 
-        // If we can't continue, we stop exactly 
-        // in the center of the cell.
         if (
             !canMove(
                 player.x,
@@ -295,7 +1314,12 @@ function updatePlayer(dt) {
                 player.direction
             )
         ) {
-            player.direction = { x: 0, y: 0 };
+
+            player.direction = {
+                x: 0,
+                y: 0
+            };
+
             break;
         }
     }
@@ -303,11 +1327,14 @@ function updatePlayer(dt) {
 
     player.px =
         player.x +
-        player.direction.x * player.progress;
+        player.direction.x *
+        player.progress;
+
 
     player.py =
         player.y +
-        player.direction.y * player.progress;
+        player.direction.y *
+        player.progress;
 }
 
 
@@ -320,6 +1347,7 @@ function tryChangeDirection() {
             player.nextDirection
         )
     ) {
+
         player.direction = {
             ...player.nextDirection
         };
@@ -333,34 +1361,61 @@ function tryChangeDirection() {
 
 function eatPellet() {
 
-    const x = player.x;
-    const y = player.y;
+    const x =
+        player.x;
 
-    if (x < 0 || x >= COLS || y < 0 || y >= ROWS)
+    const y =
+        player.y;
+
+
+    if (
+        x < 0 ||
+        x >= COLS ||
+        y < 0 ||
+        y >= ROWS
+    ) {
         return;
+    }
 
-    const cell = MAP[y][x];
 
-    if (cell !== "." && cell !== "o")
+    const cell =
+        MAP[y][x];
+
+
+    if (
+        cell !== "." &&
+        cell !== "o"
+    ) {
         return;
+    }
 
 
-    // We cannot modify MAP directly because it is a
-    // string constant. We convert it locally.
-    const row = MAP[y].split("");
+    const row =
+        MAP[y].split("");
+
 
     row[x] = " ";
 
-    MAP[y] = row.join("");
+
+    MAP[y] =
+        row.join("");
+
 
     pellets--;
 
+
     if (cell === "o") {
+
         score += 50;
+
         activateFrightenedMode();
+
     }
-    else
+
+    else {
+
         score += 10;
+    }
 
 
     if (pellets === 0) {
@@ -368,41 +1423,67 @@ function eatPellet() {
         running = false;
 
         statusElement.textContent =
-            "🎉 Gañaches!";
+            "🎉 You won!";
     }
+
 
     updateUI();
 }
 
+
 function activateFrightenedMode() {
 
-    frightenedTimer = FRIGHTENED_DURATION;
+    frightenedTimer =
+        FRIGHTENED_DURATION;
+
 
     for (const ghost of ghosts) {
 
         if (ghost.eaten)
             continue;
 
+
         ghost.frightened = true;
 
-        reverseGhostDirection(ghost);
+
+        reverseGhostDirection(
+            ghost
+        );
     }
 }
 
-function reverseGhostDirection(ghost) {
 
-    /*
-     * Se o fantasma está no medio dun tramo,
-     * cambiamos a cela de referencia ao extremo
-     * oposto e invertimos progress.
-     */
+function reverseGhostDirection(
+    ghost
+) {
+
     if (ghost.progress > 0) {
 
-        ghost.x += ghost.direction.x;
-        ghost.y += ghost.direction.y;
+        ghost.x +=
+            ghost.direction.x;
 
-        ghost.progress = 1 - ghost.progress;
+        ghost.y +=
+            ghost.direction.y;
+
+
+        ghost.x =
+            wrap(
+                ghost.x,
+                COLS
+            );
+
+        ghost.y =
+            wrap(
+                ghost.y,
+                ROWS
+            );
+
+
+        ghost.progress =
+            1 -
+            ghost.progress;
     }
+
 
     ghost.direction.x *= -1;
     ghost.direction.y *= -1;
@@ -410,95 +1491,131 @@ function reverseGhostDirection(ghost) {
 
 
 // ============================================================
-// GHOSTS   
+// GHOSTS
 // ============================================================
 
-function updateGhost(ghost, dt) {
+function updateGhost(
+    ghost,
+    dt
+) {
 
-    const speed = ghost.eaten ? 8 : 4.5;
+    const speed =
+        ghost.eaten
+            ? EATEN_GHOST_SPEED
+            : GHOST_SPEED;
+
 
     ghost.progress ??= 0;
 
-    ghost.progress += speed * dt;
+
+    ghost.progress +=
+        speed * dt;
 
 
-    while (ghost.progress >= 1) {
+    while (
+        ghost.progress >= 1
+    ) {
 
         ghost.progress -= 1;
 
-        ghost.x = wrap(
-            ghost.x + ghost.direction.x,
-            COLS
-        );
 
-        ghost.y = wrap(
-            ghost.y + ghost.direction.y,
-            ROWS
-        );
+        ghost.x =
+            wrap(
+                ghost.x +
+                ghost.direction.x,
+                COLS
+            );
 
 
-        const possible = [
-            DIRECTIONS.up,
-            DIRECTIONS.down,
-            DIRECTIONS.left,
-            DIRECTIONS.right
-        ].filter(dir =>
-            canMove(ghost.x, ghost.y, dir)
-        );
+        ghost.y =
+            wrap(
+                ghost.y +
+                ghost.direction.y,
+                ROWS
+            );
 
 
-        if (possible.length === 0) {
-            ghost.direction = { x: 0, y: 0 };
+        const possible =
+            getPossibleGhostDirections(
+                ghost
+            );
+
+
+        if (
+            possible.length === 0
+        ) {
+
+            ghost.direction = {
+                x: 0,
+                y: 0
+            };
+
             break;
         }
 
 
         // ====================================================
-        // FANTASMA COMIDO
+        // EATEN
         // ====================================================
 
         if (ghost.eaten) {
 
-            // Volve cara á "casa" dos fantasmas.
-            const target = {
-                x: 10,
-                y: 8
-            };
+            const target =
+                HOUSE;
 
-            possible.sort((a, b) => {
 
-                const da =
-                    Math.abs(
-                        ghost.x + a.x - target.x
-                    ) +
-                    Math.abs(
-                        ghost.y + a.y - target.y
-                    );
+            possible.sort(
+                (a, b) => {
 
-                const db =
-                    Math.abs(
-                        ghost.x + b.x - target.x
-                    ) +
-                    Math.abs(
-                        ghost.y + b.y - target.y
-                    );
+                    const da =
+                        Math.abs(
+                            ghost.x +
+                            a.x -
+                            target.x
+                        ) +
 
-                return da - db;
-            });
+                        Math.abs(
+                            ghost.y +
+                            a.y -
+                            target.y
+                        );
+
+
+                    const db =
+                        Math.abs(
+                            ghost.x +
+                            b.x -
+                            target.x
+                        ) +
+
+                        Math.abs(
+                            ghost.y +
+                            b.y -
+                            target.y
+                        );
+
+
+                    return da - db;
+                }
+            );
+
 
             ghost.direction = {
                 ...possible[0]
             };
 
+
             if (
-                ghost.eaten &&
-                ghost.x === 10 &&
-                ghost.y === 8
+                ghost.x === HOUSE.x &&
+                ghost.y === HOUSE.y
             ) {
+
                 ghost.eaten = false;
+
 
                 ghost.frightened =
                     frightenedTimer > 0;
+
 
                 ghost.direction = {
                     x: -1,
@@ -506,109 +1623,32 @@ function updateGhost(ghost, dt) {
                 };
             }
 
+
+            continue;
         }
 
 
         // ====================================================
-        // MODO VULNERABLE
+        // NORMAL / BLUE
         // ====================================================
 
-        else if (ghost.frightened) {
-
-            /*
-             * Non persegue Pac-Man.
-             *
-             * Escolla unha dirección aleatoria.
-             *
-             * Evitamos na medida do posible dar a volta
-             * inmediatamente outra vez.
-             */
-
-            const reverse = {
-                x: -ghost.direction.x,
-                y: -ghost.direction.y
-            };
-
-            let choices = possible.filter(dir =>
-                dir.x !== reverse.x ||
-                dir.y !== reverse.y
+        ghost.direction =
+            chooseGhostDirection(
+                ghost
             );
-
-            if (choices.length === 0)
-                choices = possible;
-
-
-            ghost.direction = {
-                ...choices[
-                Math.floor(
-                    Math.random() * choices.length
-                )
-                ]
-            };
-        }
-
-
-        // ====================================================
-        // NORMAL BEHAVIOUR
-        // ====================================================
-
-        else {
-
-            /*
-             * Chase Pac-Man like before.
-             */
-
-            possible.sort((a, b) => {
-
-                const da =
-                    Math.abs(
-                        ghost.x + a.x - player.x
-                    ) +
-                    Math.abs(
-                        ghost.y + a.y - player.y
-                    );
-
-                const db =
-                    Math.abs(
-                        ghost.x + b.x - player.x
-                    ) +
-                    Math.abs(
-                        ghost.y + b.y - player.y
-                    );
-
-                return da - db;
-            });
-
-
-            if (Math.random() < 0.75) {
-
-                ghost.direction = {
-                    ...possible[0]
-                };
-
-            }
-            else {
-
-                ghost.direction = {
-                    ...possible[
-                    Math.floor(
-                        Math.random() *
-                        possible.length
-                    )
-                    ]
-                };
-            }
-        }
     }
 
 
     ghost.px =
         ghost.x +
-        ghost.direction.x * ghost.progress;
+        ghost.direction.x *
+        ghost.progress;
+
 
     ghost.py =
         ghost.y +
-        ghost.direction.y * ghost.progress;
+        ghost.direction.y *
+        ghost.progress;
 }
 
 
@@ -618,37 +1658,54 @@ function updateGhost(ghost, dt) {
 
 function checkGhostCollisions() {
 
-    for (const ghost of ghosts) {
+    for (
+        const ghost of ghosts
+    ) {
 
-        const dx = ghost.px - player.px;
-        const dy = ghost.py - player.py;
+        const dx =
+            ghost.px -
+            player.px;
+
+
+        const dy =
+            ghost.py -
+            player.py;
+
 
         const distance =
-            Math.sqrt(dx * dx + dy * dy);
+            Math.sqrt(
+                dx * dx +
+                dy * dy
+            );
 
 
-        if (distance >= 0.55)
-            continue;
-
-
-        // Xa está comido: non pode facer nada.
-        if (ghost.eaten)
-            continue;
-
-
-        // Fantasma vulnerable: Pac-Man come o fantasma.
-        if (ghost.frightened) {
-
-            eatGhost(ghost);
+        if (
+            distance >= 0.55
+        ) {
             continue;
         }
 
 
-        // Fantasma normal: Pac-Man perde unha vida.
+        if (ghost.eaten)
+            continue;
+
+
+        if (ghost.frightened) {
+
+            eatGhost(
+                ghost
+            );
+
+            continue;
+        }
+
+
         loseLife();
+
         return;
     }
 }
+
 
 function eatGhost(ghost) {
 
@@ -666,16 +1723,19 @@ function loseLife() {
     if (deathTimer > 0)
         return;
 
+
     lives--;
 
     running = false;
 
     deathTimer = 1.0;
 
+
     statusElement.textContent =
         lives > 0
             ? "Perdiches unha vida"
             : "Fin da partida";
+
 
     updateUI();
 }
@@ -691,11 +1751,19 @@ function update(dt) {
 
         deathTimer -= dt;
 
-        if (deathTimer <= 0 && lives > 0) {
+
+        if (
+            deathTimer <= 0 &&
+            lives > 0
+        ) {
+
             resetPositions();
+
+
             statusElement.textContent =
                 "Preme unha frecha para continuar";
         }
+
 
         return;
     }
@@ -704,15 +1772,22 @@ function update(dt) {
     if (!running)
         return;
 
+
     if (frightenedTimer > 0) {
 
         frightenedTimer -= dt;
 
-        if (frightenedTimer <= 0) {
+
+        if (
+            frightenedTimer <= 0
+        ) {
 
             frightenedTimer = 0;
 
-            for (const ghost of ghosts) {
+
+            for (
+                const ghost of ghosts
+            ) {
 
                 if (!ghost.eaten)
                     ghost.frightened = false;
@@ -720,10 +1795,20 @@ function update(dt) {
         }
     }
 
+
     updatePlayer(dt);
 
-    for (const ghost of ghosts)
-        updateGhost(ghost, dt);
+
+    for (
+        const ghost of ghosts
+    ) {
+
+        updateGhost(
+            ghost,
+            dt
+        );
+    }
+
 
     checkGhostCollisions();
 }
@@ -737,30 +1822,49 @@ function resetPositions() {
 
     player.x = 10;
     player.y = 10;
+
     player.px = 10;
     player.py = 10;
+
     player.progress = 0;
 
-    player.direction = { x: 0, y: 0 };
-    player.nextDirection = { x: 0, y: 0 };
+
+    player.direction = {
+        x: 0,
+        y: 0
+    };
+
+
+    player.nextDirection = {
+        x: 0,
+        y: 0
+    };
 
 
     ghosts[0].x = 9;
     ghosts[0].y = 8;
+
     ghosts[0].px = 9;
     ghosts[0].py = 8;
+
     ghosts[0].progress = 0;
+
 
     ghosts[1].x = 10;
     ghosts[1].y = 8;
+
     ghosts[1].px = 10;
     ghosts[1].py = 8;
+
     ghosts[1].progress = 0;
+
 
     ghosts[2].x = 11;
     ghosts[2].y = 10;
+
     ghosts[2].px = 11;
     ghosts[2].py = 10;
+
     ghosts[2].progress = 0;
 }
 
@@ -771,7 +1875,10 @@ function resetPositions() {
 
 function draw() {
 
-    ctx.fillStyle = "#090b12";
+    ctx.fillStyle =
+        "#090b12";
+
+
     ctx.fillRect(
         0,
         0,
@@ -780,21 +1887,34 @@ function draw() {
     );
 
 
-    // walls and pills
+    for (
+        let y = 0;
+        y < ROWS;
+        y++
+    ) {
 
-    for (let y = 0; y < ROWS; y++) {
+        for (
+            let x = 0;
+            x < COLS;
+            x++
+        ) {
 
-        for (let x = 0; x < COLS; x++) {
+            const cell =
+                MAP[y][x];
 
-            const cell = MAP[y][x];
 
-            const px = x * CELL;
-            const py = y * CELL;
+            const px =
+                x * CELL;
+
+            const py =
+                y * CELL;
 
 
             if (cell === "#") {
 
-                ctx.fillStyle = "#3156a3";
+                ctx.fillStyle =
+                    "#3156a3";
+
 
                 ctx.fillRect(
                     px + 2,
@@ -805,19 +1925,28 @@ function draw() {
             }
 
 
-            if (cell === "." || cell === "o") {
+            if (
+                cell === "." ||
+                cell === "o"
+            ) {
 
-                ctx.fillStyle = "#f4e7b5";
+                ctx.fillStyle =
+                    "#f4e7b5";
+
 
                 ctx.beginPath();
+
 
                 ctx.arc(
                     px + CELL / 2,
                     py + CELL / 2,
-                    cell === "o" ? 5 : 2.5,
+                    cell === "o"
+                        ? 5
+                        : 2.5,
                     0,
                     Math.PI * 2
                 );
+
 
                 ctx.fill();
             }
@@ -827,8 +1956,18 @@ function draw() {
 
     drawPlayer();
 
-    for (let i = 0; i < ghosts.length; i++)
-        drawGhost(ghosts[i], i);
+
+    for (
+        let i = 0;
+        i < ghosts.length;
+        i++
+    ) {
+
+        drawGhost(
+            ghosts[i],
+            i
+        );
+    }
 }
 
 
@@ -838,6 +1977,7 @@ function drawPlayer() {
         player.px * CELL +
         CELL / 2;
 
+
     const cy =
         player.py * CELL +
         CELL / 2;
@@ -845,36 +1985,60 @@ function drawPlayer() {
 
     let angle = 0;
 
-    if (player.direction.x === -1)
+
+    if (
+        player.direction.x === -1
+    ) {
         angle = Math.PI;
+    }
 
-    if (player.direction.y === -1)
+
+    if (
+        player.direction.y === -1
+    ) {
         angle = -Math.PI / 2;
+    }
 
-    if (player.direction.y === 1)
+
+    if (
+        player.direction.y === 1
+    ) {
         angle = Math.PI / 2;
+    }
 
 
     const mouth =
         0.20 +
         Math.abs(
-            Math.sin(performance.now() / 90)
+            Math.sin(
+                performance.now() / 90
+            )
         ) * 0.20;
 
 
-    ctx.fillStyle = "#ffd43b";
+    ctx.fillStyle =
+        "#ffd43b";
+
 
     ctx.beginPath();
 
-    ctx.moveTo(cx, cy);
+
+    ctx.moveTo(
+        cx,
+        cy
+    );
+
 
     ctx.arc(
         cx,
         cy,
         11,
         angle + mouth,
-        angle + Math.PI * 2 - mouth
+        angle +
+        Math.PI * 2 -
+        mouth
     );
+
 
     ctx.closePath();
 
@@ -882,11 +2046,15 @@ function drawPlayer() {
 }
 
 
-function drawGhost(ghost, index) {
+function drawGhost(
+    ghost,
+    index
+) {
 
     const cx =
         ghost.px * CELL +
         CELL / 2;
+
 
     const cy =
         ghost.py * CELL +
@@ -900,35 +2068,37 @@ function drawGhost(ghost, index) {
     ];
 
 
-    // ========================================================
-    // FANTASMA COMIDO: só ollos
-    // ========================================================
-
     if (ghost.eaten) {
 
-        drawGhostEyes(ghost, cx, cy);
+        drawGhostEyes(
+            ghost,
+            cx,
+            cy
+        );
 
         return;
     }
 
 
-    // ========================================================
-    // BODY
-    // ========================================================
-
     if (ghost.frightened) {
 
-        ctx.fillStyle = "#3159d6";
+        ctx.fillStyle =
+            "#3159d6";
 
     }
+
     else {
 
         ctx.fillStyle =
-            colors[index % colors.length];
+            colors[
+                index %
+                colors.length
+            ];
     }
 
 
     ctx.beginPath();
+
 
     ctx.arc(
         cx,
@@ -938,28 +2108,62 @@ function drawGhost(ghost, index) {
         0
     );
 
-    ctx.lineTo(cx + 10, cy + 10);
-    ctx.lineTo(cx + 5, cy + 6);
-    ctx.lineTo(cx, cy + 10);
-    ctx.lineTo(cx - 5, cy + 6);
-    ctx.lineTo(cx - 10, cy + 10);
+
+    ctx.lineTo(
+        cx + 10,
+        cy + 10
+    );
+
+
+    ctx.lineTo(
+        cx + 5,
+        cy + 6
+    );
+
+
+    ctx.lineTo(
+        cx,
+        cy + 10
+    );
+
+
+    ctx.lineTo(
+        cx - 5,
+        cy + 6
+    );
+
+
+    ctx.lineTo(
+        cx - 10,
+        cy + 10
+    );
+
 
     ctx.closePath();
+
     ctx.fill();
 
 
-    // ========================================================
-    // EYES
-    // ========================================================
-
-    drawGhostEyes(ghost, cx, cy);
+    drawGhostEyes(
+        ghost,
+        cx,
+        cy
+    );
 }
 
-function drawGhostEyes(ghost, cx, cy) {
 
-    ctx.fillStyle = "white";
+function drawGhostEyes(
+    ghost,
+    cx,
+    cy
+) {
+
+    ctx.fillStyle =
+        "white";
+
 
     ctx.beginPath();
+
 
     ctx.arc(
         cx - 4,
@@ -969,6 +2173,7 @@ function drawGhostEyes(ghost, cx, cy) {
         Math.PI * 2
     );
 
+
     ctx.arc(
         cx + 4,
         cy - 3,
@@ -977,28 +2182,38 @@ function drawGhostEyes(ghost, cx, cy) {
         Math.PI * 2
     );
 
+
     ctx.fill();
 
 
-    ctx.fillStyle = "#263b78";
+    ctx.fillStyle =
+        "#263b78";
+
 
     ctx.beginPath();
 
+
     ctx.arc(
-        cx - 4 + ghost.direction.x,
-        cy - 3 + ghost.direction.y,
+        cx - 4 +
+        ghost.direction.x,
+        cy - 3 +
+        ghost.direction.y,
         1.5,
         0,
         Math.PI * 2
     );
 
+
     ctx.arc(
-        cx + 4 + ghost.direction.x,
-        cy - 3 + ghost.direction.y,
+        cx + 4 +
+        ghost.direction.x,
+        cy - 3 +
+        ghost.direction.y,
         1.5,
         0,
         Math.PI * 2
     );
+
 
     ctx.fill();
 }
@@ -1008,14 +2223,20 @@ function drawGhostEyes(ghost, cx, cy) {
 // CONTROLS
 // ============================================================
 
-function setDirection(direction) {
+function setDirection(
+    direction
+) {
 
     player.nextDirection = {
         ...direction
     };
 
 
-    if (!running && deathTimer <= 0 && lives > 0) {
+    if (
+        !running &&
+        deathTimer <= 0 &&
+        lives > 0
+    ) {
 
         running = true;
 
@@ -1026,59 +2247,91 @@ function setDirection(direction) {
 }
 
 
-document.addEventListener("keydown", event => {
+document.addEventListener(
+    "keydown",
+    event => {
 
-    const keys = {
-        ArrowUp: DIRECTIONS.up,
-        w: DIRECTIONS.up,
+        const keys = {
 
-        ArrowDown: DIRECTIONS.down,
-        s: DIRECTIONS.down,
+            ArrowUp:
+                DIRECTIONS.up,
 
-        ArrowLeft: DIRECTIONS.left,
-        a: DIRECTIONS.left,
-
-        ArrowRight: DIRECTIONS.right,
-        d: DIRECTIONS.right
-    };
+            w:
+                DIRECTIONS.up,
 
 
-    const direction =
-        keys[event.key] ||
-        keys[event.key.toLowerCase()];
+            ArrowDown:
+                DIRECTIONS.down,
+
+            s:
+                DIRECTIONS.down,
 
 
-    if (!direction)
-        return;
+            ArrowLeft:
+                DIRECTIONS.left,
+
+            a:
+                DIRECTIONS.left,
 
 
-    event.preventDefault();
+            ArrowRight:
+                DIRECTIONS.right,
 
-    setDirection(direction);
-});
+            d:
+                DIRECTIONS.right
+        };
+
+
+        const direction =
+            keys[event.key] ||
+            keys[
+                event.key.toLowerCase()
+            ];
+
+
+        if (!direction)
+            return;
+
+
+        event.preventDefault();
+
+
+        setDirection(
+            direction
+        );
+    }
+);
 
 
 document
-    .querySelectorAll("[data-dir]")
+    .querySelectorAll(
+        "[data-dir]"
+    )
     .forEach(button => {
 
-        button.addEventListener("click", () => {
+        button.addEventListener(
+            "click",
+            () => {
 
-            setDirection(
-                DIRECTIONS[
-                button.dataset.dir
-                ]
-            );
-        });
+                setDirection(
+                    DIRECTIONS[
+                        button.dataset.dir
+                    ]
+                );
+            }
+        );
     });
 
 
 document
     .getElementById("restart")
-    .addEventListener("click", () => {
+    .addEventListener(
+        "click",
+        () => {
 
-        resetGame();
-    });
+            resetGame();
+        }
+    );
 
 
 // ============================================================
@@ -1087,8 +2340,11 @@ document
 
 function updateUI() {
 
-    scoreElement.textContent = score;
-    livesElement.textContent = lives;
+    scoreElement.textContent =
+        score;
+
+    livesElement.textContent =
+        lives;
 }
 
 
@@ -1104,16 +2360,23 @@ function gameLoop(time) {
             0.05
         );
 
+
     lastTime = time;
 
+
     update(dt);
+
     draw();
 
-    requestAnimationFrame(gameLoop);
+
+    requestAnimationFrame(
+        gameLoop
+    );
 }
 
 
 resetGame();
 
-requestAnimationFrame(gameLoop);
-
+requestAnimationFrame(
+    gameLoop
+);
