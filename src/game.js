@@ -1834,8 +1834,8 @@ function loseLife() {
 
     statusElement.textContent =
         lives > 0
-            ? "Perdiches unha vida"
-            : "Fin da partida";
+            ? "You lost a life"
+            : "Game over";
 
 
     updateUI();
