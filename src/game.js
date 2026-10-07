@@ -62,7 +62,7 @@ let frightenedTimer = 0;
 
 const FRIGHTENED_DURATION = 7; // seconds
 
-let MAP = [...LEVEL_MAP];
+let MAP ;
 
 
 // ============================================================
@@ -117,6 +117,8 @@ function resetGame() {
 function resetLevel() {
 
     pellets = 0;
+
+    MAP = [...LEVEL_MAP];
 
     for (const row of MAP) {
         for (const cell of row) {
@@ -221,7 +223,7 @@ function updatePlayer(dt) {
 
         player.progress -= 1;
 
-        // Chegamos exactamente ao centro da seguinte cela.
+        // We have reached the exact center of the next cell.
         player.x += player.direction.x;
         player.y += player.direction.y;
 
@@ -232,7 +234,7 @@ function updatePlayer(dt) {
         eatPellet();
 
 
-        // Intentar virar inmediatamente no cruzamento.
+        // Try to turn immediately at the intersection.
         if (
             canMove(
                 player.x,
