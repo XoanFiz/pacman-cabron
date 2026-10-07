@@ -9,7 +9,7 @@ const statusElement = document.getElementById("status");
 
 
 // ============================================================
-// MAPA
+// MAP
 // ============================================================
 
 const MAP = [
@@ -42,7 +42,7 @@ canvas.height = ROWS * CELL;
 
 
 // ============================================================
-// ESTADO
+// STATE
 // ============================================================
 
 let score;
@@ -60,7 +60,7 @@ let lastTime = 0;
 
 
 // ============================================================
-// DIRECCIÓNS
+// DIRECTIONS
 // ============================================================
 
 const DIRECTIONS = {
@@ -72,7 +72,7 @@ const DIRECTIONS = {
 
 
 // ============================================================
-// UTILIDADES DA GRELLA
+// GRID UTILITIES
 // ============================================================
 
 function isWall(x, y) {
@@ -94,7 +94,7 @@ function canMove(x, y, direction) {
 
 
 // ============================================================
-// INICIO / REINICIO
+// START / RESTART
 // ============================================================
 
 function resetGame() {
@@ -165,7 +165,11 @@ function resetLevel() {
     deathTimer = 0;
 
     statusElement.textContent =
-        "Preme unha frecha para comezar";
+        "Press an arrow to start";
+
+    let frightenedTimer = 0;
+
+    const FRIGHTENED_DURATION = 7; // segundos
 }
 
 
@@ -228,8 +232,8 @@ function updatePlayer(dt) {
         }
 
 
-        // Se non podemos continuar, paramos exactamente
-        // no centro da cela.
+        // If we can't continue, we stop exactly 
+        // in the center of the cell.
         if (
             !canMove(
                 player.x,
@@ -270,7 +274,7 @@ function tryChangeDirection() {
 
 
 // ============================================================
-// PASTILLAS
+// PILLS
 // ============================================================
 
 function eatPellet() {
@@ -287,8 +291,8 @@ function eatPellet() {
         return;
 
 
-    // Non podemos modificar MAP directamente porque é unha
-    // constante de strings. Convertémola localmente.
+    // We cannot modify MAP directly because it is a
+    // string constant. We convert it locally.
     const row = MAP[y].split("");
 
     row[x] = " ";
@@ -316,7 +320,7 @@ function eatPellet() {
 
 
 // ============================================================
-// FANTASMAS
+// GHOSTS   
 // ============================================================
 
 function updateGhost(ghost, dt) {
@@ -353,12 +357,12 @@ function updateGhost(ghost, dt) {
 
 
         /*
-         * Pequena IA:
-         *
-         * normalmente escolle a dirección que máis achega
-         * ao xogador, pero ás veces escolle outra para evitar
-         * que os fantasmas sexan completamente deterministas.
-         */
+        * Simple AI:
+        *
+        * It usually chooses the direction that brings it closest
+        * to the player, but sometimes selects another to prevent
+        * the ghosts from being completely deterministic. 
+        */
 
         possible.sort((a, b) => {
 
@@ -410,7 +414,7 @@ function updateGhost(ghost, dt) {
 
 
 // ============================================================
-// COLISIÓNS
+// COLLISIONS
 // ============================================================
 
 function checkGhostCollisions() {
@@ -454,7 +458,7 @@ function loseLife() {
 
 
 // ============================================================
-// ACTUALIZACIÓN
+// UPDATE
 // ============================================================
 
 function update(dt) {
@@ -487,7 +491,7 @@ function update(dt) {
 
 
 // ============================================================
-// RESET DAS POSICIÓNS
+// RESET POSITIONS
 // ============================================================
 
 function resetPositions() {
@@ -537,7 +541,7 @@ function draw() {
     );
 
 
-    // paredes e pastillas
+    // walls and pills
 
     for (let y = 0; y < ROWS; y++) {
 
@@ -681,7 +685,7 @@ function drawGhost(ghost, index) {
     ctx.fill();
 
 
-    // ollos
+    // eyes
 
     ctx.fillStyle = "white";
 
@@ -718,7 +722,7 @@ function drawGhost(ghost, index) {
 
 
 // ============================================================
-// CONTROIS
+// CONTROLS
 // ============================================================
 
 function setDirection(direction) {
