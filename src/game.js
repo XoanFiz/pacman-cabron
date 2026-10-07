@@ -347,11 +347,27 @@ function activateFrightenedMode() {
 
         ghost.frightened = true;
 
-        // O efecto clásico: os fantasmas dan a volta
-        // inmediatamente ao comer a pastilla de poder.
-        ghost.direction.x *= -1;
-        ghost.direction.y *= -1;
+        reverseGhostDirection(ghost);
     }
+}
+
+function reverseGhostDirection(ghost) {
+
+    /*
+     * Se o fantasma está no medio dun tramo,
+     * cambiamos a cela de referencia ao extremo
+     * oposto e invertimos progress.
+     */
+    if (ghost.progress > 0) {
+
+        ghost.x += ghost.direction.x;
+        ghost.y += ghost.direction.y;
+
+        ghost.progress = 1 - ghost.progress;
+    }
+
+    ghost.direction.x *= -1;
+    ghost.direction.y *= -1;
 }
 
 
