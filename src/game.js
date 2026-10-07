@@ -12,7 +12,7 @@ const statusElement = document.getElementById("status");
 // MAP
 // ============================================================
 
-const MAP = [
+const LEVEL_MAP = [
     "####################",
     "#........##........#",
     "#.####.#.##.#.####.#",
@@ -34,7 +34,7 @@ const MAP = [
 ];
 
 const CELL = 28;
-const ROWS = MAP.length;
+const ROWS = LEVEL_MAP.length;
 const COLS = 20;
 
 canvas.width = COLS * CELL;
@@ -58,16 +58,22 @@ let deathTimer = 0;
 
 let lastTime = 0;
 
+let frightenedTimer = 0;
+
+const FRIGHTENED_DURATION = 7; // seconds
+
+let MAP = [...LEVEL_MAP];
+
 
 // ============================================================
 // DIRECTIONS
 // ============================================================
 
 const DIRECTIONS = {
-    up:    { x: 0,  y: -1 },
-    down:  { x: 0,  y: 1  },
-    left:  { x: -1, y: 0  },
-    right: { x: 1,  y: 0  }
+    up: { x: 0, y: -1 },
+    down: { x: 0, y: 1 },
+    left: { x: -1, y: 0 },
+    right: { x: 1, y: 0 }
 };
 
 
@@ -141,7 +147,10 @@ function resetLevel() {
             y: 8,
             px: 9,
             py: 8,
-            direction: { x: 1, y: 0 }
+            direction: { x: 1, y: 0 },
+            frightened: false,
+            eaten: false,
+            progress: 0
         },
 
         {
@@ -149,7 +158,10 @@ function resetLevel() {
             y: 8,
             px: 10,
             py: 8,
-            direction: { x: -1, y: 0 }
+            direction: { x: -1, y: 0 },
+            frightened: false,
+            eaten: false,
+            progress: 0
         },
 
         {
@@ -157,7 +169,10 @@ function resetLevel() {
             y: 10,
             px: 11,
             py: 10,
-            direction: { x: 0, y: -1 }
+            direction: { x: 0, y: -1 },
+            frightened: false,
+            eaten: false,
+            progress: 0
         }
     ];
 
@@ -167,9 +182,8 @@ function resetLevel() {
     statusElement.textContent =
         "Press an arrow to start";
 
-    let frightenedTimer = 0;
+    frightenedTimer = 0;
 
-    const FRIGHTENED_DURATION = 7; // segundos
 }
 
 
@@ -301,8 +315,10 @@ function eatPellet() {
 
     pellets--;
 
-    if (cell === "o")
+    if (cell === "o") {
         score += 50;
+        activateFrightenedMode();
+    }
     else
         score += 10;
 
@@ -318,6 +334,24 @@ function eatPellet() {
     updateUI();
 }
 
+function activateFrightenedMode() {
+
+    frightenedTimer = FRIGHTENED_DURATION;
+
+    for (const ghost of ghosts) {
+
+        if (ghost.eaten)
+            continue;
+
+        ghost.frightened = true;
+
+        // O efecto clásico: os fantasmas dan a volta
+        // inmediatamente ao comer a pastilla de poder.
+        ghost.direction.x *= -1;
+        ghost.direction.y *= -1;
+    }
+}
+
 
 // ============================================================
 // GHOSTS   
@@ -325,7 +359,7 @@ function eatPellet() {
 
 function updateGhost(ghost, dt) {
 
-    const speed = 4.5;
+    const speed = ghost.eaten ? 8 : 4.5;
 
     ghost.progress ??= 0;
 
@@ -356,49 +390,151 @@ function updateGhost(ghost, dt) {
         }
 
 
-        /*
-        * Simple AI:
-        *
-        * It usually chooses the direction that brings it closest
-        * to the player, but sometimes selects another to prevent
-        * the ghosts from being completely deterministic. 
-        */
+        // ====================================================
+        // FANTASMA COMIDO
+        // ====================================================
 
-        possible.sort((a, b) => {
+        if (ghost.eaten) {
 
-            const da =
-                Math.abs(
-                    ghost.x + a.x - player.x
-                ) +
-                Math.abs(
-                    ghost.y + a.y - player.y
-                );
+            // Volve cara á "casa" dos fantasmas.
+            const target = {
+                x: 10,
+                y: 8
+            };
 
-            const db =
-                Math.abs(
-                    ghost.x + b.x - player.x
-                ) +
-                Math.abs(
-                    ghost.y + b.y - player.y
-                );
+            possible.sort((a, b) => {
 
-            return da - db;
-        });
+                const da =
+                    Math.abs(
+                        ghost.x + a.x - target.x
+                    ) +
+                    Math.abs(
+                        ghost.y + a.y - target.y
+                    );
 
+                const db =
+                    Math.abs(
+                        ghost.x + b.x - target.x
+                    ) +
+                    Math.abs(
+                        ghost.y + b.y - target.y
+                    );
 
-        if (Math.random() < 0.75) {
+                return da - db;
+            });
+
             ghost.direction = {
                 ...possible[0]
             };
+
+            if (
+                ghost.eaten &&
+                ghost.x === 10 &&
+                ghost.y === 8
+            ) {
+                ghost.eaten = false;
+
+                ghost.frightened =
+                    frightenedTimer > 0;
+
+                ghost.direction = {
+                    x: -1,
+                    y: 0
+                };
+            }
+
         }
-        else {
+
+
+        // ====================================================
+        // MODO VULNERABLE
+        // ====================================================
+
+        else if (ghost.frightened) {
+
+            /*
+             * Non persegue Pac-Man.
+             *
+             * Escolla unha dirección aleatoria.
+             *
+             * Evitamos na medida do posible dar a volta
+             * inmediatamente outra vez.
+             */
+
+            const reverse = {
+                x: -ghost.direction.x,
+                y: -ghost.direction.y
+            };
+
+            let choices = possible.filter(dir =>
+                dir.x !== reverse.x ||
+                dir.y !== reverse.y
+            );
+
+            if (choices.length === 0)
+                choices = possible;
+
+
             ghost.direction = {
-                ...possible[
-                    Math.floor(
-                        Math.random() * possible.length
-                    )
+                ...choices[
+                Math.floor(
+                    Math.random() * choices.length
+                )
                 ]
             };
+        }
+
+
+        // ====================================================
+        // COMPORTAMENTO NORMAL
+        // ====================================================
+
+        else {
+
+            /*
+             * Persegue Pac-Man como antes.
+             */
+
+            possible.sort((a, b) => {
+
+                const da =
+                    Math.abs(
+                        ghost.x + a.x - player.x
+                    ) +
+                    Math.abs(
+                        ghost.y + a.y - player.y
+                    );
+
+                const db =
+                    Math.abs(
+                        ghost.x + b.x - player.x
+                    ) +
+                    Math.abs(
+                        ghost.y + b.y - player.y
+                    );
+
+                return da - db;
+            });
+
+
+            if (Math.random() < 0.75) {
+
+                ghost.direction = {
+                    ...possible[0]
+                };
+
+            }
+            else {
+
+                ghost.direction = {
+                    ...possible[
+                    Math.floor(
+                        Math.random() *
+                        possible.length
+                    )
+                    ]
+                };
+            }
         }
     }
 
@@ -428,12 +564,37 @@ function checkGhostCollisions() {
             Math.sqrt(dx * dx + dy * dy);
 
 
-        if (distance < 0.55) {
+        if (distance >= 0.55)
+            continue;
 
-            loseLife();
-            return;
+
+        // Xa está comido: non pode facer nada.
+        if (ghost.eaten)
+            continue;
+
+
+        // Fantasma vulnerable: Pac-Man come o fantasma.
+        if (ghost.frightened) {
+
+            eatGhost(ghost);
+            continue;
         }
+
+
+        // Fantasma normal: Pac-Man perde unha vida.
+        loseLife();
+        return;
     }
+}
+
+function eatGhost(ghost) {
+
+    ghost.eaten = true;
+    ghost.frightened = false;
+
+    score += 200;
+
+    updateUI();
 }
 
 
@@ -480,6 +641,21 @@ function update(dt) {
     if (!running)
         return;
 
+    if (frightenedTimer > 0) {
+
+        frightenedTimer -= dt;
+
+        if (frightenedTimer <= 0) {
+
+            frightenedTimer = 0;
+
+            for (const ghost of ghosts) {
+
+                if (!ghost.eaten)
+                    ghost.frightened = false;
+            }
+        }
+    }
 
     updatePlayer(dt);
 
@@ -661,8 +837,32 @@ function drawGhost(ghost, index) {
     ];
 
 
-    ctx.fillStyle =
-        colors[index % colors.length];
+    // ========================================================
+    // FANTASMA COMIDO: só ollos
+    // ========================================================
+
+    if (ghost.eaten) {
+
+        drawGhostEyes(ghost, cx, cy);
+
+        return;
+    }
+
+
+    // ========================================================
+    // BODY
+    // ========================================================
+
+    if (ghost.frightened) {
+
+        ctx.fillStyle = "#3159d6";
+
+    }
+    else {
+
+        ctx.fillStyle =
+            colors[index % colors.length];
+    }
 
 
     ctx.beginPath();
@@ -685,14 +885,34 @@ function drawGhost(ghost, index) {
     ctx.fill();
 
 
-    // eyes
+    // ========================================================
+    // EYES
+    // ========================================================
+
+    drawGhostEyes(ghost, cx, cy);
+}
+
+function drawGhostEyes(ghost, cx, cy) {
 
     ctx.fillStyle = "white";
 
     ctx.beginPath();
 
-    ctx.arc(cx - 4, cy - 3, 3, 0, Math.PI * 2);
-    ctx.arc(cx + 4, cy - 3, 3, 0, Math.PI * 2);
+    ctx.arc(
+        cx - 4,
+        cy - 3,
+        3,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.arc(
+        cx + 4,
+        cy - 3,
+        3,
+        0,
+        Math.PI * 2
+    );
 
     ctx.fill();
 
@@ -783,7 +1003,7 @@ document
 
             setDirection(
                 DIRECTIONS[
-                    button.dataset.dir
+                button.dataset.dir
                 ]
             );
         });
