@@ -23,7 +23,7 @@ const LEVEL_MAP = [
     "######.#.###.#.######",
     "     #.#.....#.#     ",
     "######.#.###.#.######",
-    "#...........#.......#",
+    "............#.......#",
     "#.####.###.###.####.#",
     "#o..##........##..o#",
     "###.##.##.##.##.####",
@@ -62,7 +62,7 @@ let frightenedTimer = 0;
 
 const FRIGHTENED_DURATION = 7; // seconds
 
-let MAP ;
+let MAP;
 
 
 // ============================================================
@@ -89,13 +89,29 @@ function isWall(x, y) {
     return MAP[y][x] === "#";
 }
 
+function getWrappedPosition(x, y) {
+    return {
+        x: wrap(x, COLS),
+        y: wrap(y, ROWS)
+    };
+}
+
 
 function canMove(x, y, direction) {
 
-    return !isWall(
+    const next = getWrappedPosition(
         x + direction.x,
         y + direction.y
     );
+
+    return !isWall(next.x, next.y);
+}
+
+//wrap(-1, 20)  // 19
+//wrap(20, 20)  // 0
+//wrap(21, 20)  // 1
+function wrap(value, size) {
+    return ((value % size) + size) % size;
 }
 
 
@@ -224,8 +240,15 @@ function updatePlayer(dt) {
         player.progress -= 1;
 
         // We have reached the exact center of the next cell.
-        player.x += player.direction.x;
-        player.y += player.direction.y;
+        player.x = wrap(
+            player.x + player.direction.x,
+            COLS
+        );
+
+        player.y = wrap(
+            player.y + player.direction.y,
+            ROWS
+        );
 
         player.px = player.x;
         player.py = player.y;
@@ -388,8 +411,15 @@ function updateGhost(ghost, dt) {
 
         ghost.progress -= 1;
 
-        ghost.x += ghost.direction.x;
-        ghost.y += ghost.direction.y;
+        ghost.x = wrap(
+            ghost.x + ghost.direction.x,
+            COLS
+        );
+
+        ghost.y = wrap(
+            ghost.y + ghost.direction.y,
+            ROWS
+        );
 
 
         const possible = [
@@ -504,13 +534,13 @@ function updateGhost(ghost, dt) {
 
 
         // ====================================================
-        // COMPORTAMENTO NORMAL
+        // NORMAL BEHAVIOUR
         // ====================================================
 
         else {
 
             /*
-             * Persegue Pac-Man como antes.
+             * Chase Pac-Man like before.
              */
 
             possible.sort((a, b) => {
