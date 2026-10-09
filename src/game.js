@@ -476,6 +476,27 @@ function createDomainCell() {
     };
 }
 
+function checkAndUpdateImprovedDomain(assessedDomainCell, currentDomainCell) {
+    // Check if power determines a successful domain even if it is later 
+    if (assessedDomainCell.owner == "pacman" && !currentDomainCell.owners.filter((owner) => owner.startsWith("ghost")).length
+        && (currentDomainCell.owners.length !== 1 || currentDomainCell.owners[0] !== "pacman")) {
+        // Pacman overlaps earlier arrivals
+        currentDomainCell.arrival =
+            assessedDomainCell.time;
+
+        currentDomainCell.owners = ["pacman"];
+    } else if (assessedDomainCell.owner.startsWith("ghost") && currentDomainCell.owners.includes("pacman")
+        && currentDomainCell.owners.includes("pacman")) {
+        currentDomainCell.arrival =
+            assessedDomainCell.time;
+
+        currentDomainCell.owners = [assessedDomainCell.owner];
+    } else {
+        return false;
+    }
+    return true;
+}
+
 
 function calculateDomain() {
 
@@ -489,7 +510,7 @@ function calculateDomain() {
         );
 
 
-    const queue = new MinHeap();
+    let queue = new MinHeap();
 
 
     // --------------------------------------------------------
@@ -515,43 +536,25 @@ function calculateDomain() {
 
         let x = ghost.x;
         let y = ghost.y;
-        let time = 0;
         let speed = GHOST_SPEED;
         let owner = `ghost${i}`;
 
-
-        /* 
-        * An eaten ghost has to return home 
-        * before you can claim territory. 
-        */
         if (ghost.eaten) {
 
-            const distance =
-                shortestDistance(
-                    x,
-                    y,
-                    HOUSE.x,
-                    HOUSE.y
-                );
-
-
-            time =
-                distance /
-                EATEN_GHOST_SPEED;
-
-
-            x = HOUSE.x;
-            y = HOUSE.y;
-
             speed = EATEN_GHOST_SPEED;
-            owner = `recoveredGhost${i}`;
+            owner = `eatenGhost${i}`;
+
+            if (ghost.x !== HOUSE.x && ghost.y !== HOUSE.y) {
+                speed = GHOST_SPEED;
+                owner = `ghost${i}`
+            }
         }
 
 
         queue.push({
             x,
             y,
-            time,
+            time: 0,
             owner,
             speed
         });
@@ -564,89 +567,82 @@ function calculateDomain() {
 
     while (!queue.empty()) {
 
-        const current =
+        const assessedDomainCell =
             queue.pop();
 
 
-        const cell =
+        const currentDomainCell =
             domain[
-            current.y
+            assessedDomainCell.y
             ][
-            current.x
+            assessedDomainCell.x
             ];
 
 
-        /*
-         * This arrival is later than another already registered.
-         */
-        if (
-            current.time >
-            cell.arrival + EPSILON
+        // Check if power determines a successful domain even if it is later 
+        if (!checkAndUpdateImprovedDomain(assessedDomainCell,
+            currentDomainCell)
         ) {
-            if (current.owner == "powerPacman" && !cell.owners.map(owner => owner.startsWith("recoveredGhost")).includes(true)) {
-                // Pacman with pill overlaps earlier arrivals
-                cell.arrival =
-                    current.time;
-
-                cell.owners = [
-                    current.owner
-                ];
-            } else {
-                // This arrival is worse by any meaning. Don't propagate
-                continue;
-            }
-        }
-
-
-        /*
-         * First arrival, or more powerful (pill).
-         */
-        if (
-            current.time <
-            cell.arrival - EPSILON
-        ) {
-
-            cell.arrival =
-                current.time;
-
-            cell.owners = [
-                current.owner
-            ];
-        }
-
-
-        /*
-         * Draw.
-         */
-        else if (
-            Math.abs(
-                current.time -
-                cell.arrival
-            ) <= EPSILON
-        ) {
-
+            // No power difference 
             if (
-                !cell.owners.includes(
-                    current.owner
-                )
+                assessedDomainCell.time >
+                currentDomainCell.arrival + EPSILON
             ) {
+                // This arrival is worse by any meaning. No meaningful power difference and later time. Don't propagate
+                continue;
+            } else if (
+                assessedDomainCell.time <
+                currentDomainCell.arrival - EPSILON
+            ) /* First arrival */ {
 
-                cell.owners.push(
-                    current.owner
-                );
+                currentDomainCell.arrival =
+                    assessedDomainCell.time;
+
+                currentDomainCell.owners = [
+                    assessedDomainCell.owner
+                ];
+            } else if (
+                Math.abs(
+                    assessedDomainCell.time -
+                    currentDomainCell.arrival
+                ) <= EPSILON
+            ) /* Draw */ {
+                if (
+                    !currentDomainCell.owners.includes(
+                        assessedDomainCell.owner
+                    )
+                ) {
+
+                    currentDomainCell.owners.push(
+                        assessedDomainCell.owner
+                    );
+                }
             }
         }
 
-        // A pill can set a prioritary propagation for Pacman
-        if (MAP[current.y][current.x] == "o") {
-            if (current.owner == "pacman") {
-                current.owner = "powerPacman";
-                current.powerDuration = FRIGHTENED_DURATION;
-            } else if (current.owner == "powerPacman") {
-                if (cell.owners.includes("powerPacman")) {
-                    // This 'o' was already taken. Propagation finishes.
-                    continue;
+        // A pill can set a prioritary domain for Pacman
+        if (MAP[assessedDomainCell.y][assessedDomainCell.x] == "o" && !currentDomainCell.eatenPillTime) {
+            if (assessedDomainCell.owner == "pacman") {
+
+                assessedDomainCell.eatenPillTime = assessedDomainCell.time;
+                currentDomainCell.arrival =
+                    assessedDomainCell.time;
+
+                const newQueue = new MinHeap();
+
+                for (const domainCell of queue.items) {
+                    if (domainCell.owner.startsWith("ghost")) {
+                        newQueue.items.push({
+                            ...domainCell,
+                            owner: domainCell.owner = `blue${String(domainCell.owner).charAt(0).toUpperCase() + String(domainCell.owner).slice(1)}`,
+                            time: assessedDomainCell.time,
+                        });
+                    } else {
+                        newQueue.items.push(domainCell);
+                    }
                 }
+
+                queue = newQueue;
             }
         }
 
@@ -656,12 +652,12 @@ function calculateDomain() {
          */
         for (
             const next of
-            graph[current.y][current.x]
+            graph[assessedDomainCell.y][assessedDomainCell.x]
         ) {
 
             const nextTime =
-                current.time +
-                1 / current.speed;
+                assessedDomainCell.time +
+                1 / assessedDomainCell.speed;
 
 
             const nextCell =
@@ -674,53 +670,28 @@ function calculateDomain() {
 
             /*
              * We only want to propagate if we can
-             * improve the arrival.
+             * improve the domain.
              */
-            if (
-                nextTime <
-                nextCell.arrival -
-                EPSILON || (current.owner == "powerPacman" && !nextCell.owners.includes("powerPacman"))
-            ) {
+            if (!checkAndUpdateImprovedDomain({
+                ...assessedDomainCell,
+                time: nextTime
+            }, nextCell)) {
+                // No power difference 
 
-                let powerDuration = undefined;
-                if (current.owner == "powerPacman") {
-                    let powerDuration = current.powerDuration;
-                    powerDuration--;
-                    if (powerDuration < EPSILON) {
-                        current.owner = "pacman";
-                        powerDuration = undefined;
-                    }
+                if (nextTime >
+                    nextCell.arrival +
+                    EPSILON) {
+                    continue;
                 }
-
-                queue.push({
-                    x: next.x,
-                    y: next.y,
-                    time: nextTime,
-                    owner: current.owner,
-                    speed: current.speed,
-                    ...(powerDuration !== undefined && { powerDuration })
-                });
             }
 
-
-            /*
-             * We also propagate draws.
-             */
-            else if (
-                Math.abs(
-                    nextTime -
-                    nextCell.arrival
-                ) <= EPSILON && (current.owner != "powerPacman")
-            ) {
-
-                queue.push({
-                    x: next.x,
-                    y: next.y,
-                    time: nextTime,
-                    owner: current.owner,
-                    speed: current.speed
-                });
-            }
+            queue.push({
+                x: next.x,
+                y: next.y,
+                time: nextTime,
+                owner: assessedDomainCell.owner,
+                speed: assessedDomainCell.speed
+            });
         }
     }
 
@@ -748,7 +719,7 @@ function drawVoronoiDomains() {
                 continue;
             }
 
-            // Normalizamos os propietarios aos seus axentes reais.
+            // We normalize owners to their actual agents.
             const normalizedOwners = [
                 ...new Set(
                     owners.map(owner => {
@@ -779,7 +750,7 @@ function drawVoronoiDomains() {
                 continue;
             }
 
-            // A media das cores permite identificar os empates.
+            // The average of the colors allows identifying ties.
             const r = Math.round(
                 colors.reduce((sum, c) => sum + c[0], 0)
                 / colors.length
