@@ -5,50 +5,63 @@ const scoreElement = document.getElementById("score");
 const livesElement = document.getElementById("lives");
 const statusElement = document.getElementById("status");
 
+// ============================================================
+// DEBUG
+// ============================================================
+let showVoronoi = false;
+
+const DOMAIN_COLORS = {
+    pacman: [255, 212, 59],
+    ghost0: [224, 82, 82],
+    ghost1: [233, 155, 53],
+    ghost2: [214, 106, 217]
+};
+
+const DOMAIN_ALPHA = 0.35;
 
 // ============================================================
 // MAP
 // ============================================================
 
 const LEVEL_MAP = [
-    // "####################",
-    // "#........##........#",
-    // "#.####.#.##.#.####.#",
-    // "#o####.#.##.#.####o#",
-    // "#..................#",
-    // "#.####.###.#######.#",
-    // "#......#...#.......#",
-    // "######.#.###.#.######",
-    // "     #.#.....#.#     ",
-    // "######.#.###.#.######",
-    // "............#.......#",
-    // "#.####.###.###.####.#",
-    // "#o..##........##..o.",
-    // "###.##.##.##.##.####",
-    // "#......#....#.......#",
-    // "#.####.#.##.#.####..#",
-    // "#..................#",
-    // "####################"
-
-
     "####################",
-    "#        ##        #",
-    "# #### # ## # #### #",
-    "# #### # ## # #### #",
-    "#                  #",
-    "# #### ### ####### #",
-    "#      #   #       #",
-    "###### # ### # ######",
-    "     # #     # #     ",
-    "###### # ### # ######",
-    "            #       #",
-    "# #### ### ### #### #",
-    "#   ##        ##    ",
-    "### ## ## ## ## ####",
-    "#      #  . #       #",
-    "# #### # ## # ####  #",
-    "#                  #",
+    "#........##........#",
+    "#.####.#.##.#.####.#",
+    "#o####.#.##.#.####o#",
+    "#..................#",
+    "#.####.###.#######.#",
+    "#......#...#.......#",
+    "######.#.###.#.######",
+    "     #.#.....#.#     ",
+    "######.#.###.#.######",
+    "............#.......#",
+    "#.####.###.###.####.#",
+    "#o..##........##..o.",
+    "###.##.##.##.##.####",
+    "#......#....#.......#",
+    "#.####.#.##.#.####..#",
+    "#..................#",
     "####################"
+
+
+    // "####################",
+    // "#        ##        #",
+    // "# #### # ## # #### #",
+    // "# #### # ## # #### #",
+    // "#                  #",
+    // "# #### ### ####### #",
+    // "#      #   #       #",
+    // "###### # ### # ######",
+    // "     # #     # #     ",
+    // "###### # ### # ######",
+    // "            #       #",
+    // "# #### ### ### #### #",
+    // "#   ##        ##    ",
+    // "### ## ## ## ## ####",
+    // "#      #  . #       #",
+    // "# #### # ## # ####  #",
+    // "#                  #",
+    // "####################"
 
     // "....................",
     // "....................",
@@ -504,6 +517,7 @@ function calculateDomain() {
         let y = ghost.y;
         let time = 0;
         let speed = GHOST_SPEED;
+        let owner = `ghost${i}`;
 
 
         /* 
@@ -530,6 +544,7 @@ function calculateDomain() {
             y = HOUSE.y;
 
             speed = EATEN_GHOST_SPEED;
+            owner = `recoveredGhost${i}`;
         }
 
 
@@ -537,7 +552,7 @@ function calculateDomain() {
             x,
             y,
             time,
-            owner: `ghost${i}`,
+            owner,
             speed
         });
     }
@@ -562,18 +577,29 @@ function calculateDomain() {
 
 
         /*
-         * This arrival is worse than another already registered.
+         * This arrival is later than another already registered.
          */
         if (
             current.time >
             cell.arrival + EPSILON
         ) {
-            continue;
+            if (current.owner == "powerPacman" && !cell.owners.map(owner => owner.startsWith("recoveredGhost")).includes(true)) {
+                // Pacman with pill overlaps earlier arrivals
+                cell.arrival =
+                    current.time;
+
+                cell.owners = [
+                    current.owner
+                ];
+            } else {
+                // This arrival is worse by any meaning. Don't propagate
+                continue;
+            }
         }
 
 
         /*
-         * First arrival.
+         * First arrival, or more powerful (pill).
          */
         if (
             current.time <
@@ -611,6 +637,19 @@ function calculateDomain() {
             }
         }
 
+        // A pill can set a prioritary propagation for Pacman
+        if (MAP[current.y][current.x] == "o") {
+            if (current.owner == "pacman") {
+                current.owner = "powerPacman";
+                current.powerDuration = FRIGHTENED_DURATION;
+            } else if (current.owner == "powerPacman") {
+                if (cell.owners.includes("powerPacman")) {
+                    // This 'o' was already taken. Propagation finishes.
+                    continue;
+                }
+            }
+        }
+
 
         /*
          * We spread the wave.
@@ -640,15 +679,26 @@ function calculateDomain() {
             if (
                 nextTime <
                 nextCell.arrival -
-                EPSILON
+                EPSILON || (current.owner == "powerPacman" && !nextCell.owners.includes("powerPacman"))
             ) {
+
+                let powerDuration = undefined;
+                if (current.owner == "powerPacman") {
+                    let powerDuration = current.powerDuration;
+                    powerDuration--;
+                    if (powerDuration < EPSILON) {
+                        current.owner = "pacman";
+                        powerDuration = undefined;
+                    }
+                }
 
                 queue.push({
                     x: next.x,
                     y: next.y,
                     time: nextTime,
                     owner: current.owner,
-                    speed: current.speed
+                    speed: current.speed,
+                    ...(powerDuration !== undefined && { powerDuration })
                 });
             }
 
@@ -660,7 +710,7 @@ function calculateDomain() {
                 Math.abs(
                     nextTime -
                     nextCell.arrival
-                ) <= EPSILON
+                ) <= EPSILON && (current.owner != "powerPacman")
             ) {
 
                 queue.push({
@@ -678,6 +728,86 @@ function calculateDomain() {
     return domain;
 }
 
+function drawVoronoiDomains() {
+    if (!showVoronoi) {
+        return;
+    }
+
+    const domain = calculateDomain();
+
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+
+            if (MAP[y][x] === "#") {
+                continue;
+            }
+
+            const owners = domain[y][x].owners;
+
+            if (owners.length === 0) {
+                continue;
+            }
+
+            // Normalizamos os propietarios aos seus axentes reais.
+            const normalizedOwners = [
+                ...new Set(
+                    owners.map(owner => {
+                        if (
+                            owner === "powerPacman" ||
+                            owner === "pacman"
+                        ) {
+                            return "pacman";
+                        }
+
+                        if (owner.startsWith("recoveredGhost")) {
+                            return owner.replace(
+                                "recoveredGhost",
+                                "ghost"
+                            );
+                        }
+
+                        return owner;
+                    })
+                )
+            ];
+
+            const colors = normalizedOwners
+                .map(owner => DOMAIN_COLORS[owner])
+                .filter(Boolean);
+
+            if (colors.length === 0) {
+                continue;
+            }
+
+            // A media das cores permite identificar os empates.
+            const r = Math.round(
+                colors.reduce((sum, c) => sum + c[0], 0)
+                / colors.length
+            );
+
+            const g = Math.round(
+                colors.reduce((sum, c) => sum + c[1], 0)
+                / colors.length
+            );
+
+            const b = Math.round(
+                colors.reduce((sum, c) => sum + c[2], 0)
+                / colors.length
+            );
+
+            ctx.fillStyle =
+                `rgba(${r}, ${g}, ${b}, ${DOMAIN_ALPHA})`;
+
+            ctx.fillRect(
+                x * CELL,
+                y * CELL,
+                CELL,
+                CELL
+            );
+        }
+    }
+}
+
 
 // ============================================================
 // DOMAIN OWNERS
@@ -687,7 +817,7 @@ function getGhostOwners(owners) {
 
     return owners.filter(
         owner =>
-            owner.startsWith("ghost")
+            owner.startsWith("ghost") || owner.startsWith("recoveredGhost")
     );
 }
 
@@ -695,7 +825,7 @@ function getGhostOwners(owners) {
 function getGhostIndex(owner) {
 
     return Number(
-        owner.replace("ghost", "")
+        owner.replace("recoveredGhost", "").replace("ghost", "")
     );
 }
 
@@ -803,10 +933,10 @@ function calculateBluePelletValues(
         return values;
 
 
-    /*
-     * O valor total dos pellets segue sendo repartido
-     * entre os pellets restantes.
-     */
+    /* 
+    * The total value of the pellets is still being distributed 
+    * among the remaining pellets. 
+    */
     const pelletValue =
         pellets > 0
             ? TOTAL_PELLET_VALUE / pellets
@@ -829,10 +959,10 @@ function calculateBluePelletValues(
             }
 
 
-            /*
-             * Fantasmas azuis que dominam esta casilla
-             * segundo o dominio normal.
-             */
+            /* 
+            * Blue ghosts that dominate this square 
+            * according to normal domain. 
+            */
             const blueOwners =
                 domain[y][x]
                     .owners
@@ -861,9 +991,9 @@ function calculateBluePelletValues(
 
 
             /*
-             * O valor do pellet repártese entre as
-             * fantasmas azuis empatadas.
-             */
+            * The pellet's value is distributed among the
+            * tied blue ghosts. 
+            */
             const share =
                 pelletValue /
                 blueOwners.length;
@@ -953,12 +1083,12 @@ function calculateBlueScore(
         );
 
 
-    /*
-     * Queremos que importe tanto:
-     *
-     *   - canto territorio de pellets hai
-     *   - como equilibrado está o reparto
-     */
+    /* 
+    * We want it to matter as much: 
+    * 
+    * - how much pellet territory there is 
+    * - how balanced is the distribution 
+    */
     return total * fairness;
 }
 
@@ -1152,9 +1282,9 @@ function chooseNormalGhostDirection(ghost) {
         };
 
 
-        /*
-         * Substituímos temporalmente a fantasma.
-         */
+        /* 
+        * We have temporarily replace the ghost. 
+        */
         const oldGhosts =
             ghosts;
 
@@ -1342,8 +1472,8 @@ function resetLevel() {
             py: 10,
 
             direction: {
-                x: 0,
-                y: -1
+                x: -1,
+                y: 0
             },
 
             frightened: false,
@@ -2027,6 +2157,8 @@ function draw() {
         canvas.height
     );
 
+    drawVoronoiDomains();
+
 
     for (
         let y = 0;
@@ -2392,6 +2524,11 @@ document.addEventListener(
     "keydown",
     event => {
         if (gameWon) {
+            return;
+        }
+
+        if (event.key.toLowerCase() === "v") {
+            showVoronoi = !showVoronoi;
             return;
         }
 
