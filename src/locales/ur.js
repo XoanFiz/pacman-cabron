@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "باؤنڈری وال بھولبلییا",
     "newMap": "نیا نقشہ",
     "customMap": "اپنی مرضی کا نقشہ",
+    "addGhostHouse": "بھوت گھر شامل کریں۔",
+    "mapEditorHouseInstructions": "گھوسٹ ہاؤس شامل کرنے کے لیے کھلی ٹائل پر کلک کریں۔ اسے ہٹانے کے لیے گھر پر کلک کریں؛ ہر نقشے پر کم از کم ایک گھر رکھیں۔",
     "directions":  {
                        "left":  "بائیں منتقل کریں۔",
                        "right":  "دائیں طرف بڑھیں۔",

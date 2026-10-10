@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Maze iyaka-bangon",
     "newMap": "Sabuwar taswira",
     "customMap": "Taswirar al\u0027ada",
+    "addGhostHouse": "Ƙara gidan fatalwa",
+    "mapEditorHouseInstructions": "Danna buɗaɗɗen tayal don ƙara gidan fatalwa. Danna gida don cire shi; ajiye aƙalla gida ɗaya akan kowace taswira.",
     "directions":  {
                        "left":  "Matsa hagu",
                        "right":  "Matsa dama",

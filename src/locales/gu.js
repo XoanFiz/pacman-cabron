@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "બાઉન્ડ્રી-વોલ મેઝ",
     "newMap": "નવો નકશો",
     "customMap": "કસ્ટમ નકશો",
+    "addGhostHouse": "ભૂત ઘર ઉમેરો",
+    "mapEditorHouseInstructions": "ઘોસ્ટ હાઉસ ઉમેરવા માટે ખુલ્લી ટાઇલ પર ક્લિક કરો. તેને દૂર કરવા માટે ઘર પર ક્લિક કરો; દરેક નકશા પર ઓછામાં ઓછું એક ઘર રાખો.",
     "directions":  {
                        "left":  "ડાબી બાજુ ખસેડો",
                        "right":  "જમણી બાજુ ખસેડો",

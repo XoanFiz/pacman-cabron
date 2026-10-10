@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "پیچ و خم دیوار مرزی",
     "newMap": "نقشه جدید",
     "customMap": "نقشه سفارشی",
+    "addGhostHouse": "خانه ارواح را اضافه کنید",
+    "mapEditorHouseInstructions": "برای افزودن خانه ارواح، روی یک کاشی باز کلیک کنید. برای حذف یک خانه کلیک کنید. حداقل یک خانه در هر نقشه نگه دارید.",
     "directions":  {
                        "left":  "به سمت چپ حرکت کنید",
                        "right":  "به سمت راست حرکت کنید",

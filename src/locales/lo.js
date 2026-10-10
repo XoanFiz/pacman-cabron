@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "ເຂດແດນ-ກຳແພງ",
     "newMap": "ແຜນທີ່ໃໝ່",
     "customMap": "ແຜນທີ່ກຳນົດເອງ",
+    "addGhostHouse": "ເພີ່ມເຮືອນຜີ",
+    "mapEditorHouseInstructions": "ກົດກະເບື້ອງເປີດເພື່ອເພີ່ມເຮືອນຜີ. ຄລິກເຮືອນເພື່ອເອົາມັນອອກ; ຮັກສາຢ່າງຫນ້ອຍຫນຶ່ງເຮືອນໃນແຕ່ລະແຜນທີ່.",
     "directions":  {
                        "left":  "ຍ້າຍຊ້າຍ",
                        "right":  "ຍ້າຍໄປຂວາ",

@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Boundary-wall maze",
     "newMap": "Bag-ong mapa",
     "customMap": "Custom nga mapa",
+    "addGhostHouse": "Idugang ang ghost house",
+    "mapEditorHouseInstructions": "Pag-klik sa usa ka bukas nga tile aron makadugang usa ka ghost house. Pag-klik sa usa ka balay aron makuha kini; tipigi ang labing menos usa ka balay sa matag mapa.",
     "directions":  {
                        "left":  "Lihok sa wala",
                        "right":  "Lihok sa tuo",

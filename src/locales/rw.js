@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Umupaka-urukuta maze",
     "newMap": "Ikarita nshya",
     "customMap": "Ikarita yihariye",
+    "addGhostHouse": "Ongeramo inzu yizimu",
+    "mapEditorHouseInstructions": "Kanda tile ifunguye kugirango wongere inzu yizimu. Kanda inzu kugirango uyikureho; gumana byibuze inzu imwe kuri buri karita.",
     "directions":  {
                        "left":  "Himura ibumoso",
                        "right":  "Himura iburyo",

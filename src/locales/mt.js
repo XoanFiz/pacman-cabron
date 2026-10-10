@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Labirint tal-ħajt tal-konfini",
     "newMap": "Mappa ġdida",
     "customMap": "Mappa tad-dwana",
+    "addGhostHouse": "Żid dar ghost",
+    "mapEditorHouseInstructions": "Ikklikkja maduma miftuħa biex iżżid dar ghost. Ikklikkja dar biex tneħħiha; żomm mill-inqas dar waħda fuq kull mappa.",
     "directions":  {
                        "left":  "Nimxu lejn ix-xellug",
                        "right":  "Imxi lejn il-lemin",

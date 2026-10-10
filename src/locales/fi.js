@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Raja-seinä labyrintti",
     "newMap": "Uusi kartta",
     "customMap": "Mukautettu kartta",
+    "addGhostHouse": "Lisää haamutalo",
+    "mapEditorHouseInstructions": "Lisää haamutalo napsauttamalla avointa ruutua. Napsauta taloa poistaaksesi sen; pidä jokaisella kartalla vähintään yksi talo.",
     "directions": {
         "up": "Ylös",
         "left": "Vasemmalle",

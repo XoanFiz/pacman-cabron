@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Labirynt ze ścianami granicznymi",
     "newMap": "Nowa mapa",
     "customMap": "Niestandardowa mapa",
+    "addGhostHouse": "Dodaj dom duchów",
+    "mapEditorHouseInstructions": "Kliknij otwarty kafelek, aby dodać dom duchów. Kliknij dom, aby go usunąć; trzymaj co najmniej jeden dom na każdej mapie.",
     "directions": {
         "up": "W górę",
         "left": "W lewo",

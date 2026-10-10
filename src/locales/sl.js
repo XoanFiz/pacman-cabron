@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Labirint z mejno steno",
     "newMap": "Nov zemljevid",
     "customMap": "Zemljevid po meri",
+    "addGhostHouse": "Dodajte hišo duhov",
+    "mapEditorHouseInstructions": "Kliknite odprto ploščico, da dodate hišo duhov. Kliknite hišo, da jo odstranite; obdrži vsaj eno hišo na vsakem zemljevidu.",
     "directions":  {
                        "left":  "Premakni se levo",
                        "right":  "Premakni se desno",

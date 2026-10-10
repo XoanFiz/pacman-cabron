@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Laberinto de paredes delimitadoras",
     "newMap": "Nuevo mapa",
     "customMap": "Mapa personalizado",
+    "addGhostHouse": "Añadir casa fantasma",
+    "mapEditorHouseInstructions": "Haga clic en un mosaico abierto para agregar una casa fantasma. Haga clic en una casa para eliminarla; Mantenga al menos una casa en cada mapa.",
     "directions": {
         "up": "Mover arriba",
         "left": "Mover a la izquierda",

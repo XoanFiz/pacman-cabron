@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Grenzwandlabyrinth",
     "newMap": "Neue Karte",
     "customMap": "Benutzerdefinierte Karte",
+    "addGhostHouse": "Geisterhaus hinzufügen",
+    "mapEditorHouseInstructions": "Klicken Sie auf eine offene Kachel, um ein Geisterhaus hinzuzufügen. Klicken Sie auf ein Haus, um es zu entfernen. Behalte mindestens ein Haus auf jeder Karte.",
     "directions": {
         "up": "Nach oben",
         "left": "Nach links",

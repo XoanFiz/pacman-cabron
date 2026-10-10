@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Markna-vegglabyrint",
     "newMap": "Nýtt kort",
     "customMap": "Sersniðgivið kort",
+    "addGhostHouse": "Legg spøkilsishús til",
+    "mapEditorHouseInstructions": "Trýst á eina opna flís fyri at leggja eitt spøkilsishús til. Trýst á eitt hús fyri at taka tað burtur; halda minst eitt hús á hvørjum korti.",
     "directions":  {
                        "left":  "Flyt til vinstru",
                        "right":  "Flyt til høgru",

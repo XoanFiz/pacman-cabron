@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Lavirint sa graničnim zidovima",
     "newMap": "Nova mapa",
     "customMap": "Prilagođena karta",
+    "addGhostHouse": "Dodajte kuću duhova",
+    "mapEditorHouseInstructions": "Kliknite na otvorenu pločicu da dodate kuću duhova. Kliknite na kuću da je uklonite; zadržite barem jednu kuću na svakoj mapi.",
     "directions":  {
                        "left":  "Pomakni lijevo",
                        "right":  "Kreni desno",

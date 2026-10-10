@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Ribų-sienų labirintas",
     "newMap": "Naujas žemėlapis",
     "customMap": "Pasirinktinis žemėlapis",
+    "addGhostHouse": "Pridėti vaiduoklių namą",
+    "mapEditorHouseInstructions": "Spustelėkite atvirą plytelę, kad pridėtumėte namą vaiduokliu. Spustelėkite namą, kad jį pašalintumėte; kiekviename žemėlapyje palikite bent vieną namą.",
     "directions":  {
                        "left":  "Pereiti į kairę",
                        "right":  "Judėti į dešinę",

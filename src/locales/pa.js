@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "ਸੀਮਾ-ਕੰਧ ਦਾ ਭੁਲੇਖਾ",
     "newMap": "ਨਵਾਂ ਨਕਸ਼ਾ",
     "customMap": "ਕਸਟਮ ਨਕਸ਼ਾ",
+    "addGhostHouse": "ਭੂਤ ਘਰ ਸ਼ਾਮਲ ਕਰੋ",
+    "mapEditorHouseInstructions": "ਇੱਕ ਭੂਤ ਘਰ ਨੂੰ ਜੋੜਨ ਲਈ ਇੱਕ ਖੁੱਲੀ ਟਾਇਲ \u0027ਤੇ ਕਲਿੱਕ ਕਰੋ। ਇਸ ਨੂੰ ਹਟਾਉਣ ਲਈ ਇੱਕ ਘਰ \u0027ਤੇ ਕਲਿੱਕ ਕਰੋ; ਹਰੇਕ ਨਕਸ਼ੇ \u0027ਤੇ ਘੱਟੋ-ਘੱਟ ਇੱਕ ਘਰ ਰੱਖੋ।",
     "directions":  {
                        "left":  "ਖੱਬੇ ਪਾਸੇ ਜਾਓ",
                        "right":  "ਸੱਜੇ ਮੂਵ ਕਰੋ",

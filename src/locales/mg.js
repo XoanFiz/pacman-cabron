@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Labozia sisintany",
     "newMap": "Sarintany vaovao",
     "customMap": "Sarintany manokana",
+    "addGhostHouse": "Ampio trano matoatoa",
+    "mapEditorHouseInstructions": "Kitiho ny taila misokatra mba hanampiana trano matoatoa. Kitiho trano iray hanesorana azy; mitazona trano iray farafahakeliny amin\u0027ny sarintany tsirairay.",
     "directions":  {
                        "left":  "Mifindra miankavia",
                        "right":  "Mandrosoa miankavanana",

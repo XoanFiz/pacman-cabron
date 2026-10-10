@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Maze-taiepa",
     "newMap": "Mapi hou",
     "customMap": "Mapi ritenga",
+    "addGhostHouse": "Tāpiri whare kēhua",
+    "mapEditorHouseInstructions": "Patohia tetahi taera tuwhera hei taapiri i tetahi whare wairua. Patohia tetahi whare hei tango; kia kotahi rawa te whare ki ia mapi.",
     "directions":  {
                        "left":  "Nuku maui",
                        "right":  "Nuku matau",

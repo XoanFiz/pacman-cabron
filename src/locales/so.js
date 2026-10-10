@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Xudduudda-derbiga maze",
     "newMap": "Khariidad cusub",
     "customMap": "Khariidad gaar ah",
+    "addGhostHouse": "Ku dar guri rooxaan",
+    "mapEditorHouseInstructions": "Click an open tile to add a ghost house. Click a house to remove it; keep at least one house on each map.",
     "directions":  {
                        "left":  "Bidix u dhaqaaq",
                        "right":  "Midig u dhaqaaq",

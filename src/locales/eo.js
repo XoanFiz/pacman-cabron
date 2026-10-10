@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Limmura labirinto",
     "newMap": "Nova mapo",
     "customMap": "Propra mapo",
+    "addGhostHouse": "Aldonu fantoman domon",
+    "mapEditorHouseInstructions": "Alklaku malfermitan kahelon por aldoni fantoman domon. Klaku domon por forigi ĝin; konservu almenaŭ unu domon sur ĉiu mapo.",
     "directions":  {
                        "left":  "Movu maldekstren",
                        "right":  "Movu dekstren",

@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "የድንበር-ግድግዳ ግርዶሽ",
     "newMap": "አዲስ ካርታ",
     "customMap": "ብጁ ካርታ",
+    "addGhostHouse": "ghost ቤት ጨምር",
+    "mapEditorHouseInstructions": "ghost ቤት ለመጨመር ክፍት ንጣፍን ጠቅ ያድርጉ። እሱን ለማስወገድ ቤትን ጠቅ ያድርጉ; በእያንዳንዱ ካርታ ላይ ቢያንስ አንድ ቤት ያስቀምጡ.",
     "directions":  {
                        "left":  "ወደ ግራ ውሰድ",
                        "right":  "ወደ ቀኝ አንቀሳቅስ",

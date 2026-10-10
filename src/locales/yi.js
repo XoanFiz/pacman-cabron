@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "גרענעץ-וואַנט מייז",
     "newMap": "ניו מאַפּע",
     "customMap": "מנהג מאַפּע",
+    "addGhostHouse": "לייג גייַסט הויז",
+    "mapEditorHouseInstructions": "דריקט אויף אַ עפענען קאַכל צו לייגן אַ גייַסט הויז. גיט אַ הויז צו באַזייַטיקן עס; האַלטן בייַ מינדסטער איין הויז אויף יעדער מאַפּע.",
     "directions":  {
                        "left":  "מאַך לינקס",
                        "right":  "מאַך רעכט",

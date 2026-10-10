@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Шекаралық лабиринт",
     "newMap": "Жаңа карта",
     "customMap": "Арнаулы карта",
+    "addGhostHouse": "Елес үйді қосыңыз",
+    "mapEditorHouseInstructions": "Елес үйді қосу үшін ашық тақтаны басыңыз. Оны жою үшін үйді басыңыз; әр картада кем дегенде бір үй қалдырыңыз.",
     "directions":  {
                        "left":  "Солға жылжытыңыз",
                        "right":  "Оңға жылжытыңыз",

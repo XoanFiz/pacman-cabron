@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Murus terminus error",
     "newMap": "Nova tabula",
     "customMap": "Custom map",
+    "addGhostHouse": "Adde domum exspiravit",
+    "mapEditorHouseInstructions": "Tegula aperta preme ut domum exspiravit add. Preme domum ad depellendum eam; ut saltem unam domum in unaquaque tabula.",
     "directions":  {
                        "left":  "Movere sinistram",
                        "right":  "Movere dextram",

@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Wates-tembok labirin",
     "newMap": "Peta anyar",
     "customMap": "Peta khusus",
+    "addGhostHouse": "Tambah omah hantu",
+    "mapEditorHouseInstructions": "Klik kothak sing mbukak kanggo nambah omah hantu. Klik omah kanggo nyopot; njaga paling sethithik sak omah ing saben peta.",
     "directions":  {
                        "left":  "Pindhah ngiwa",
                        "right":  "Ngalih nengen",

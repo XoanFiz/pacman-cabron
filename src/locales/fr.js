@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Labyrinthe à murs de délimitation",
     "newMap": "Nouvelle carte",
     "customMap": "Carte personnalisée",
+    "addGhostHouse": "Ajouter une maison fantôme",
+    "mapEditorHouseInstructions": "Cliquez sur une tuile ouverte pour ajouter une maison fantôme. Cliquez sur une maison pour la supprimer ; gardez au moins une maison sur chaque carte.",
     "directions": {
         "up": "Aller en haut",
         "left": "Aller à gauche",

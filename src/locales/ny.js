@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Maze a khoma la malire",
     "newMap": "Mapu atsopano",
     "customMap": "Mapu mwamakonda",
+    "addGhostHouse": "Onjezani nyumba ya mizimu",
+    "mapEditorHouseInstructions": "Dinani tile yotseguka kuti muwonjezere nyumba ya mizimu. Dinani nyumba kuti muchotse; khalani ndi nyumba imodzi pamapu aliwonse.",
     "directions":  {
                        "left":  "Pitani kumanzere",
                        "right":  "Yendani kumanja",

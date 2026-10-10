@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Labirint i murit kufitar",
     "newMap": "Hartë e re",
     "customMap": "Harta e personalizuar",
+    "addGhostHouse": "Shto shtëpinë fantazmë",
+    "mapEditorHouseInstructions": "Klikoni një pllakë të hapur për të shtuar një shtëpi fantazmë. Klikoni një shtëpi për ta hequr atë; mbani të paktën një shtëpi në çdo hartë.",
     "directions":  {
                        "left":  "Lëviz majtas",
                        "right":  "Lëviz djathtas",

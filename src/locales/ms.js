@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Maze dinding sempadan",
     "newMap": "Peta baharu",
     "customMap": "Peta tersuai",
+    "addGhostHouse": "Tambah rumah hantu",
+    "mapEditorHouseInstructions": "Klik jubin terbuka untuk menambah rumah hantu. Klik rumah untuk mengalih keluarnya; simpan sekurang-kurangnya satu rumah pada setiap peta.",
     "directions": {
         "up": "Gerak ke atas",
         "left": "Gerak ke kiri",

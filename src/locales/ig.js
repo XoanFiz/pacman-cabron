@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Oke-mgbidi maze",
     "newMap": "Maapụ ọhụrụ",
     "customMap": "Maapụ omenala",
+    "addGhostHouse": "Tinye ụlọ mmụọ",
+    "mapEditorHouseInstructions": "Pịa taịlị mepere emepe ka ịgbakwunye ụlọ mmụọ. Pịa ụlọ iji wepụ ya; debe opekata mpe otu ụlọ na maapụ nke ọ bụla.",
     "directions":  {
                        "left":  "Gaa n\u0027aka ekpe",
                        "right":  "Gaa aka nri",

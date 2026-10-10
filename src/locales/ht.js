@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Fwontyè-miray labirent",
     "newMap": "Nouvo kat jeyografik",
     "customMap": "Custom kat jeyografik",
+    "addGhostHouse": "Ajoute kay fantom",
+    "mapEditorHouseInstructions": "Klike sou yon mozayik ouvè pou ajoute yon kay fantom. Klike sou yon kay pou retire li; kenbe omwen yon kay sou chak kat.",
     "directions":  {
                        "left":  "Deplase agoch",
                        "right":  "Deplase dwat",

@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Chegara devori labirint",
     "newMap": "Yangi xarita",
     "customMap": "Maxsus xarita",
+    "addGhostHouse": "Arvoh uyini qo\u0027shing",
+    "mapEditorHouseInstructions": "Arvoh uyini qo\u0027shish uchun ochiq plitka ustiga bosing. Uni olib tashlash uchun uyni bosing; har bir xaritada kamida bitta uyni saqlang.",
     "directions":  {
                        "left":  "Chapga siljiting",
                        "right":  "O\u0027ngga siljiting",

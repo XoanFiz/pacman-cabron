@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "I-Bounder-wall Maze",
     "newMap": "Imephu entsha",
     "customMap": "Imephu yangokwezifiso",
+    "addGhostHouse": "Engeza indlu yesipoki",
+    "mapEditorHouseInstructions": "Chofoza ithayela elivuliwe ukuze wengeze indlu yesipoki. Chofoza indlu ukuze uyisuse; gcina okungenani indlu eyodwa kumephu ngayinye.",
     "directions":  {
                        "left":  "Hamba kwesokunxele",
                        "right":  "Hamba kwesokudla",

@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Boundary-wall maze",
     "newMap": "Bagong mapa",
     "customMap": "Custom na mapa",
+    "addGhostHouse": "Magdagdag ng ghost house",
+    "mapEditorHouseInstructions": "Mag-click ng bukas na tile para magdagdag ng ghost house. Mag-click sa isang bahay upang alisin ito; panatilihin ang hindi bababa sa isang bahay sa bawat mapa.",
     "directions":  {
                        "left":  "Lumipat pakaliwa",
                        "right":  "Lumipat pakanan",

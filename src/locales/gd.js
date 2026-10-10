@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Cuartan balla crìche",
     "newMap": "Mapa ùr",
     "customMap": "Mapa gnàthaichte",
+    "addGhostHouse": "Cuir taigh taibhse ris",
+    "mapEditorHouseInstructions": "Cliog air leacag fosgailte gus taigh taibhse a chur ris. Cliog air taigh airson a thoirt air falbh; cùm co-dhiù aon taigh air gach mapa.",
     "directions":  {
                        "left":  "Gluais air chlì",
                        "right":  "Gluais gu deas",

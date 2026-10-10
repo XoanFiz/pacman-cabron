@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Grens-muur doolhof",
     "newMap": "Nuwe kaart",
     "customMap": "Pasgemaakte kaart",
+    "addGhostHouse": "Voeg spookhuis by",
+    "mapEditorHouseInstructions": "Klik op \u0027n oop teël om \u0027n spookhuis by te voeg. Klik op \u0027n huis om dit te verwyder; hou ten minste een huis op elke kaart.",
     "directions":  {
                        "left":  "Beweeg links",
                        "right":  "Beweeg regs",

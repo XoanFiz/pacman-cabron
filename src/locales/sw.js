@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Maze ya ukuta wa mpaka",
     "newMap": "Ramani mpya",
     "customMap": "Ramani maalum",
+    "addGhostHouse": "Ongeza nyumba ya roho",
+    "mapEditorHouseInstructions": "Bofya kigae kilicho wazi ili kuongeza nyumba ya mizimu. Bofya nyumba ili kuiondoa; weka angalau nyumba moja kwenye kila ramani.",
     "directions":  {
                        "left":  "Sogeza kushoto",
                        "right":  "Sogeza kulia",

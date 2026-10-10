@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Hraniční bludiště",
     "newMap": "Nová mapa",
     "customMap": "Vlastní mapa",
+    "addGhostHouse": "Přidat dům duchů",
+    "mapEditorHouseInstructions": "Kliknutím na otevřenou dlaždici přidáte dům duchů. Kliknutím na dům jej odstraníte; mít na každé mapě alespoň jeden dům.",
     "directions":  {
                        "left":  "Přesuňte se doleva",
                        "right":  "Pohyb doprava",

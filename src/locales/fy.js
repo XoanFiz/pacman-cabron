@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Boundary-wall doolhof",
     "newMap": "Nije kaart",
     "customMap": "Oanpaste kaart",
+    "addGhostHouse": "Spookhûs tafoegje",
+    "mapEditorHouseInstructions": "Klikje op in iepen tegel om in spoekhûs ta te foegjen. Klikje op in hûs om it te ferwiderjen; hâld op syn minst ien hûs op elke kaart.",
     "directions":  {
                        "left":  "Gean nei links",
                        "right":  "Gean nei rjochts",

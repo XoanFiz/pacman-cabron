@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "متاهة الجدار الحدودي",
     "newMap": "خريطة جديدة",
     "customMap": "خريطة مخصصة",
+    "addGhostHouse": "أضف بيت الأشباح",
+    "mapEditorHouseInstructions": "انقر على البلاط المفتوح لإضافة بيت الأشباح. انقر على منزل لإزالته؛ احتفظ بمنزل واحد على الأقل في كل خريطة.",
     "directions": {
         "up": "تحرّك للأعلى",
         "left": "تحرّك لليسار",

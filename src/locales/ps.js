@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "د سرحد - دیوال بھولبلییا",
     "newMap": "نوې نقشه",
     "customMap": "دودیز نقشه",
+    "addGhostHouse": "د شیطان کور اضافه کړئ",
+    "mapEditorHouseInstructions": "د شیطان کور اضافه کولو لپاره خلاص ټایل کلیک وکړئ. د لرې کولو لپاره یو کور کلیک وکړئ؛ په هره نقشه کې لږترلږه یو کور وساتئ.",
     "directions":  {
                        "left":  "کیڼ لور ته حرکت وکړئ",
                        "right":  "ښي خوا ته حرکت وکړئ",

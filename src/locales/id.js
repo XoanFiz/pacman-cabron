@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Labirin dinding batas",
     "newMap": "Peta baru",
     "customMap": "Peta khusus",
+    "addGhostHouse": "Tambahkan rumah hantu",
+    "mapEditorHouseInstructions": "Klik ubin terbuka untuk menambahkan rumah hantu. Klik sebuah rumah untuk menghapusnya; simpan setidaknya satu rumah di setiap peta.",
     "directions": {
         "up": "Ke atas",
         "left": "Ke kiri",

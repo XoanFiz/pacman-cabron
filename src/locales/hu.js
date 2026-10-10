@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Határfal labirintus",
     "newMap": "Új térkép",
     "customMap": "Egyedi térkép",
+    "addGhostHouse": "Szellemház hozzáadása",
+    "mapEditorHouseInstructions": "Szellemház hozzáadásához kattintson egy nyitott lapkára. Kattintson egy házra az eltávolításához; minden térképen legyen legalább egy ház.",
     "directions":  {
                        "left":  "Mozgás balra",
                        "right":  "Mozgás jobbra",

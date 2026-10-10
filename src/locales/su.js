@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Maze wates-témbok",
     "newMap": "peta anyar",
     "customMap": "peta custom",
+    "addGhostHouse": "Tambahkeun imah hantu",
+    "mapEditorHouseInstructions": "Klik ubin kabuka pikeun nambahkeun imah hantu. Klik imah pikeun nyabut eta; tetep sahanteuna hiji imah dina unggal peta.",
     "directions":  {
                        "left":  "Pindah ka kénca",
                        "right":  "Pindah ka katuhu",

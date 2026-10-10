@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Sınır duvarı labirenti",
     "newMap": "Yeni harita",
     "customMap": "Özel harita",
+    "addGhostHouse": "Hayalet ev ekle",
+    "mapEditorHouseInstructions": "Hayalet ev eklemek için açık bir kutucuğa tıklayın. Kaldırmak için bir evi tıklayın; Her haritada en az bir ev bulundurun.",
     "directions": {
         "up": "Yukarı",
         "left": "Sola",

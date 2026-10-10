@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Labirinto de muros límite",
     "newMap": "Mapa novo",
     "customMap": "Mapa personalizado",
+    "addGhostHouse": "Engadir casa pantasma",
+    "mapEditorHouseInstructions": "Fai clic nunha tella aberta para engadir unha casa pantasma. Fai clic nunha casa para eliminala; mantén polo menos unha casa en cada mapa.",
     "directions": {
         "up": "Mover cara arriba",
         "left": "Mover á esquerda",

@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "境界壁迷路",
     "newMap": "新しい地図",
     "customMap": "カスタムマップ",
+    "addGhostHouse": "ゴーストハウスを追加",
+    "mapEditorHouseInstructions": "開いているタイルをクリックしてゴースト ハウスを追加します。家をクリックして削除します。各マップ上に少なくとも 1 つの家を維持してください。",
     "directions": {
         "up": "上へ移動",
         "left": "左へ移動",

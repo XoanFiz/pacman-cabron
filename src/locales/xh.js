@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Umda wodonga lwemaze",
     "newMap": "Imephu entsha",
     "customMap": "imephu Custom",
+    "addGhostHouse": "Yongeza indlu yesiporho",
+    "mapEditorHouseInstructions": "Cofa ithayile evulekileyo ukongeza indlu yesiporho. Cofa indlu ukuze uyisuse; gcina indlu enye ubuncinane kwimephu nganye.",
     "directions":  {
                        "left":  "Shenxela ngasekhohlo",
                        "right":  "Shenxela ngasekunene",

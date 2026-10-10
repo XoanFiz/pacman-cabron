@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "सीमा-भिंत चक्रव्यूह",
     "newMap": "नवीन नकाशा",
     "customMap": "सानुकूल नकाशा",
+    "addGhostHouse": "भूत घर जोडा",
+    "mapEditorHouseInstructions": "भूत घर जोडण्यासाठी खुल्या टाइलवर क्लिक करा. ते काढण्यासाठी घर क्लिक करा; प्रत्येक नकाशावर किमान एक घर ठेवा.",
     "directions":  {
                        "left":  "डावीकडे हलवा",
                        "right":  "उजवीकडे हलवा",

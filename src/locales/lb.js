@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Grenz-Mauer Labyrinth",
     "newMap": "Nei Kaart",
     "customMap": "Benotzerdefinéiert Kaart",
+    "addGhostHouse": "Gitt Geeschterhaus dobäi",
+    "mapEditorHouseInstructions": "Klickt op eng oppe Fliesen fir e Geeschterhaus ze addéieren. Klickt op en Haus fir et ze läschen; halen op d\u0027mannst een Haus op all Kaart.",
     "directions":  {
                        "left":  "Beweegt lénks",
                        "right":  "Géi riets",

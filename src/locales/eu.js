@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Muga-horma labirintoa",
     "newMap": "Mapa berria",
     "customMap": "Mapa pertsonalizatua",
+    "addGhostHouse": "Gehitu ghost house",
+    "mapEditorHouseInstructions": "Egin klik irekitako fitxa batean etxe mamu bat gehitzeko. Egin klik etxe batean kentzeko; eduki gutxienez etxe bat mapa bakoitzean.",
     "directions":  {
                        "left":  "Mugitu ezkerrera",
                        "right":  "Mugitu eskuinera",

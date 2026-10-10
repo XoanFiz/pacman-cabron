@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "সীমা-বেৰৰ কিংকৰ্তব্যবিমূঢ়",
     "newMap": "নতুন মানচিত্ৰ",
     "customMap": "কাষ্টম মেপ",
+    "addGhostHouse": "ভূত ঘৰ যোগ কৰক",
+    "mapEditorHouseInstructions": "এটা ভূতৰ ঘৰ যোগ কৰিবলৈ এটা মুকলি টাইল ক্লিক কৰক। এটা ঘৰ আঁতৰাবলৈ ক্লিক কৰক; প্ৰতিখন মানচিত্ৰত অন্ততঃ এটাকৈ ঘৰ ৰাখক।",
     "directions":  {
                        "left":  "বাওঁফালে যাওক",
                        "right":  "সোঁফালে আগবাঢ়ক",

@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "सीमा पर्खाल भूलभुलैया",
     "newMap": "नयाँ नक्सा",
     "customMap": "अनुकूलन नक्सा",
+    "addGhostHouse": "भूत घर थप्नुहोस्",
+    "mapEditorHouseInstructions": "भूत घर थप्न खुला टाइलमा क्लिक गर्नुहोस्। यसलाई हटाउन घर क्लिक गर्नुहोस्; प्रत्येक नक्सामा कम्तिमा एउटा घर राख्नुहोस्।",
     "directions":  {
                        "left":  "बायाँ सार्नुहोस्",
                        "right":  "दायाँ सार्नुहोस्",

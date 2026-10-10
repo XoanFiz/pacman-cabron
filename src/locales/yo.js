@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Aala-odi iruniloju",
     "newMap": "Maapu tuntun",
     "customMap": "Aṣa maapu",
+    "addGhostHouse": "Fi ile iwin",
+    "mapEditorHouseInstructions": "Tẹ tile ṣiṣi kan lati ṣafikun ile iwin kan. Tẹ ile kan lati yọ kuro; pa o kere ju ile kan lori maapu kọọkan.",
     "directions":  {
                        "left":  "Gbe si osi",
                        "right":  "Gbe ọtun",

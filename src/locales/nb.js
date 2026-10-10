@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Grense-vegg labyrint",
     "newMap": "Nytt kart",
     "customMap": "Egendefinert kart",
+    "addGhostHouse": "Legg til spøkelseshus",
+    "mapEditorHouseInstructions": "Klikk på en åpen flis for å legge til et spøkelseshus. Klikk på et hus for å fjerne det; ha minst ett hus på hvert kart.",
     "directions": {
         "up": "Flytt opp",
         "left": "Flytt til venstre",

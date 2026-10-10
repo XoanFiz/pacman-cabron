@@ -34,6 +34,12 @@
         font-weight: bold;
     }
 
+    .map-editor-active #status {
+        height: auto;
+        min-height: 22px;
+        margin-bottom: 8px;
+    }
+
     canvas {
         width: 100%;
         height: auto;
@@ -237,7 +243,7 @@
             <p data-i18n="chooseCharacterDescription">Play as Pac-Man or control one of the ghosts.</p>
             <label class="map-picker">
                 <span data-i18n="selectMap">Map</span>
-                <select id="map-select" aria-label="Map"></select>
+                <select id="map-select" data-i18n-aria-label="selectMap"></select>
             </label>
             <div class="character-choices">
                 <button class="character-choice" data-character="pacman" data-i18n-aria-label="pacman">

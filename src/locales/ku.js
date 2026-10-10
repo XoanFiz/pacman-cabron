@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Boundary-dîwar mazî",
     "newMap": "Nexşeya nû",
     "customMap": "Nexşeya Custom",
+    "addGhostHouse": "Mala ruhê zêde bikin",
+    "mapEditorHouseInstructions": "Bişkojkek vekirî bikirtînin da ku xaniyek giyan lê zêde bikin. Ji bo rakirina xaniyek bikirtînin; li ser her nexşeyê herî kêm xaniyek bihêle.",
     "directions":  {
                        "left":  "Biçe çepê",
                        "right":  "Rast bigerin",

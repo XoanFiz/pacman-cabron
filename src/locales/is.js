@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Mörk-vegg völundarhús",
     "newMap": "Nýtt kort",
     "customMap": "Sérsniðið kort",
+    "addGhostHouse": "Bættu við draugahúsi",
+    "mapEditorHouseInstructions": "Smelltu á opna flís til að bæta við draugahúsi. Smelltu á hús til að fjarlægja það; halda að minnsta kosti einu húsi á hverju korti.",
     "directions":  {
                        "left":  "Færðu til vinstri",
                        "right":  "Færðu til hægri",

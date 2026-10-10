@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Labirint de pereți de graniță",
     "newMap": "Hartă nouă",
     "customMap": "Hartă personalizată",
+    "addGhostHouse": "Adăugați casa fantomă",
+    "mapEditorHouseInstructions": "Faceți clic pe o țiglă deschisă pentru a adăuga o casă fantomă. Faceți clic pe o casă pentru a o elimina; păstrați cel puțin o casă pe fiecare hartă.",
     "directions": {
         "up": "Sus",
         "left": "La stânga",

@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Drysfa ffin-wal",
     "newMap": "Map newydd",
     "customMap": "Map personol",
+    "addGhostHouse": "Ychwanegu ty ysbrydion",
+    "mapEditorHouseInstructions": "Cliciwch ar deilsen agored i ychwanegu tŷ ysbrydion. Cliciwch tŷ i gael gwared arno; cadw o leiaf un tŷ ar bob map.",
     "directions":  {
                        "left":  "Symud i\u0027r chwith",
                        "right":  "Symud i\u0027r dde",

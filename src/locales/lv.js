@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Robežu-sienu labirints",
     "newMap": "Jauna karte",
     "customMap": "Pielāgota karte",
+    "addGhostHouse": "Pievienojiet spoku māju",
+    "mapEditorHouseInstructions": "Noklikšķiniet uz atvērtas flīzes, lai pievienotu spoku māju. Noklikšķiniet uz mājas, lai to noņemtu; saglabājiet vismaz vienu māju katrā kartē.",
     "directions":  {
                        "left":  "Pārvietojieties pa kreisi",
                        "right":  "Pārvietojieties pa labi",

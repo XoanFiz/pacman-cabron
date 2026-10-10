@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Piirde-seina labürint",
     "newMap": "Uus kaart",
     "customMap": "Kohandatud kaart",
+    "addGhostHouse": "Lisa kummitusmaja",
+    "mapEditorHouseInstructions": "Kummitusmaja lisamiseks klõpsake avatud paanil. Klõpsake maja selle eemaldamiseks; hoidke igal kaardil vähemalt ühte maja.",
     "directions":  {
                        "left":  "Liigu vasakule",
                        "right":  "Liigu paremale",

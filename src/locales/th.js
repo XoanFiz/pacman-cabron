@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "เขาวงกตกำแพง",
     "newMap": "แผนที่ใหม่",
     "customMap": "แผนที่ที่กำหนดเอง",
+    "addGhostHouse": "เพิ่มบ้านผี",
+    "mapEditorHouseInstructions": "คลิกไทล์ที่เปิดเพื่อเพิ่มบ้านผี คลิกที่บ้านเพื่อลบออก เก็บบ้านไว้อย่างน้อยหนึ่งหลังในแต่ละแผนที่",
     "directions": {
         "up": "ขึ้น",
         "left": "ซ้าย",

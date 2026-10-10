@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Mê cung tường ranh giới",
     "newMap": "Bản đồ mới",
     "customMap": "Bản đồ tùy chỉnh",
+    "addGhostHouse": "Thêm ngôi nhà ma",
+    "mapEditorHouseInstructions": "Nhấp vào ô mở để thêm ngôi nhà ma. Bấm vào một ngôi nhà để loại bỏ nó; giữ ít nhất một ngôi nhà trên mỗi bản đồ.",
     "directions": {
         "up": "Đi lên",
         "left": "Sang trái",

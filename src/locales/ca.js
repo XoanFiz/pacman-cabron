@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Laberint de paret límit",
     "newMap": "Mapa nou",
     "customMap": "Mapa personalitzat",
+    "addGhostHouse": "Afegeix la casa fantasma",
+    "mapEditorHouseInstructions": "Feu clic a una fitxa oberta per afegir una casa fantasma. Feu clic a una casa per eliminar-la; mantenir almenys una casa a cada mapa.",
     "directions":  {
                        "left":  "Mou a l\u0027esquerra",
                        "right":  "Mou a la dreta",

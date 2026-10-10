@@ -23,6 +23,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "מבוך גבול-קיר",
     "newMap": "מפה חדשה",
     "customMap": "מפה מותאמת אישית",
+    "addGhostHouse": "הוסף בית רפאים",
+    "mapEditorHouseInstructions": "לחץ על אריח פתוח כדי להוסיף בית רפאים. לחץ על בית כדי להסיר אותו; לשמור על בית אחד לפחות בכל מפה.",
     "directions": {
         "up": "למעלה",
         "left": "שמאלה",

@@ -51,6 +51,11 @@ function setStatus(messageKey) {
     statusElement.textContent = messages[messageKey];
 }
 
+function setMapEditorInstructions() {
+    statusElement.textContent =
+        `${messages.mapEditorInstructions} ${messages.mapEditorHouseInstructions}`;
+}
+
 localizeContent();
 
 // ============================================================
@@ -184,6 +189,7 @@ const GHOST_COLLISION_DISTANCE = 0.55;
 
 let MAP;
 let MAP_EDGES = new Set();
+let GHOST_HOUSES = [];
 
 
 // ============================================================
@@ -193,12 +199,6 @@ let MAP_EDGES = new Set();
 const PACMAN_SPEED = 3.5;
 const GHOST_SPEED = 2.25;
 const EATEN_GHOST_SPEED = 4;
-
-const HOUSE = {
-    x: 10,
-    y: 8
-};
-
 
 // Strategic weights.
 // Equal for now; we can adjust them later.
@@ -241,11 +241,15 @@ const DIRECTIONS = {
     right: { x: 1, y: 0 }
 };
 
+const DEFAULT_GHOST_HOUSES = [{ x: 11, y: 8 }];
+
 
 function createBoundaryOnlyMap() {
+    const ghostHouses = DEFAULT_GHOST_HOUSES.map(cloneMapPosition);
     const occupied = [
         DEFAULT_PLAYER_START,
-        ...DEFAULT_GHOST_STARTS
+        ...DEFAULT_GHOST_STARTS,
+        ...ghostHouses
     ];
     const tiles = Array.from({ length: ROWS }, (_, y) =>
         Array.from({ length: COLS }, (_, x) =>
@@ -281,6 +285,7 @@ function createBoundaryOnlyMap() {
         nameKey: "boundaryMap",
         tiles,
         edges,
+        ghostHouses,
         playerStart: { ...DEFAULT_PLAYER_START },
         ghostStarts: DEFAULT_GHOST_STARTS.map(cloneMapPosition)
     };
@@ -298,11 +303,27 @@ function cloneMapPosition(position) {
 }
 
 
+function clearMapTiles(tiles, positions) {
+    const clearedTiles = tiles.map(row => row.slice());
+
+    for (const position of positions) {
+        const row = clearedTiles[position.y];
+        clearedTiles[position.y] =
+            row.slice(0, position.x) +
+            " " +
+            row.slice(position.x + 1);
+    }
+
+    return clearedTiles;
+}
+
+
 function cloneMapDefinition(map) {
     return {
         ...map,
         tiles: map.tiles.slice(),
         edges: map.edges.slice(),
+        ghostHouses: map.ghostHouses.map(cloneMapPosition),
         playerStart: cloneMapPosition(map.playerStart),
         ghostStarts: map.ghostStarts.map(cloneMapPosition)
     };
@@ -313,8 +334,9 @@ const PREDEFINED_MAPS = [
     {
         id: "classic",
         nameKey: "classicMap",
-        tiles: LEVEL_MAP,
+        tiles: clearMapTiles(LEVEL_MAP, DEFAULT_GHOST_HOUSES),
         edges: [],
+        ghostHouses: DEFAULT_GHOST_HOUSES.map(cloneMapPosition),
         playerStart: DEFAULT_PLAYER_START,
         ghostStarts: DEFAULT_GHOST_STARTS
     },
@@ -776,35 +798,12 @@ function calculateDomain() {
         const ghost = ghosts[i];
         const owner = `ghost${i}`;
 
-        if (ghost.eaten) {
-            // Eaten ghosts only begin claiming territory after reaching the house.
-            const distanceToHouse = shortestDistance(
-                ghost.x,
-                ghost.y,
-                HOUSE.x,
-                HOUSE.y
-            );
-
-            if (distanceToHouse === Infinity) {
-                continue;
-            }
-
-            queue.push({
-                x: HOUSE.x,
-                y: HOUSE.y,
-                time: gameTime + distanceToHouse / EATEN_GHOST_SPEED,
-                owner,
-                speed: GHOST_SPEED
-            });
-            continue;
-        }
-
         queue.push({
             x: ghost.x,
             y: ghost.y,
             time: gameTime,
             owner,
-            speed: GHOST_SPEED,
+            speed: ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED,
             initialProgress: ghost.progress,
             initialDirection: ghost.direction,
             initialMove: ghost.progress > 0
@@ -1118,10 +1117,7 @@ function calculateBluePelletValues(
                 ghost,
                 index
             }))
-            .filter(({ ghost }) =>
-                ghost.frightened &&
-                !ghost.eaten
-            );
+            .filter(({ ghost }) => ghost.frightened);
 
 
     if (activeBlue.length === 0)
@@ -1172,8 +1168,7 @@ function calculateBluePelletValues(
                             );
 
                         return (
-                            ghosts[index].frightened &&
-                            !ghosts[index].eaten
+                            ghosts[index].frightened
                         );
                     });
 
@@ -1231,9 +1226,8 @@ function calculateBlueScore(
 
     const activeValues =
         values.filter(
-            (value, index) =>
-                ghosts[index].frightened &&
-                !ghosts[index].eaten
+        (value, index) =>
+            ghosts[index].frightened
         );
 
 
@@ -1484,17 +1478,6 @@ function getSearchGhostDirections(state, index) {
         ];
     }
 
-    if (ghost.eaten) {
-        return [
-            getShortestPathDirection(
-                ghost.x,
-                ghost.y,
-                HOUSE.x,
-                HOUSE.y
-            ) || { ...ghost.direction }
-        ];
-    }
-
     return getSearchDirections(state, ghost, true);
 }
 
@@ -1684,13 +1667,13 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         if (
             arrived &&
             ghost.eaten &&
-            ghost.x === HOUSE.x &&
-            ghost.y === HOUSE.y
+            GHOST_HOUSES.some(house =>
+                ghost.x === house.x && ghost.y === house.y
+            )
         ) {
             ghost.eaten = false;
             ghost.frightened = false;
-            ghost.direction = { x: -1, y: 0 };
-            next.readyGhosts[i] = false;
+            next.readyGhosts[i] = true;
         }
     }
 
@@ -2316,58 +2299,6 @@ function getPossibleDirections(
     );
 }
 
-function getShortestPathDirection(startX, startY, targetX, targetY) {
-    const start = getWrappedPosition(startX, startY);
-    const target = getWrappedPosition(targetX, targetY);
-
-    if (start.x === target.x && start.y === target.y) {
-        return null;
-    }
-
-    const queue = [{
-        x: start.x,
-        y: start.y,
-        firstDirection: null
-    }];
-
-    const visited = new Set();
-
-    const key = (x, y) => `${x},${y}`;
-    visited.add(key(start.x, start.y));
-
-    let index = 0;
-
-    while (index < queue.length) {
-        const current = queue[index++];
-
-        for (const next of graph[current.y][current.x]) {
-
-            const nextKey = key(next.x, next.y);
-
-            if (visited.has(nextKey)) {
-                continue;
-            }
-
-            const firstDirection =
-                current.firstDirection ?? next.direction;
-
-            if (next.x === target.x && next.y === target.y) {
-                return firstDirection;
-            }
-
-            visited.add(nextKey);
-
-            queue.push({
-                x: next.x,
-                y: next.y,
-                firstDirection
-            });
-        }
-    }
-
-    return null;
-}
-
 // ============================================================
 // START / RESTART
 // ============================================================
@@ -2404,6 +2335,7 @@ function resetLevel() {
                 row.slice(0, COLS)
         );
     MAP_EDGES = new Set(mapDefinition.edges);
+    GHOST_HOUSES = mapDefinition.ghostHouses.map(cloneMapPosition);
 
 
     for (const row of MAP) {
@@ -2777,6 +2709,15 @@ function updateGhost(
                 ROWS
             );
 
+        if (
+            ghost.eaten &&
+            GHOST_HOUSES.some(house =>
+                ghost.x === house.x && ghost.y === house.y
+            )
+        ) {
+            ghost.eaten = false;
+            ghost.frightened = false;
+        }
 
         const possibleDirections =
             getPossibleDirections(
@@ -2796,88 +2737,12 @@ function updateGhost(
             break;
         }
 
-
-        // ====================================================
-        // EATEN
-        // ====================================================
-
         if (ghost.eaten) {
-
-            const target = HOUSE;
-
-            possibleDirections.sort(
-                (a, b) => {
-
-                    const nextAX =
-                        wrap(
-                            ghost.x + a.x,
-                            COLS
-                        );
-
-                    const nextAY =
-                        wrap(
-                            ghost.y + a.y,
-                            ROWS
-                        );
-
-                    const nextBX =
-                        wrap(
-                            ghost.x + b.x,
-                            COLS
-                        );
-
-                    const nextBY =
-                        wrap(
-                            ghost.y + b.y,
-                            ROWS
-                        );
-
-
-                    const da =
-                        shortestDistance(
-                            nextAX,
-                            nextAY,
-                            target.x,
-                            target.y
-                        );
-
-
-                    const db =
-                        shortestDistance(
-                            nextBX,
-                            nextBY,
-                            target.x,
-                            target.y
-                        );
-
-
-                    return da - db;
-                }
-            );
-
-
-            ghost.direction = {
-                ...possibleDirections[0]
-            };
-
-
-            if (
-                ghost.x === HOUSE.x &&
-                ghost.y === HOUSE.y
-            ) {
-
-                ghost.eaten = false;
-
-                ghost.frightened = false;
-
-                ghost.direction = {
-                    x: -1,
-                    y: 0
-                };
-            }
-
-
-            continue;
+            ghost.needsDirection = true;
+            ghost.pendingDecisionTime =
+                gameTime -
+                ghost.progress / EATEN_GHOST_SPEED;
+            break;
         }
 
 
@@ -2902,7 +2767,7 @@ function updateGhost(
             ghost.needsDirection = true;
             ghost.pendingDecisionTime =
                 gameTime -
-                ghost.progress / GHOST_SPEED;
+                ghost.progress / speed;
         }
 
         break;
@@ -3087,7 +2952,7 @@ function update(dt) {
     }
 
     const pendingGhosts = ghosts
-        .filter(ghost => ghost.needsDirection && !ghost.eaten)
+        .filter(ghost => ghost.needsDirection)
         .sort((a, b) =>
             a.pendingDecisionTime - b.pendingDecisionTime
         );
@@ -3275,6 +3140,7 @@ function draw() {
     }
 
     drawBoundaryWalls();
+    drawGhostHouses();
 
     drawPlayer();
 
@@ -3318,6 +3184,32 @@ function drawBoundaryWalls() {
                 ctx.fillRect(edgeX, -thickness / 2, CELL, thickness);
             }
         }
+    }
+}
+
+
+function drawGhostHouses() {
+    for (const house of GHOST_HOUSES) {
+        const centerX = house.x * CELL + CELL / 2;
+        const centerY = house.y * CELL + CELL / 2;
+
+        ctx.fillStyle = "#8b5cf6";
+        ctx.strokeStyle = "#e9d5ff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX - 9, centerY - 1);
+        ctx.lineTo(centerX, centerY - 9);
+        ctx.lineTo(centerX + 9, centerY - 1);
+        ctx.lineTo(centerX + 7, centerY - 1);
+        ctx.lineTo(centerX + 7, centerY + 8);
+        ctx.lineTo(centerX - 7, centerY + 8);
+        ctx.lineTo(centerX - 7, centerY - 1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#090b12";
+        ctx.fillRect(centerX - 2, centerY + 2, 4, 6);
     }
 }
 
@@ -3618,7 +3510,7 @@ function enterMapEditor() {
     document.body.classList.add("map-editor-active");
     editorToolbarElement.hidden = false;
     startScreenElement.hidden = true;
-    setStatus("mapEditorInstructions");
+    setMapEditorInstructions();
 }
 
 
@@ -3630,7 +3522,7 @@ function createNewMap() {
     editorDraftMap.nameKey = null;
     editorDraftMap.customNumber = nextCustomMapNumber++;
     resetGame();
-    setStatus("mapEditorInstructions");
+    setMapEditorInstructions();
 }
 
 
@@ -3648,6 +3540,7 @@ function leaveMapEditor(saveChanges) {
             y: ghost.y,
             direction: { ...ghost.direction }
         }));
+        editorDraftMap.ghostHouses = GHOST_HOUSES.map(cloneMapPosition);
         saveEditorMap();
     }
 
@@ -3754,6 +3647,13 @@ function getEditorEntity(position) {
 }
 
 
+function getEditorGhostHouse(position) {
+    return GHOST_HOUSES.findIndex(house =>
+        house.x === position.x && house.y === position.y
+    );
+}
+
+
 function rotateEditorEntity(entity, type) {
     const currentIndex = EDITOR_DIRECTIONS.findIndex(direction =>
         direction.x === entity.direction.x &&
@@ -3773,7 +3673,10 @@ function rotateEditorEntity(entity, type) {
 function moveEditorEntity(gesture, position) {
     const { x, y } = position;
 
-    if (MAP[y][x] === "#") {
+    if (
+        MAP[y][x] === "#" ||
+        getEditorGhostHouse(position) >= 0
+    ) {
         return false;
     }
 
@@ -3810,21 +3713,43 @@ function moveEditorEntity(gesture, position) {
 
 
 function cycleEditorTile(position) {
-    const cycle = [".", "o", " ", "#"];
-    const currentIndex = cycle.indexOf(MAP[position.y][position.x]);
+    const houseIndex = getEditorGhostHouse(position);
+    const cycle = [".", "o", " ", "house", "#"];
+    const currentTile = houseIndex >= 0
+        ? "house"
+        : MAP[position.y][position.x];
+    const currentIndex = cycle.indexOf(currentTile);
     const nextTile = cycle[(currentIndex + 1) % cycle.length];
-    const row = MAP[position.y];
 
-    MAP[position.y] =
-        row.slice(0, position.x) +
-        nextTile +
-        row.slice(position.x + 1);
+    if (
+        houseIndex >= 0 &&
+        nextTile !== "house" &&
+        GHOST_HOUSES.length <= 1
+    ) {
+        return;
+    }
 
-    if (nextTile === "#") {
-        for (const direction of Object.values(DIRECTIONS)) {
-            MAP_EDGES.delete(
-                getBoundaryKey(position.x, position.y, direction)
-            );
+    if (houseIndex >= 0) {
+        GHOST_HOUSES.splice(houseIndex, 1);
+    }
+
+    if (nextTile === "house") {
+        GHOST_HOUSES.push({ x: position.x, y: position.y });
+    } else {
+        const tile = nextTile;
+        const row = MAP[position.y];
+
+        MAP[position.y] =
+            row.slice(0, position.x) +
+            tile +
+            row.slice(position.x + 1);
+
+        if (nextTile === "#") {
+            for (const direction of Object.values(DIRECTIONS)) {
+                MAP_EDGES.delete(
+                    getBoundaryKey(position.x, position.y, direction)
+                );
+            }
         }
     }
 

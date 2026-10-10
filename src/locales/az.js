@@ -18,6 +18,8 @@ window.PACMAN_TRANSLATIONS = {
     "boundaryMap": "Sərhəd divar labirenti",
     "newMap": "Yeni xəritə",
     "customMap": "Fərdi xəritə",
+    "addGhostHouse": "Xəyal evi əlavə edin",
+    "mapEditorHouseInstructions": "Bir xəyal evi əlavə etmək üçün açıq kafel üzərinə klikləyin. Evi silmək üçün üzərinə klikləyin; hər xəritədə ən azı bir ev saxlayın.",
     "directions":  {
                        "left":  "Sola keçin",
                        "right":  "Sağa hərəkət edin",
