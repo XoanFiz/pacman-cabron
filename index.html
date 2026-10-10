@@ -55,8 +55,19 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        direction: ltr;
         gap: 4px;
         margin-top: 8px;
+    }
+
+    #controls button:active,
+    #controls button.is-key-pressed,
+    #controls button.is-pointer-pressed {
+        background: #ffd43b;
+        color: #090b12;
+        border-color: #fff1a8;
+        box-shadow: 0 0 12px rgba(255, 212, 59, 0.7);
+        transform: scale(0.94);
     }
 
     .row {

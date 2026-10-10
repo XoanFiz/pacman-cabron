@@ -8,6 +8,7 @@ const startScreenElement = document.getElementById("start-screen");
 const editorToolbarElement = document.getElementById("map-editor-toolbar");
 const editorBackButton = document.getElementById("editor-back");
 const editorSaveButton = document.getElementById("editor-save");
+const pressedDirectionKeys = new Set();
 
 const messages = window.PACMAN_TRANSLATIONS;
 const contentLanguage = window.PACMAN_LOCALE;
@@ -3648,6 +3649,30 @@ function getControlledGhost() {
 }
 
 
+function updatePressedDirectionButtons() {
+    const keys = {
+        ArrowUp: "up",
+        w: "up",
+        ArrowDown: "down",
+        s: "down",
+        ArrowLeft: "left",
+        a: "left",
+        ArrowRight: "right",
+        d: "right"
+    };
+    const pressedDirections = new Set(
+        Array.from(pressedDirectionKeys, key => keys[key])
+    );
+
+    document.querySelectorAll("[data-dir]").forEach(button => {
+        button.classList.toggle(
+            "is-key-pressed",
+            pressedDirections.has(button.dataset.dir)
+        );
+    });
+}
+
+
 function setDirection(
     direction
 ) {
@@ -3767,6 +3792,10 @@ document.addEventListener(
 
         event.preventDefault();
 
+        pressedDirectionKeys.add(event.key.length === 1
+            ? event.key.toLowerCase()
+            : event.key);
+        updatePressedDirectionButtons();
 
         setDirection(
             direction
@@ -3775,11 +3804,32 @@ document.addEventListener(
 );
 
 
+document.addEventListener("keyup", event => {
+    const key = event.key.length === 1
+        ? event.key.toLowerCase()
+        : event.key;
+
+    if (pressedDirectionKeys.delete(key)) {
+        updatePressedDirectionButtons();
+    }
+});
+
+
+window.addEventListener("blur", () => {
+    pressedDirectionKeys.clear();
+    updatePressedDirectionButtons();
+});
+
+
 document
     .querySelectorAll(
         "[data-dir]"
     )
     .forEach(button => {
+
+        button.addEventListener("pointerdown", () => {
+            button.classList.add("is-pointer-pressed");
+        });
 
         button.addEventListener(
             "click",
@@ -3793,6 +3843,20 @@ document
             }
         );
     });
+
+
+document.addEventListener("pointerup", () => {
+    document.querySelectorAll(".is-pointer-pressed").forEach(button => {
+        button.classList.remove("is-pointer-pressed");
+    });
+});
+
+
+document.addEventListener("pointercancel", () => {
+    document.querySelectorAll(".is-pointer-pressed").forEach(button => {
+        button.classList.remove("is-pointer-pressed");
+    });
+});
 
 
 document
