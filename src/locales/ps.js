@@ -1,0 +1,23 @@
+window.PACMAN_TRANSLATIONS = {
+    "pacman":  "Pac-Man",
+    "pinkGhost":  "ګلابي غشي",
+    "startGhost":  "د سپوږمۍ په توګه د پیل کولو لپاره د تیر کیلي فشار ورکړئ",
+    "restart":  "بیا پیل کړئ",
+    "continue":  "د دوام لپاره د تیر کیلي فشار ورکړئ",
+    "startPacman":  "د Pac-Man په توګه پیل کولو لپاره د تیر کیلي فشار ورکړئ",
+    "chooseCharacter":  "خپل کرکټر غوره کړئ",
+    "lives":  "ژوند کوي",
+    "redGhost":  "سور غره",
+    "chooseCharacterDescription":  "د Pac-Man په توګه لوبه وکړئ یا یو له شیطان څخه کنټرول کړئ.",
+    "directions":  {
+                       "left":  "کیڼ لور ته حرکت وکړئ",
+                       "right":  "ښي خوا ته حرکت وکړئ",
+                       "down":  "لاندې حرکت وکړئ",
+                       "up":  "پورته لاړ شه"
+                   },
+    "lifeLost":  "Pac-Man ژوند له لاسه ورکړ",
+    "orangeGhost":  "نارنجي غشي",
+    "won":  "تاسو وګټله!",
+    "gameOver":  "لوبه پای ته ورسیده",
+    "score":  "سکور"
+};

@@ -1,0 +1,23 @@
+window.PACMAN_TRANSLATIONS = {
+    "pacman":  "Pac-Man",
+    "pinkGhost":  "روح صورتی",
+    "startGhost":  "یک کلید جهت دار را فشار دهید تا به عنوان یک روح شروع شود",
+    "restart":  "راه اندازی مجدد",
+    "continue":  "برای ادامه یک کلید جهت دار را فشار دهید",
+    "startPacman":  "یک کلید جهت دار را فشار دهید تا به عنوان Pac-Man شروع شود",
+    "chooseCharacter":  "شخصیت خود را انتخاب کنید",
+    "lives":  "زندگی می کند",
+    "redGhost":  "روح قرمز",
+    "chooseCharacterDescription":  "به عنوان Pac-Man بازی کنید یا یکی از ارواح را کنترل کنید.",
+    "directions":  {
+                       "left":  "به سمت چپ حرکت کنید",
+                       "right":  "به سمت راست حرکت کنید",
+                       "down":  "به پایین حرکت کنید",
+                       "up":  "حرکت به بالا"
+                   },
+    "lifeLost":  "Pac-Man جان خود را از دست داد",
+    "orangeGhost":  "روح نارنجی",
+    "won":  "تو بردی!",
+    "gameOver":  "بازی تمام شد",
+    "score":  "امتیاز"
+};

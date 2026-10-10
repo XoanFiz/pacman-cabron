@@ -1,0 +1,23 @@
+window.PACMAN_TRANSLATIONS = {
+    "score": "得分",
+    "lives": "生命",
+    "restart": "重新开始",
+    "chooseCharacter": "选择角色",
+    "chooseCharacterDescription": "扮演吃豆人或控制一只幽灵。",
+    "pacman": "吃豆人",
+    "redGhost": "红色幽灵",
+    "orangeGhost": "橙色幽灵",
+    "pinkGhost": "粉色幽灵",
+    "startPacman": "按方向键开始扮演吃豆人",
+    "startGhost": "按方向键开始控制幽灵",
+    "continue": "按方向键继续",
+    "lifeLost": "吃豆人失去了一条命",
+    "gameOver": "游戏结束",
+    "won": "🎉 你赢了！",
+    "directions": {
+        "up": "向上移动",
+        "left": "向左移动",
+        "down": "向下移动",
+        "right": "向右移动"
+    }
+};

@@ -1,0 +1,23 @@
+window.PACMAN_TRANSLATIONS = {
+    "pacman":  "Pac-Man",
+    "pinkGhost":  "ຜີສີບົວ",
+    "startGhost":  "ກົດປຸ່ມລູກສອນເພື່ອເລີ່ມຕົ້ນເປັນຜີ",
+    "restart":  "ຣີສະຕາດ",
+    "continue":  "ກົດປຸ່ມລູກສອນເພື່ອສືບຕໍ່",
+    "startPacman":  "ກົດປຸ່ມລູກສອນເພື່ອເລີ່ມຕົ້ນເປັນ Pac-Man",
+    "chooseCharacter":  "ເລືອກລັກສະນະຂອງທ່ານ",
+    "lives":  "ຊີວິດ",
+    "redGhost":  "ຜີແດງ",
+    "chooseCharacterDescription":  "ຫຼິ້ນເປັນ Pac-Man ຫຼືຄວບຄຸມຫນຶ່ງຂອງ ghosts.",
+    "directions":  {
+                       "left":  "ຍ້າຍຊ້າຍ",
+                       "right":  "ຍ້າຍໄປຂວາ",
+                       "down":  "ຍ້າຍລົງ",
+                       "up":  "ຍ້າຍຂຶ້ນ"
+                   },
+    "lifeLost":  "Pac-Man ໄດ້ສູນເສຍຊີວິດ",
+    "orangeGhost":  "ຜີສີສົ້ມ",
+    "won":  "ເຈົ້າຊະນະ!",
+    "gameOver":  "ເກມຈົບແລ້ວ",
+    "score":  "ຄະແນນ"
+};
