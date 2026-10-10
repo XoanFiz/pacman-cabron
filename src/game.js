@@ -6,6 +6,128 @@ const livesElement = document.getElementById("lives");
 const statusElement = document.getElementById("status");
 const startScreenElement = document.getElementById("start-screen");
 
+const translations = {
+    en: {
+        score: "Score",
+        lives: "Lives",
+        restart: "Restart",
+        chooseCharacter: "Choose your character",
+        chooseCharacterDescription: "Play as Pac-Man or control one of the ghosts.",
+        pacman: "Pac-Man",
+        redGhost: "Red ghost",
+        orangeGhost: "Orange ghost",
+        pinkGhost: "Pink ghost",
+        startPacman: "Press an arrow key to start as Pac-Man",
+        startGhost: "Press an arrow key to start as a ghost",
+        continue: "Press an arrow key to continue",
+        lifeLost: "Pac-Man lost a life",
+        gameOver: "Game over",
+        won: "🎉 You won!",
+        directions: {
+            up: "Move up",
+            left: "Move left",
+            down: "Move down",
+            right: "Move right"
+        }
+    },
+    gl: {
+        score: "Puntos",
+        lives: "Vidas",
+        restart: "Reiniciar",
+        chooseCharacter: "Escolle personaxe",
+        chooseCharacterDescription: "Xoga como Pac-Man ou dirixe unha das pantasmas.",
+        pacman: "Pac-Man",
+        redGhost: "Pantasma vermella",
+        orangeGhost: "Pantasma laranxa",
+        pinkGhost: "Pantasma rosa",
+        startPacman: "Preme unha frecha para comezar como Pac-Man",
+        startGhost: "Preme unha frecha para comezar como pantasma",
+        continue: "Preme unha frecha para continuar",
+        lifeLost: "Pac-Man perdeu unha vida",
+        gameOver: "Fin da partida",
+        won: "🎉 Gañaches!",
+        directions: {
+            up: "Mover cara arriba",
+            left: "Mover á esquerda",
+            down: "Mover cara abaixo",
+            right: "Mover á dereita"
+        }
+    },
+    es: {
+        score: "Puntos",
+        lives: "Vidas",
+        restart: "Reiniciar",
+        chooseCharacter: "Elige tu personaje",
+        chooseCharacterDescription: "Juega como Pac-Man o controla uno de los fantasmas.",
+        pacman: "Pac-Man",
+        redGhost: "Fantasma rojo",
+        orangeGhost: "Fantasma naranja",
+        pinkGhost: "Fantasma rosa",
+        startPacman: "Pulsa una flecha para empezar como Pac-Man",
+        startGhost: "Pulsa una flecha para empezar como fantasma",
+        continue: "Pulsa una flecha para continuar",
+        lifeLost: "Pac-Man ha perdido una vida",
+        gameOver: "Fin de la partida",
+        won: "🎉 ¡Has ganado!",
+        directions: {
+            up: "Mover arriba",
+            left: "Mover a la izquierda",
+            down: "Mover abajo",
+            right: "Mover a la derecha"
+        }
+    }
+};
+
+const browserLanguages =
+    navigator.languages && navigator.languages.length > 0
+        ? navigator.languages
+        : [navigator.language];
+function resolveContentLanguage(languages) {
+    return languages
+        .map(language => language.toLowerCase().split("-")[0])
+        .find(language => Object.hasOwn(translations, language)) || "en";
+}
+
+const contentLanguage =
+    resolveContentLanguage(browserLanguages);
+let messages = translations[contentLanguage];
+
+function localizeContent(language = contentLanguage) {
+    messages = translations[language] || translations.en;
+    document.documentElement.lang =
+        Object.keys(translations).find(key => translations[key] === messages) || "en";
+
+    document
+        .querySelectorAll("[data-i18n]")
+        .forEach(element => {
+            element.textContent = messages[element.dataset.i18n];
+        });
+
+    document
+        .querySelectorAll("[data-i18n-aria-label]")
+        .forEach(element => {
+            element.setAttribute(
+                "aria-label",
+                messages[element.dataset.i18nAriaLabel]
+            );
+        });
+
+    document
+        .querySelectorAll("[data-dir]")
+        .forEach(button => {
+            button.setAttribute(
+                "aria-label",
+                messages.directions[button.dataset.dir]
+            );
+        });
+}
+
+function setStatus(messageKey) {
+    statusElement.textContent = messages[messageKey];
+}
+
+localizeContent();
+
 // ============================================================
 // DEBUG
 // ============================================================
@@ -2311,10 +2433,11 @@ function resetLevel() {
     buildGraph();
 
 
-    statusElement.textContent =
+    setStatus(
         selectedCharacter === "pacman"
-            ? "Press an arrow key to start as Pac-Man"
-            : "Press an arrow key to start as a ghost";
+            ? "startPacman"
+            : "startGhost"
+    );
 }
 
 
@@ -2510,8 +2633,7 @@ function eatPellet() {
 
         running = false;
         gameWon = true;
-        statusElement.textContent =
-            "🎉 You won!";
+        setStatus("won");
     }
 
 
@@ -2851,10 +2973,11 @@ function loseLife() {
     }
 
 
-    statusElement.textContent =
+    setStatus(
         lives > 0
-            ? "Pac-Man lost a life"
-            : "Game over";
+            ? "lifeLost"
+            : "gameOver"
+    );
 
 
     updateUI();
@@ -2880,8 +3003,7 @@ function update(dt) {
             resetPositions();
 
 
-            statusElement.textContent =
-                "Press an arrow key to continue";
+            setStatus("continue");
         }
 
 
