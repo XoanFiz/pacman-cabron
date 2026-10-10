@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Golygu map",
     "backToCharacters": "Nôl i\u0027r nodau",
     "useMap": "Defnyddiwch y map hwn",
-    "mapEditorInstructions": "Cliciwch ar deilsen i feicio pelenni, pelenni pŵer, gwag, a wal. Cliciwch ar gymeriad i\u0027w gylchdroi; llusgwch ef i\u0027w symud.",
+    "mapEditorInstructions": "Cliciwch ar deilsen i feicio pelenni, pelenni pŵer, gofod gwag, a wal. Cliciwch ger llinell grid i ychwanegu neu dynnu wal rhwng teils agored. Cliciwch ar gymeriad i\u0027w gylchdroi; llusgwch i\u0027w symud.",
     "directions":  {
                        "left":  "Symud i\u0027r chwith",
                        "right":  "Symud i\u0027r dde",

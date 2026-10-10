@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Uredi mapu",
     "backToCharacters": "Povratak na znakove",
     "useMap": "Koristite ovu mapu",
-    "mapEditorInstructions": "Kliknite na pločicu za ciklus peleta, peleta, praznog i zida. Kliknite na znak da ga rotirate; prevucite ga da ga pomerite.",
+    "mapEditorInstructions": "Kliknite na pločicu za ciklus peleta, peleta za napajanje, praznog prostora i zida. Kliknite blizu linije mreže da dodate ili uklonite zid između otvorenih pločica. Kliknite na znak da ga rotirate; prevucite da ga pomerite.",
     "directions":  {
                        "left":  "Pomakni lijevo",
                        "right":  "Kreni desno",

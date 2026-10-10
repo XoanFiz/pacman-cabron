@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Édit peta",
     "backToCharacters": "Balik deui ka karakter",
     "useMap": "Anggo peta ieu",
-    "mapEditorInstructions": "Klik ubin pikeun ngurilingan pellet, power pellet, kosong, sareng témbok. Klik karakter pikeun muterkeunana; sered pikeun mindahkeun éta.",
+    "mapEditorInstructions": "Pencét ubin pikeun ngurilingan pellet, pellet kakuatan, rohangan kosong, sareng témbok. Klik deukeut garis grid pikeun nambahkeun atawa miceun témbok antara ubin muka. Klik karakter pikeun muterkeunana; sered pikeun mindahkeun éta.",
     "directions":  {
                        "left":  "Pindah ka kénca",
                        "right":  "Pindah ka katuhu",

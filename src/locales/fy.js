@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Kaart bewurkje",
     "backToCharacters": "Werom nei tekens",
     "useMap": "Brûk dizze kaart",
-    "mapEditorInstructions": "Klikje op in tegel om pellet, machtpellet, leech en muorre te fytsjen. Klikje op in karakter om it te draaien; sleep it om it te ferpleatsen.",
+    "mapEditorInstructions": "Klikje op in tegel om pellet, machtpellet, lege romte en muorre te fytsjen. Klik tichtby in rasterline om in muorre ta te foegjen of te ferwiderjen tusken iepen tegels. Klikje op in karakter om it te draaien; slepe om it te ferpleatsen.",
     "directions":  {
                        "left":  "Gean nei links",
                        "right":  "Gean nei rjochts",

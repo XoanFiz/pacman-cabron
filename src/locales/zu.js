@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Hlela imephu",
     "backToCharacters": "Emuva ezinhlamvu",
     "useMap": "Sebenzisa le mephu",
-    "mapEditorInstructions": "Chofoza ithayela ukuze ujikeleze i-pellet, i-power pellet, ayinalutho, nodonga. Chofoza uhlamvu ukuze uzungezise; idonse ukuyihambisa.",
+    "mapEditorInstructions": "Chofoza ithayela ukuze ujikeleze i-pellet, i-pellet yamandla, isikhala esingenalutho, nodonga. Chofoza eduze komugqa wegridi ukuze wengeze noma ususe udonga phakathi kwamathayili avuliwe. Chofoza uhlamvu ukuze uzungezise; hudula ukuyihambisa.",
     "directions":  {
                        "left":  "Hamba kwesokunxele",
                        "right":  "Hamba kwesokudla",

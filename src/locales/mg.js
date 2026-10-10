@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Amboary ny sari-tany",
     "backToCharacters": "Miverena amin\u0027ny tarehintsoratra",
     "useMap": "Ampiasao ity sari-tany ity",
-    "mapEditorInstructions": "Kitiho ny taila iray mba hanodinana pellet, pellet herinaratra, foana ary rindrina. Kitiho ny endri-tsoratra iray hanodina azy; hisintona azy hamindra azy.",
+    "mapEditorInstructions": "Kitiho ny taila iray mba hanodina pellet, pellet herinaratra, toerana tsy misy na inona na inona ary rindrina. Kitiho eo akaikin\u0027ny tsipika iray mba hanampiana na hanesorana rindrina eo anelanelan\u0027ny taila misokatra. Kitiho ny endri-tsoratra iray hanodina azy; tariho hamindra azy.",
     "directions":  {
                        "left":  "Mifindra miankavia",
                        "right":  "Mandrosoa miankavanana",

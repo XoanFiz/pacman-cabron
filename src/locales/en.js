@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Edit map",
     "backToCharacters": "Back to characters",
     "useMap": "Use this map",
-    "mapEditorInstructions": "Click a tile to cycle pellet → power pellet → empty → wall. Click a character to rotate it; drag to move it.",
+    "mapEditorInstructions": "Click a tile to cycle pellet → power pellet → empty → wall. Click near a grid line to add or remove a wall between open tiles. Click a character to rotate it; drag to move it.",
     "directions": {
         "up": "Move up",
         "left": "Move left",

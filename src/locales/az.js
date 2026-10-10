@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Xəritəni redaktə edin",
     "backToCharacters": "Simvollara qayıdın",
     "useMap": "Bu xəritədən istifadə edin",
-    "mapEditorInstructions": "Qranulları, elektrik qranullarını, boş və divarı dövrə vurmaq üçün kafel üzərinə klikləyin. Döndürmək üçün simvolu basın; hərəkət etdirmək üçün onu dartın.",
+    "mapEditorInstructions": "Qranullar, güc qranulları, boş yer və divarı dövrə vurmaq üçün plitə üzərinə klikləyin. Açıq plitələr arasında divar əlavə etmək və ya silmək üçün şəbəkə xəttinin yaxınlığında klikləyin. Döndürmək üçün simvolu basın; hərəkət etdirmək üçün sürükləyin.",
     "directions":  {
                        "left":  "Sola keçin",
                        "right":  "Sağa hərəkət edin",

@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Editar mapa",
     "backToCharacters": "Volver aos personaxes",
     "useMap": "Usa este mapa",
-    "mapEditorInstructions": "Fai clic nun mosaico para facer un ciclo de pellet, power pellet, baleiro e parede. Fai clic nun carácter para rotalo; arrástrao para movelo.",
+    "mapEditorInstructions": "Fai clic nunha tella para facer un ciclo de pellet, power pellet, espazo baleiro e parede. Fai clic preto dunha liña de grade para engadir ou eliminar unha parede entre as tellas abertas. Fai clic nun carácter para rotalo; arrastre para movelo.",
     "directions": {
         "up": "Mover cara arriba",
         "left": "Mover á esquerda",

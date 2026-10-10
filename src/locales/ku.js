@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Nexşeyê biguherîne",
     "backToCharacters": "Vegere tîpan",
     "useMap": "Vê nexşeyê bi kar bîne",
-    "mapEditorInstructions": "Ji bo pellet, pelleta hêzdar, vala û dîwarê pêlekek bikirtînin. Ji bo zivirandina karakterekê bikirtînin; kaş bikin da ku wê biguhezînin.",
+    "mapEditorInstructions": "Pîlekek bikirtînin da ku pellet, pelleta hêzê, cîhê vala, û dîwar bigerin. Li nêzî xêzek torê bikirtînin da ku dîwarek di navbera pêlên vekirî de zêde bikin an jê bikin. Ji bo zivirandina karakterekê bikirtînin; kaş bikin da ku wê biguhezînin.",
     "directions":  {
                        "left":  "Biçe çepê",
                        "right":  "Rast bigerin",

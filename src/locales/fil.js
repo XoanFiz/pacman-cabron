@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "I-edit ang mapa",
     "backToCharacters": "Bumalik sa mga character",
     "useMap": "Gamitin ang mapa na ito",
-    "mapEditorInstructions": "Mag-click ng tile upang iikot ang pellet, power pellet, walang laman, at pader. I-click ang isang character upang paikutin ito; i-drag ito upang ilipat ito.",
+    "mapEditorInstructions": "Mag-click ng tile para umikot ng pellet, power pellet, bakanteng espasyo, at dingding. Mag-click malapit sa isang grid line upang magdagdag o mag-alis ng pader sa pagitan ng mga bukas na tile. I-click ang isang character upang paikutin ito; i-drag upang ilipat ito.",
     "directions":  {
                        "left":  "Lumipat pakaliwa",
                        "right":  "Lumipat pakanan",

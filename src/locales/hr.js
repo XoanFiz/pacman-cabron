@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Uredi kartu",
     "backToCharacters": "Natrag na znakove",
     "useMap": "Koristite ovu kartu",
-    "mapEditorInstructions": "Kliknite na pločicu za ciklus pelet, električni pelet, prazan i zid. Pritisnite znak da biste ga rotirali; povucite ga da biste ga pomaknuli.",
+    "mapEditorInstructions": "Pritisnite pločicu da biste kružili peletom, električnim peletom, praznim prostorom i zidom. Pritisnite blizu crte rešetke da biste dodali ili uklonili zid između otvorenih pločica. Pritisnite znak da biste ga rotirali; povucite za pomicanje.",
     "directions":  {
                        "left":  "Pomakni se lijevo",
                        "right":  "Pomakni se desno",

@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Uredi zemljevid",
     "backToCharacters": "Nazaj na znake",
     "useMap": "Uporabi ta zemljevid",
-    "mapEditorInstructions": "Kliknite na ploščico za cikel pelet, električni pelet, prazen in zid. Kliknite znak, da ga zavrtite; povlecite, da ga premaknete.",
+    "mapEditorInstructions": "Kliknite ploščico za kroženje peletov, električnih peletov, praznega prostora in stene. Kliknite blizu mrežne črte, da dodate ali odstranite steno med odprtimi ploščicami. Kliknite znak, da ga zavrtite; povlecite, da ga premaknete.",
     "directions":  {
                        "left":  "Premakni se levo",
                        "right":  "Premakni se desno",

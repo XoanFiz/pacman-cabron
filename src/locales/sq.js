@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Redakto hartën",
     "backToCharacters": "Kthehu te karakteret",
     "useMap": "Përdorni këtë hartë",
-    "mapEditorInstructions": "Klikoni një pllakë për të cikluar peletin, peletin fuqizues, bosh dhe mur. Klikoni një karakter për ta rrotulluar; zvarriteni për ta lëvizur.",
+    "mapEditorInstructions": "Klikoni një pllakë për të cikluar peletin, peletin e fuqisë, hapësirën boshe dhe murin. Klikoni pranë një linje rrjeti për të shtuar ose hequr një mur midis pllakave të hapura. Klikoni një karakter për ta rrotulluar; zvarrit për ta lëvizur.",
     "directions":  {
                        "left":  "Lëviz majtas",
                        "right":  "Lëviz djathtas",

@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Kaart bewerken",
     "backToCharacters": "Terug naar personages",
     "useMap": "Gebruik deze kaart",
-    "mapEditorInstructions": "Klik op een tegel om pellet, powerpellet, leeg en muur te doorlopen. Klik op een personage om het te draaien; sleep het om het te verplaatsen.",
+    "mapEditorInstructions": "Klik op een tegel om pellet, powerpellet, lege ruimte en muur te doorlopen. Klik in de buurt van een rasterlijn om een ​​muur tussen open tegels toe te voegen of te verwijderen. Klik op een personage om het te draaien; sleep om het te verplaatsen.",
     "directions": {
         "up": "Omhoog",
         "left": "Naar links",

@@ -1,0 +1,6 @@
+TODO
+Improve strategy. Ghosts are not guarding successfully, oscillation or lack of determination when keeping a position doesn't make them sharp enough.
+
+SUGGESTIONS
+Campaign mode?
+A full wall map

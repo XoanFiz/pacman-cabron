@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Edita el mapa",
     "backToCharacters": "Torna als caràcters",
     "useMap": "Fes servir aquest mapa",
-    "mapEditorInstructions": "Fes clic a una fitxa per ciclar el pellet, el pellet elèctric, el buit i la paret. Feu clic a un caràcter per girar-lo; arrossegueu-lo per moure\u0027l.",
+    "mapEditorInstructions": "Feu clic a una rajola per ciclar el pellet, el pellet elèctric, l\u0027espai buit i la paret. Feu clic a prop d\u0027una línia de quadrícula per afegir o eliminar una paret entre fitxes obertes. Feu clic a un caràcter per girar-lo; arrossegueu per moure\u0027l.",
     "directions":  {
                        "left":  "Mou a l\u0027esquerra",
                        "right":  "Mou a la dreta",

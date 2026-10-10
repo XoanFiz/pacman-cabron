@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Edit peta",
     "backToCharacters": "Kembali ke aksara",
     "useMap": "Gunakan peta ini",
-    "mapEditorInstructions": "Klik jubin untuk mengitar pelet, pelet kuasa, kosong dan dinding. Klik aksara untuk memutarkannya; seret untuk mengalihkannya.",
+    "mapEditorInstructions": "Klik jubin untuk mengitar pelet, pelet kuasa, ruang kosong dan dinding. Klik berhampiran garisan grid untuk menambah atau mengalih keluar dinding antara jubin terbuka. Klik aksara untuk memutarkannya; seret untuk mengalihkannya.",
     "directions": {
         "up": "Gerak ke atas",
         "left": "Gerak ke kiri",

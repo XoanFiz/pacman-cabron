@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Modifica mappa",
     "backToCharacters": "Torna ai personaggi",
     "useMap": "Usa questa mappa",
-    "mapEditorInstructions": "Fai clic su una tessera per scorrere il pellet, alimentare il pellet, svuotare e murare. Fare clic su un personaggio per ruotarlo; trascinalo per spostarlo.",
+    "mapEditorInstructions": "Fare clic su una tessera per attivare il pellet, alimentare il pellet, lo spazio vuoto e il muro. Fare clic vicino a una linea della griglia per aggiungere o rimuovere un muro tra le tessere aperte. Fare clic su un personaggio per ruotarlo; trascina per spostarlo.",
     "directions": {
         "up": "Muovi in alto",
         "left": "Muovi a sinistra",

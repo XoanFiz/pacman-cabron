@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Gyara taswira",
     "backToCharacters": "Komawa haruffa",
     "useMap": "Yi amfani da wannan taswirar",
-    "mapEditorInstructions": "Danna tayal don zagayowar pellet, pellet mai ƙarfi, komai, da bango. Danna harafi don juya shi; ja shi don motsa shi.",
+    "mapEditorInstructions": "Danna tayal don zagayowar pellet, pellet mai ƙarfi, sarari mara komai, da bango. Danna kusa da layin grid don ƙara ko cire bango tsakanin buɗaɗɗen tayal. Danna harafi don juya shi; ja don motsa shi.",
     "directions":  {
                        "left":  "Matsa hagu",
                        "right":  "Matsa dama",

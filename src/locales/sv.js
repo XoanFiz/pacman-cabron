@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Redigera karta",
     "backToCharacters": "Tillbaka till tecken",
     "useMap": "Använd den här kartan",
-    "mapEditorInstructions": "Klicka på en bricka för att cykla pellet, power pellet, tom och vägg. Klicka på ett tecken för att rotera det; dra den för att flytta den.",
+    "mapEditorInstructions": "Klicka på en bricka för att cykla pellet, kraftpellet, tomt utrymme och vägg. Klicka nära en rutnätslinje för att lägga till eller ta bort en vägg mellan öppna brickor. Klicka på ett tecken för att rotera det; dra för att flytta den.",
     "directions": {
         "up": "Flytta uppåt",
         "left": "Flytta åt vänster",

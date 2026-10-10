@@ -180,6 +180,7 @@ const FRIGHTENED_BLINK_FREQUENCY = 12;
 const GHOST_COLLISION_DISTANCE = 0.55;
 
 let MAP;
+let MAP_EDGES = new Set();
 
 
 // ============================================================
@@ -265,6 +266,30 @@ function getWrappedPosition(x, y) {
 }
 
 
+function getBoundaryKey(x, y, direction) {
+    const position = getWrappedPosition(x, y);
+
+    if (direction.x === 1) {
+        return `h:${position.x}:${position.y}`;
+    }
+
+    if (direction.x === -1) {
+        return `h:${wrap(position.x - 1, COLS)}:${position.y}`;
+    }
+
+    if (direction.y === 1) {
+        return `v:${position.x}:${position.y}`;
+    }
+
+    return `v:${position.x}:${wrap(position.y - 1, ROWS)}`;
+}
+
+
+function isBoundaryBlocked(x, y, direction) {
+    return MAP_EDGES.has(getBoundaryKey(x, y, direction));
+}
+
+
 function canMove(x, y, direction) {
 
     const next = getWrappedPosition(
@@ -272,7 +297,8 @@ function canMove(x, y, direction) {
         y + direction.y
     );
 
-    return !isWall(next.x, next.y);
+    return !isWall(next.x, next.y) &&
+        !isBoundaryBlocked(x, y, direction);
 }
 
 
@@ -308,7 +334,10 @@ function buildGraph() {
                     );
 
 
-                if (!isWall(next.x, next.y)) {
+                if (
+                    !isWall(next.x, next.y) &&
+                    !isBoundaryBlocked(x, y, direction)
+                ) {
 
                     graph[y][x].push({
                         x: next.x,
@@ -1283,7 +1312,8 @@ function canMoveInSearchState(state, character, direction) {
     const x = wrap(character.x + direction.x, COLS);
     const y = wrap(character.y + direction.y, ROWS);
 
-    return state.map[y][x] !== "#";
+    return state.map[y][x] !== "#" &&
+        !isBoundaryBlocked(character.x, character.y, direction);
 }
 
 
@@ -2177,27 +2207,12 @@ function getShortestPathDirection(startX, startY, targetX, targetY) {
     const key = (x, y) => `${x},${y}`;
     visited.add(key(start.x, start.y));
 
-    const directions = [
-        { x: 1, y: 0 },
-        { x: -1, y: 0 },
-        { x: 0, y: 1 },
-        { x: 0, y: -1 }
-    ];
-
     let index = 0;
 
     while (index < queue.length) {
         const current = queue[index++];
 
-        for (const direction of directions) {
-            const next = getWrappedPosition(
-                current.x + direction.x,
-                current.y + direction.y
-            );
-
-            if (isWall(next.x, next.y)) {
-                continue;
-            }
+        for (const next of graph[current.y][current.x]) {
 
             const nextKey = key(next.x, next.y);
 
@@ -2206,7 +2221,7 @@ function getShortestPathDirection(startX, startY, targetX, targetY) {
             }
 
             const firstDirection =
-                current.firstDirection ?? direction;
+                current.firstDirection ?? next.direction;
 
             if (next.x === target.x && next.y === target.y) {
                 return firstDirection;
@@ -2254,10 +2269,11 @@ function resetLevel() {
      * Normalize each row to COLS.
      */
     MAP =
-        (customMap || LEVEL_MAP).map(
+        (customMap ? customMap.tiles : LEVEL_MAP).map(
             row =>
                 row.slice(0, COLS)
         );
+    MAP_EDGES = new Set(customMap ? customMap.edges : []);
 
 
     for (const row of MAP) {
@@ -3123,10 +3139,11 @@ function draw() {
         }
     }
 
-
     if (editorMode) {
         drawMapEditorGrid();
     }
+
+    drawBoundaryWalls();
 
     drawPlayer();
 
@@ -3140,6 +3157,36 @@ function draw() {
             ghosts[i],
             i
         );
+    }
+}
+
+
+function drawBoundaryWalls() {
+    ctx.fillStyle = editorMode ? "#9dbdff" : "#3156a3";
+
+    for (const edgeKey of MAP_EDGES) {
+        const [orientation, rawX, rawY] = edgeKey.split(":");
+        const x = Number(rawX);
+        const y = Number(rawY);
+        const thickness = editorMode ? 5 : 4;
+
+        if (orientation === "h") {
+            const edgeX = (x + 1) * CELL - thickness / 2;
+            const edgeY = y * CELL;
+            ctx.fillRect(edgeX, edgeY, thickness, CELL);
+
+            if (x === COLS - 1) {
+                ctx.fillRect(-thickness / 2, edgeY, thickness, CELL);
+            }
+        } else {
+            const edgeX = x * CELL;
+            const edgeY = (y + 1) * CELL - thickness / 2;
+            ctx.fillRect(edgeX, edgeY, CELL, thickness);
+
+            if (y === ROWS - 1) {
+                ctx.fillRect(edgeX, -thickness / 2, CELL, thickness);
+            }
+        }
     }
 }
 
@@ -3443,7 +3490,10 @@ function enterMapEditor() {
 
 function leaveMapEditor(saveChanges) {
     if (saveChanges) {
-        customMap = MAP.map(row => row.slice());
+        customMap = {
+            tiles: MAP.map(row => row.slice()),
+            edges: Array.from(MAP_EDGES)
+        };
         customPlayerStart = {
             x: player.x,
             y: player.y,
@@ -3475,6 +3525,71 @@ function getEditorPosition(event) {
     }
 
     return { x, y };
+}
+
+
+function getEditorBoundary(event) {
+    const bounds = canvas.getBoundingClientRect();
+    const gridX = (event.clientX - bounds.left) * COLS / bounds.width;
+    const gridY = (event.clientY - bounds.top) * ROWS / bounds.height;
+    const verticalLine = Math.round(gridX);
+    const horizontalLine = Math.round(gridY);
+    const verticalDistance = Math.abs(gridX - verticalLine);
+    const horizontalDistance = Math.abs(gridY - horizontalLine);
+    const edgeTolerance = 0.22;
+
+    if (
+        Math.min(verticalDistance, horizontalDistance) > edgeTolerance
+    ) {
+        return null;
+    }
+
+    if (verticalDistance <= horizontalDistance) {
+        const y = Math.floor(gridY);
+        const x = wrap(verticalLine - 1, COLS);
+        const direction = DIRECTIONS.right;
+
+        return {
+            key: getBoundaryKey(x, y, direction),
+            x,
+            y,
+            direction
+        };
+    }
+
+    const x = Math.floor(gridX);
+    const y = wrap(horizontalLine - 1, ROWS);
+    const direction = DIRECTIONS.down;
+
+    return {
+        key: getBoundaryKey(x, y, direction),
+        x,
+        y,
+        direction
+    };
+}
+
+
+function toggleEditorBoundary(boundary) {
+    const next = getWrappedPosition(
+        boundary.x + boundary.direction.x,
+        boundary.y + boundary.direction.y
+    );
+
+    if (
+        isWall(boundary.x, boundary.y) ||
+        isWall(next.x, next.y)
+    ) {
+        return;
+    }
+
+    if (MAP_EDGES.has(boundary.key)) {
+        MAP_EDGES.delete(boundary.key);
+    } else {
+        MAP_EDGES.add(boundary.key);
+    }
+
+    buildGraph();
 }
 
 
@@ -3559,6 +3674,14 @@ function cycleEditorTile(position) {
         nextTile +
         row.slice(position.x + 1);
 
+    if (nextTile === "#") {
+        for (const direction of Object.values(DIRECTIONS)) {
+            MAP_EDGES.delete(
+                getBoundaryKey(position.x, position.y, direction)
+            );
+        }
+    }
+
     pellets = MAP.reduce((total, row) =>
         total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
     0);
@@ -3578,16 +3701,23 @@ canvas.addEventListener("pointerdown", event => {
 
     event.preventDefault();
     canvas.setPointerCapture(event.pointerId);
+    const boundary = getEditorBoundary(event);
     const selected = getEditorEntity(position);
 
-    editorGesture = selected
-        ? { ...selected, start: position, moved: false }
-        : { type: "tile", start: position, moved: false };
+    editorGesture = boundary
+        ? { type: "boundary", edge: boundary, start: position, moved: false }
+        : selected
+            ? { ...selected, start: position, moved: false }
+            : { type: "tile", start: position, moved: false };
 });
 
 
 canvas.addEventListener("pointermove", event => {
-    if (!editorMode || !editorGesture || editorGesture.type === "tile") {
+    if (
+        !editorMode ||
+        !editorGesture ||
+        (editorGesture.type !== "player" && editorGesture.type !== "ghost")
+    ) {
         return;
     }
 
@@ -3607,9 +3737,19 @@ canvas.addEventListener("pointerup", event => {
         return;
     }
 
-    const position = getEditorPosition(event);
     const gesture = editorGesture;
     editorGesture = null;
+
+    if (gesture.type === "boundary") {
+        const boundary = getEditorBoundary(event);
+
+        if (boundary && boundary.key === gesture.edge.key) {
+            toggleEditorBoundary(boundary);
+        }
+        return;
+    }
+
+    const position = getEditorPosition(event);
 
     if (!position) {
         return;

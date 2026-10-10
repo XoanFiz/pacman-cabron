@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Modifier la carte",
     "backToCharacters": "Retour aux personnages",
     "useMap": "Utilisez cette carte",
-    "mapEditorInstructions": "Cliquez sur une tuile pour faire défiler les pellets, les pellets électriques, les vides et les murs. Cliquez sur un personnage pour le faire pivoter ; faites-le glisser pour le déplacer.",
+    "mapEditorInstructions": "Cliquez sur une tuile pour faire défiler les pellets, les pellets électriques, l\u0027espace vide et le mur. Cliquez à proximité d\u0027une ligne de quadrillage pour ajouter ou supprimer un mur entre des tuiles ouvertes. Cliquez sur un personnage pour le faire pivoter ; faites glisser pour le déplacer.",
     "directions": {
         "up": "Aller en haut",
         "left": "Aller à gauche",

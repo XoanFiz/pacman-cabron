@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "I-edit ang mapa",
     "backToCharacters": "Balik sa mga karakter",
     "useMap": "Gamita kini nga mapa",
-    "mapEditorInstructions": "Pag-klik sa tile aron mag-cycle ang pellet, power pellet, walay sulod, ug dingding. Pag-klik sa usa ka karakter aron i-rotate kini; i-drag kini aron mapalihok kini.",
+    "mapEditorInstructions": "Pag-klik sa usa ka tile aron mag-cycle ang pellet, power pellet, walay sulod nga luna, ug dingding. Pag-klik duol sa linya sa grid aron idugang o tangtangon ang bungbong taliwala sa bukas nga mga tile. Pag-klik sa usa ka karakter aron i-rotate kini; drag aron mapalihok kini.",
     "directions":  {
                        "left":  "Lihok sa wala",
                        "right":  "Lihok sa tuo",

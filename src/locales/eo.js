@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Redaktu mapon",
     "backToCharacters": "Reen al signoj",
     "useMap": "Uzu ĉi tiun mapon",
-    "mapEditorInstructions": "Alklaku kahelon por bicikli buleton, elektran buleton, malplenan kaj muron. Alklaku signon por turni ĝin; trenu ĝin por movi ĝin.",
+    "mapEditorInstructions": "Alklaku kahelon por bicikli buleton, potencan buleton, malplenan spacon kaj muron. Alklaku proksime al kradlinio por aldoni aŭ forigi muron inter malfermitaj kaheloj. Alklaku signon por turni ĝin; trenu por movi ĝin.",
     "directions":  {
                        "left":  "Movu maldekstren",
                        "right":  "Movu dekstren",

@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Hariri ramani",
     "backToCharacters": "Rudi kwa vibambo",
     "useMap": "Tumia ramani hii",
-    "mapEditorInstructions": "Bofya kigae ili kuzungusha pellet, peli ya umeme, tupu, na ukuta. Bofya herufi ili kuizungusha; iburute ili kuisogeza.",
+    "mapEditorInstructions": "Bofya kigae ili kuzungusha pellet, pellet ya nguvu, nafasi tupu na ukuta. Bofya karibu na mstari wa gridi ili kuongeza au kuondoa ukuta kati ya vigae vilivyo wazi. Bofya herufi ili kuizungusha; buruta ili kuisogeza.",
     "directions":  {
                        "left":  "Sogeza kushoto",
                        "right":  "Sogeza kulia",

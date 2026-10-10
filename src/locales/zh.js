@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "编辑地图",
     "backToCharacters": "返回角色",
     "useMap": "使用此地图",
-    "mapEditorInstructions": "单击一个图块以循环颗粒、动力颗粒、空和墙。点击一个角色可以旋转它；拖动它来移动它。",
+    "mapEditorInstructions": "单击图块可循环颗粒、动力颗粒、空白区域和墙壁。单击网格线附近可添加或删除开放图块之间的墙。点击一个角色可以旋转它；拖动以移动它。",
     "directions": {
         "up": "向上移动",
         "left": "向左移动",

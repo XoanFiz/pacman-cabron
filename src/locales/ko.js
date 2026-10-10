@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "지도 편집",
     "backToCharacters": "문자로 돌아가기",
     "useMap": "이 지도를 사용하세요",
-    "mapEditorInstructions": "타일을 클릭하면 펠릿, 파워 펠릿, 빈 공간, 벽이 순환됩니다. 회전하려면 문자를 클릭하세요. 드래그하여 이동하세요.",
+    "mapEditorInstructions": "타일을 클릭하면 펠렛, 파워 펠렛, 빈 공간, 벽이 순환됩니다. 열린 타일 사이에 벽을 추가하거나 제거하려면 그리드 선 근처를 클릭합니다. 회전하려면 문자를 클릭하세요. 드래그하여 이동하세요.",
     "directions": {
         "up": "위로 이동",
         "left": "왼쪽으로 이동",

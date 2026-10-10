@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Breyta korti",
     "backToCharacters": "Til baka í stafi",
     "useMap": "Notaðu þetta kort",
-    "mapEditorInstructions": "Smelltu á flís til að hjóla í köggla, kraftköggla, tæma og vegg. Smelltu á staf til að snúa honum; dragðu það til að færa það.",
+    "mapEditorInstructions": "Smelltu á flís til að hjóla í pellet, power pellet, autt rými og vegg. Smelltu nálægt ristlínu til að bæta við eða fjarlægja vegg á milli opinna flísa. Smelltu á staf til að snúa honum; dragðu til að færa það.",
     "directions":  {
                        "left":  "Færðu til vinstri",
                        "right":  "Færðu til hægri",

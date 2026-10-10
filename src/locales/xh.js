@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Hlela imephu",
     "backToCharacters": "Buyela kubalinganiswa",
     "useMap": "Sebenzisa le mephu",
-    "mapEditorInstructions": "Cofa ithayile ukujikelezisa ipellet, ipellet yamandla, engenanto, kunye nodonga. Cofa umbhalo ukuze uyijikelezise; yirhuqe ukuyisusa.",
+    "mapEditorInstructions": "Cofa ithayile ukujikelezisa i-pellet, ipellet yamandla, indawo engenanto, kunye nodonga. Cofa kufutshane nomgca wegridi ukongeza okanye ukususa udonga phakathi kweethayile ezivuliweyo. Cofa umbhalo ukuze uyijikelezise; tsala ukuyisusa.",
     "directions":  {
                        "left":  "Shenxela ngasekhohlo",
                        "right":  "Shenxela ngasekunene",

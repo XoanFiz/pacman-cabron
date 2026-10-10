@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Dezie maapụ",
     "backToCharacters": "Laghachi na mkpụrụedemede",
     "useMap": "Jiri maapụ a",
-    "mapEditorInstructions": "Pịa taịlị ka pellet okirikiri, pellet ike, ihe efu na mgbidi. Pịa mkpụrụedemede iji tụgharịa ya; dọkpụrụ ya ka ọ bugharịa ya.",
+    "mapEditorInstructions": "Pịa taịlị ka pellet okirikiri, ike pellet, oghere efu, na mgbidi. Pịa n\u0027akụkụ ahịrị grid ka ịgbakwunye ma ọ bụ wepụ mgbidi n\u0027etiti taịlị mepere emepe. Pịa mkpụrụedemede iji tụgharịa ya; dọrọ ka ibugharịa ya.",
     "directions":  {
                        "left":  "Gaa n\u0027aka ekpe",
                        "right":  "Gaa aka nri",

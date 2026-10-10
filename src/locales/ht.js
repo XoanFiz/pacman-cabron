@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Edit kat la",
     "backToCharacters": "Retounen nan karaktè",
     "useMap": "Sèvi ak kat sa a",
-    "mapEditorInstructions": "Klike sou yon mozayik pou sikile granules, granules pouvwa, vid, ak miray. Klike sou yon karaktè pou vire l; trennen li pou deplase li.",
+    "mapEditorInstructions": "Klike sou yon mozayik pou sikile granules, granules pouvwa, espas vid, ak miray. Klike toupre yon liy kadriyaj pou ajoute oswa retire yon miray ant mozayik louvri. Klike sou yon karaktè pou vire l; trennen pou deplase li.",
     "directions":  {
                        "left":  "Deplase agoch",
                        "right":  "Deplase dwat",

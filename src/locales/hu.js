@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Térkép szerkesztése",
     "backToCharacters": "Vissza a karakterekhez",
     "useMap": "Használja ezt a térképet",
-    "mapEditorInstructions": "Kattintson egy csempére a pellet, power pellet, üres és fal közötti ciklushoz. Kattintson egy karakterre a forgatáshoz; mozgatásához húzza.",
+    "mapEditorInstructions": "Kattintson egy csempére a pellet, az energiapellet, az üres tér és a fal közötti ciklushoz. Kattintson egy rácsvonal közelében fal hozzáadásához vagy eltávolításához a nyitott csempe közé. Kattintson egy karakterre a forgatáshoz; húzással mozgathatja.",
     "directions":  {
                        "left":  "Mozgás balra",
                        "right":  "Mozgás jobbra",

@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Xaritani tahrirlash",
     "backToCharacters": "Belgilarga qaytish",
     "useMap": "Ushbu xaritadan foydalaning",
-    "mapEditorInstructions": "Pellet, quvvat pelleti, bo\u0027sh va devorni aylantirish uchun plitka ustiga bosing. Belgini aylantirish uchun uni bosing; uni siljitish uchun torting.",
+    "mapEditorInstructions": "Pellet, quvvat pelleti, bo\u0027sh joy va devorni aylantirish uchun plitka ustiga bosing. Ochiq plitkalar orasiga devor qo\u0027shish yoki olib tashlash uchun panjara chizig\u0027i yonida bosing. Belgini aylantirish uchun uni bosing; uni siljitish uchun torting.",
     "directions":  {
                        "left":  "Chapga siljiting",
                        "right":  "O\u0027ngga siljiting",

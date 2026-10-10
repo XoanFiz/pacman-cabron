@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Upravit mapu",
     "backToCharacters": "Zpět na znaky",
     "useMap": "Použít tuto mapu",
-    "mapEditorInstructions": "Kliknutím na dlaždici projedete pelety, energetické pelety, vyprázdníte a zeď. Kliknutím na postavu ji otočíte; přetažením jej přesunete.",
+    "mapEditorInstructions": "Kliknutím na dlaždici můžete zacyklit pelety, energetické pelety, prázdné místo a zeď. Kliknutím poblíž čáry mřížky přidáte nebo odstraníte zeď mezi otevřené dlaždice. Kliknutím na postavu ji otočíte; přetažením jej přesunete.",
     "directions":  {
                        "left":  "Přesuňte se doleva",
                        "right":  "Pohyb doprava",

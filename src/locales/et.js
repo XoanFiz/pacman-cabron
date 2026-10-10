@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Redigeeri kaarti",
     "backToCharacters": "Tagasi tähemärkide juurde",
     "useMap": "Kasutage seda kaarti",
-    "mapEditorInstructions": "Klikkige paanil, et tsüklistada graanulit, elektrigraanulit, tühjendada ja seina. Klõpsake tähemärki selle pööramiseks; liigutamiseks lohistage seda.",
+    "mapEditorInstructions": "Klõpsake plaadil, et tsüklistada pelleti, elektrigraanuli, tühja ruumi ja seina. Avatud plaatide vahele seina lisamiseks või eemaldamiseks klõpsake ruudustikujoone lähedal. Klõpsake tähemärki selle pööramiseks; lohistage selle liigutamiseks.",
     "directions":  {
                        "left":  "Liigu vasakule",
                        "right":  "Liigu paremale",

@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Rediģēt karti",
     "backToCharacters": "Atpakaļ pie rakstzīmēm",
     "useMap": "Izmantojiet šo karti",
-    "mapEditorInstructions": "Noklikšķiniet uz flīzes, lai pārvietotu granulu, enerģijas granulu, tukšu un sienu. Noklikšķiniet uz rakstzīmes, lai to pagrieztu; velciet to, lai to pārvietotu.",
+    "mapEditorInstructions": "Noklikšķiniet uz flīzes, lai pārvietotu granulu, enerģijas granulu, tukšu vietu un sienu. Noklikšķiniet netālu no režģa līnijas, lai pievienotu vai noņemtu sienu starp atvērtajām flīzēm. Noklikšķiniet uz rakstzīmes, lai to pagrieztu; velciet, lai to pārvietotu.",
     "directions":  {
                        "left":  "Pārvietojieties pa kreisi",
                        "right":  "Pārvietojieties pa labi",

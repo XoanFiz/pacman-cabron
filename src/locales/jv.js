@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Owahi peta",
     "backToCharacters": "Bali menyang karakter",
     "useMap": "Gunakake peta iki",
-    "mapEditorInstructions": "Klik kothak kanggo siklus pelet, pelet daya, kosong, lan tembok. Klik karakter kanggo muter; seret kanggo mindhah.",
+    "mapEditorInstructions": "Klik kothak kanggo muter pelet, pelet daya, ruang kosong, lan tembok. Klik ing cedhak garis kothak kanggo nambah utawa mbusak tembok ing antarane kothak sing mbukak. Klik karakter kanggo muter; seret kanggo mindhah.",
     "directions":  {
                        "left":  "Pindhah ngiwa",
                        "right":  "Ngalih nengen",

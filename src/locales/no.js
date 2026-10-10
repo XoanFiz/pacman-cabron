@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Rediger kart",
     "backToCharacters": "Tilbake til tegn",
     "useMap": "Bruk dette kartet",
-    "mapEditorInstructions": "Klikk på en flis for å sykle pellet, power pellet, tom og vegg. Klikk på et tegn for å rotere det; dra den for å flytte den.",
+    "mapEditorInstructions": "Klikk på en flis for å sykle pellet, kraftpellet, tomt rom og vegg. Klikk nær en rutenettlinje for å legge til eller fjerne en vegg mellom åpne fliser. Klikk på et tegn for å rotere det; dra for å flytte den.",
     "directions": {
         "up": "Flytt opp",
         "left": "Flytt til venstre",

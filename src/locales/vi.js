@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Chỉnh sửa bản đồ",
     "backToCharacters": "Quay lại ký tự",
     "useMap": "Sử dụng bản đồ này",
-    "mapEditorInstructions": "Nhấp vào ô để xoay vòng viên, viên năng lượng, chỗ trống và bức tường. Bấm vào một ký tự để xoay nó; kéo nó để di chuyển nó.",
+    "mapEditorInstructions": "Nhấp vào một ô để xoay viên, viên năng lượng, không gian trống và tường. Nhấp vào gần đường lưới để thêm hoặc xóa bức tường giữa các ô đang mở. Bấm vào một ký tự để xoay nó; kéo để di chuyển nó.",
     "directions": {
         "up": "Đi lên",
         "left": "Sang trái",

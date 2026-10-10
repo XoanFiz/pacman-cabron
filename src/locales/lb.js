@@ -12,7 +12,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Kaart änneren",
     "backToCharacters": "Zréck op Zeeche",
     "useMap": "Benotzt dës Kaart",
-    "mapEditorInstructions": "Klickt op eng Fliesen fir Pellet, Kraaftpellet, eidel a Mauer z\u0027entwéckelen. Klickt op e Charakter fir et ze rotéieren; zitt et fir se ze réckelen.",
+    "mapEditorInstructions": "Klickt op eng Fliesen fir Pellet, Kraaftpellet, eidel Plaz a Mauer z\u0027erreechen. Klickt no bei enger Gitterlinn fir eng Mauer tëscht oppene Fliesen ze addéieren oder ze läschen. Klickt op e Charakter fir et ze rotéieren; zitt fir et ze réckelen.",
     "directions":  {
                        "left":  "Beweegt lénks",
                        "right":  "Géi riets",

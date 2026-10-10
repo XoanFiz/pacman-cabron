@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Editar mapa",
     "backToCharacters": "Volver a los personajes",
     "useMap": "Usar este mapa",
-    "mapEditorInstructions": "Haz clic en un mosaico para alternar el perdigón, el perdigón de energía, el vacío y la pared. Haga clic en un personaje para rotarlo; arrástrelo para moverlo.",
+    "mapEditorInstructions": "Haga clic en un mosaico para alternar el pellet, el pellet de energía, el espacio vacío y la pared. Haga clic cerca de una línea de cuadrícula para agregar o eliminar una pared entre mosaicos abiertos. Haga clic en un personaje para rotarlo; arrastre para moverlo.",
     "directions": {
         "up": "Mover arriba",
         "left": "Mover a la izquierda",

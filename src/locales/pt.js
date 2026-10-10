@@ -17,7 +17,7 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Editar mapa",
     "backToCharacters": "Voltar aos personagens",
     "useMap": "Use este mapa",
-    "mapEditorInstructions": "Clique em um bloco para alternar pellet, power pellet, vazio e parede. Clique em um personagem para girá-lo; arraste-o para movê-lo.",
+    "mapEditorInstructions": "Clique em um ladrilho para alternar o pellet, o power pellet, o espaço vazio e a parede. Clique perto de uma linha de grade para adicionar ou remover uma parede entre blocos abertos. Clique em um personagem para girá-lo; arraste para movê-lo.",
     "directions": {
         "up": "Mover para cima",
         "left": "Mover para a esquerda",
