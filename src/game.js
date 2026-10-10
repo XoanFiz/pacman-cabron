@@ -2281,6 +2281,9 @@ function resetLevel() {
         px: playerStart.x,
         py: playerStart.y,
         direction: { ...playerStart.direction },
+        facingDirection: playerStart.direction.x || playerStart.direction.y
+            ? { ...playerStart.direction }
+            : { ...DIRECTIONS.right },
 
         nextDirection: {
             x: 0,
@@ -2393,9 +2396,7 @@ function updatePlayer(dt) {
             )
         ) {
 
-            player.direction = {
-                ...player.nextDirection
-            };
+            setPlayerDirection(player.nextDirection);
         }
 
 
@@ -2407,10 +2408,7 @@ function updatePlayer(dt) {
             )
         ) {
 
-            player.direction = {
-                x: 0,
-                y: 0
-            };
+            setPlayerDirection({ x: 0, y: 0 });
 
             break;
         }
@@ -2430,6 +2428,15 @@ function updatePlayer(dt) {
 }
 
 
+function setPlayerDirection(direction) {
+    player.direction = { ...direction };
+
+    if (direction.x !== 0 || direction.y !== 0) {
+        player.facingDirection = { ...direction };
+    }
+}
+
+
 function tryChangeDirection() {
 
     if (
@@ -2440,9 +2447,7 @@ function tryChangeDirection() {
         )
     ) {
 
-        player.direction = {
-            ...player.nextDirection
-        };
+        setPlayerDirection(player.nextDirection);
     }
 }
 
@@ -3170,25 +3175,26 @@ function drawPlayer() {
         CELL / 2;
 
 
+    const facingDirection = player.facingDirection || player.direction;
     let angle = 0;
 
 
     if (
-        player.direction.x === -1
+        facingDirection.x === -1
     ) {
         angle = Math.PI;
     }
 
 
     if (
-        player.direction.y === -1
+        facingDirection.y === -1
     ) {
         angle = -Math.PI / 2;
     }
 
 
     if (
-        player.direction.y === 1
+        facingDirection.y === 1
     ) {
         angle = Math.PI / 2;
     }
@@ -3440,7 +3446,7 @@ function leaveMapEditor(saveChanges) {
         customPlayerStart = {
             x: player.x,
             y: player.y,
-            direction: { ...player.direction }
+            direction: { ...player.facingDirection }
         };
         customGhostStarts = ghosts.map(ghost => ({
             x: ghost.x,
@@ -3495,6 +3501,10 @@ function rotateEditorEntity(entity) {
 
     entity.direction = { ...direction };
     entity.nextDirection = { ...direction };
+
+    if (gesture.type === "player") {
+        entity.facingDirection = { ...direction };
+    }
 }
 
 
