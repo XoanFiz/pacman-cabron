@@ -4,6 +4,7 @@ const ctx = canvas.getContext("2d");
 const scoreElement = document.getElementById("score");
 const livesElement = document.getElementById("lives");
 const statusElement = document.getElementById("status");
+const startScreenElement = document.getElementById("start-screen");
 
 // ============================================================
 // DEBUG
@@ -101,6 +102,7 @@ let pellets;
 
 let player;
 let ghosts;
+let selectedCharacter = "pacman";
 
 let running = false;
 let gameWon = false;
@@ -111,6 +113,8 @@ let gameTime = 0;
 let frightenedTimer = 0;
 
 const FRIGHTENED_DURATION = 7;
+const FRIGHTENED_BLINK_TIME = 2;
+const FRIGHTENED_BLINK_FREQUENCY = 12;
 const GHOST_COLLISION_DISTANCE = 0.55;
 
 let MAP;
@@ -1044,8 +1048,8 @@ function calculateBlueScore(
     /*
      * Jain Fairness Index.
      *
-     * 1 = reparto perfecto
-     * 1/n = todo concentrado nunha soa fantasma
+     * 1 = perfectly balanced distribution
+     * 1/n = all value concentrated in one ghost
      */
     const fairness =
         total * total /
@@ -1122,7 +1126,7 @@ function cloneSearchCharacter(character) {
 }
 
 
-function createSearchState(readyGhostIndices) {
+function createSearchState(readyGhostIndices, readyPlayer = false) {
     const readyGhostSet = new Set(readyGhostIndices);
 
     return {
@@ -1133,8 +1137,11 @@ function createSearchState(readyGhostIndices) {
         frightenedTimer,
         player: cloneSearchCharacter(player),
         ghosts: ghosts.map(cloneSearchCharacter),
+        controlledGhostIndex: selectedCharacter.startsWith("ghost-")
+            ? Number(selectedCharacter.slice("ghost-".length))
+            : -1,
         terminal: false,
-        readyPlayer: false,
+        readyPlayer,
         readyGhosts: ghosts.map((_, index) => readyGhostSet.has(index))
     };
 }
@@ -1148,7 +1155,13 @@ function searchStateKey(state) {
         character.direction.y,
         Number(character.progress.toFixed(5)),
         Boolean(character.frightened),
-        Boolean(character.eaten)
+        Boolean(character.eaten),
+        character.nextDirection
+            ? character.nextDirection.x
+            : null,
+        character.nextDirection
+            ? character.nextDirection.y
+            : null
     ].join(",");
 
     return JSON.stringify([
@@ -1156,6 +1169,7 @@ function searchStateKey(state) {
         state.pellets,
         state.lives,
         state.terminal,
+        state.controlledGhostIndex,
         Number(state.frightenedTimer.toFixed(5)),
         characterKey(state.player),
         state.player.nextDirection.x,
@@ -1229,6 +1243,26 @@ function getSearchDirections(state, character, isGhost) {
 
 function getSearchGhostDirections(state, index) {
     const ghost = state.ghosts[index];
+
+    if (
+        index === state.controlledGhostIndex &&
+        !ghost.eaten
+    ) {
+        if (
+            ghost.nextDirection &&
+            canMoveInSearchState(state, ghost, ghost.nextDirection)
+        ) {
+            return [{ ...ghost.nextDirection }];
+        }
+
+        if (canMoveInSearchState(state, ghost, ghost.direction)) {
+            return [{ ...ghost.direction }];
+        }
+
+        return [
+            getSearchDirections(state, ghost, true)[0]
+        ];
+    }
 
     if (ghost.eaten) {
         return [
@@ -1935,9 +1969,9 @@ function getStrategicGhostDirection(node, ghostIndex, fallback) {
 }
 
 
-function chooseStrategicGhostDirections(readyGhosts) {
+function getStrategicSearchRoot(readyGhosts, readyPlayer = false) {
     const readyGhostIndices = readyGhosts.map(ghost => ghosts.indexOf(ghost));
-    const state = createSearchState(readyGhostIndices);
+    const state = createSearchState(readyGhostIndices, readyPlayer);
     const key = searchStateKey(state);
     let root = strategicSearch.nodes.get(key);
 
@@ -1959,7 +1993,15 @@ function chooseStrategicGhostDirections(readyGhosts) {
         removeStrategicSearchFrontier(root);
     }
 
+    prepareStrategicSearchNode(root);
     strategicSearch.root = root;
+
+    return root;
+}
+
+
+function chooseStrategicGhostDirections(readyGhosts) {
+    const root = getStrategicSearchRoot(readyGhosts);
 
     return new Map(
         readyGhosts.map(ghost => {
@@ -1975,6 +2017,60 @@ function chooseStrategicGhostDirections(readyGhosts) {
             ];
         })
     );
+}
+
+
+function chooseStrategicPacmanDirection() {
+    const root = getStrategicSearchRoot([], true);
+    const actionValues = new Map();
+
+    for (const candidate of root.candidates) {
+        const direction = candidate.playerDirection;
+        const key = `${direction.x},${direction.y}`;
+        const ghostKey = candidate.ghostDirections
+            .map(([index, ghostDirection]) =>
+                `${index}:${ghostDirection.x},${ghostDirection.y}`
+            )
+            .join("|");
+
+        if (!actionValues.has(key)) {
+            actionValues.set(key, {
+                direction,
+                ghostResponses: new Map()
+            });
+        }
+
+        const action = actionValues.get(key);
+        const value = candidate.processed
+            ? candidate.value
+            : root.staticValue;
+
+        action.ghostResponses.set(
+            ghostKey,
+            Math.max(
+                action.ghostResponses.get(ghostKey) ?? -Infinity,
+                value
+            )
+        );
+    }
+
+    let bestDirection = null;
+    let bestValue = Infinity;
+
+    for (const action of actionValues.values()) {
+        const worstGhostResponse = Math.max(
+            ...action.ghostResponses.values()
+        );
+
+        if (worstGhostResponse < bestValue) {
+            bestValue = worstGhostResponse;
+            bestDirection = action.direction;
+        }
+    }
+
+    return bestDirection
+        ? { ...bestDirection }
+        : { ...player.direction };
 }
 
 
@@ -2093,7 +2189,7 @@ function resetLevel() {
 
 
     /*
-     * Normalizamos as filas a COLS.
+     * Normalize each row to COLS.
      */
     MAP =
         LEVEL_MAP.map(
@@ -2151,6 +2247,10 @@ function resetLevel() {
                 x: 1,
                 y: 0
             },
+            nextDirection: {
+                x: 1,
+                y: 0
+            },
 
             frightened: false,
             eaten: false,
@@ -2166,6 +2266,10 @@ function resetLevel() {
             py: 8,
 
             direction: {
+                x: -1,
+                y: 0
+            },
+            nextDirection: {
                 x: -1,
                 y: 0
             },
@@ -2187,6 +2291,10 @@ function resetLevel() {
                 x: -1,
                 y: 0
             },
+            nextDirection: {
+                x: -1,
+                y: 0
+            },
 
             frightened: false,
             eaten: false,
@@ -2204,7 +2312,9 @@ function resetLevel() {
 
 
     statusElement.textContent =
-        "Press an arrow to start";
+        selectedCharacter === "pacman"
+            ? "Press an arrow key to start as Pac-Man"
+            : "Press an arrow key to start as a ghost";
 }
 
 
@@ -2264,6 +2374,11 @@ function updatePlayer(dt) {
 
 
         eatPellet();
+
+        if (selectedCharacter !== "pacman" && running) {
+            player.nextDirection =
+                chooseStrategicPacmanDirection();
+        }
 
 
         if (
@@ -2615,10 +2730,26 @@ function updateGhost(
         // NORMAL / BLUE
         // ====================================================
 
-        ghost.needsDirection = true;
-        ghost.pendingDecisionTime =
-            gameTime -
-            ghost.progress / GHOST_SPEED;
+        if (getControlledGhost() === ghost) {
+            const desiredDirection = ghost.nextDirection;
+
+            if (
+                desiredDirection &&
+                canMove(ghost.x, ghost.y, desiredDirection)
+            ) {
+                ghost.direction = { ...desiredDirection };
+            } else if (!canMove(ghost.x, ghost.y, ghost.direction)) {
+                ghost.direction = { ...possibleDirections[0] };
+            }
+
+            ghost.needsDirection = false;
+        } else {
+            ghost.needsDirection = true;
+            ghost.pendingDecisionTime =
+                gameTime -
+                ghost.progress / GHOST_SPEED;
+        }
+
         break;
     }
 
@@ -2722,7 +2853,7 @@ function loseLife() {
 
     statusElement.textContent =
         lives > 0
-            ? "You lost a life"
+            ? "Pac-Man lost a life"
             : "Game over";
 
 
@@ -2750,7 +2881,7 @@ function update(dt) {
 
 
             statusElement.textContent =
-                "Preme unha frecha para continuar";
+                "Press an arrow key to continue";
         }
 
 
@@ -3122,8 +3253,13 @@ function drawGhost(
 
     if (ghost.frightened) {
 
-        ctx.fillStyle =
-            "#3159d6";
+        const blinking =
+            frightenedTimer <= FRIGHTENED_BLINK_TIME &&
+            Math.floor(gameTime * FRIGHTENED_BLINK_FREQUENCY) % 2 === 0;
+
+        ctx.fillStyle = blinking
+            ? colors[index % colors.length]
+            : "#3159d6";
 
     }
 
@@ -3263,14 +3399,26 @@ function drawGhostEyes(
 // CONTROLS
 // ============================================================
 
+function getControlledGhost() {
+    if (!selectedCharacter.startsWith("ghost-")) {
+        return null;
+    }
+
+    return ghosts[Number(selectedCharacter.slice("ghost-".length))] || null;
+}
+
+
 function setDirection(
     direction
 ) {
 
-    player.nextDirection = {
-        ...direction
-    };
+    const controlledGhost = getControlledGhost();
 
+    if (controlledGhost) {
+        controlledGhost.nextDirection = { ...direction };
+    } else {
+        player.nextDirection = { ...direction };
+    }
 
     if (
         !running &&
@@ -3282,9 +3430,30 @@ function setDirection(
 
         statusElement.textContent = "";
 
-        tryChangeDirection();
+        if (controlledGhost) {
+            if (canMove(controlledGhost.x, controlledGhost.y, direction)) {
+                controlledGhost.direction = { ...direction };
+            }
+
+            player.nextDirection =
+                chooseStrategicPacmanDirection();
+            tryChangeDirection();
+        } else {
+            tryChangeDirection();
+        }
     }
 }
+
+
+document
+    .querySelectorAll("[data-character]")
+    .forEach(button => {
+        button.addEventListener("click", () => {
+            selectedCharacter = button.dataset.character;
+            resetGame();
+            startScreenElement.hidden = true;
+        });
+    });
 
 
 document.addEventListener(
@@ -3296,6 +3465,10 @@ document.addEventListener(
 
         if (event.key.toLowerCase() === "v") {
             showVoronoi = !showVoronoi;
+            return;
+        }
+
+        if (!startScreenElement.hidden) {
             return;
         }
 
@@ -3376,8 +3549,8 @@ document
     .addEventListener(
         "click",
         () => {
-
             resetGame();
+            startScreenElement.hidden = false;
         }
     );
 

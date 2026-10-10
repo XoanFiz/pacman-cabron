@@ -63,6 +63,82 @@
         display: flex;
         gap: 4px;
     }
+
+    #game {
+        position: relative;
+    }
+
+    #start-screen {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(9, 11, 18, 0.94);
+        box-sizing: border-box;
+    }
+
+    #start-screen[hidden] {
+        display: none;
+    }
+
+    .start-panel {
+        width: min(100%, 420px);
+        text-align: center;
+    }
+
+    .start-panel h1 {
+        margin: 0 0 8px;
+        color: #ffd43b;
+    }
+
+    .start-panel p {
+        margin: 0 0 20px;
+        color: #cbd5e1;
+    }
+
+    .character-choices {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .character-choice {
+        min-height: 124px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px;
+        background: #111827;
+        color: white;
+        border: 1px solid #3156a3;
+        border-radius: 10px;
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .character-choice:hover,
+    .character-choice:focus-visible {
+        border-color: #ffd43b;
+        background: #1b2740;
+        outline: 2px solid #ffd43b;
+        outline-offset: 2px;
+    }
+
+    .character-figure {
+        width: 48px;
+        height: 48px;
+    }
+
+    @media (max-height: 620px) {
+        #start-screen {
+            position: fixed;
+        }
+    }
 </style>
 </head>
 
@@ -71,12 +147,12 @@
 <div id="game">
 
     <div id="info">
-        <span>Puntos: <b id="score">0</b></span>
-        <span>Vidas: <b id="lives">3</b></span>
-        <button id="restart">Reiniciar</button>
+        <span>Score: <b id="score">0</b></span>
+        <span>Lives: <b id="lives">3</b></span>
+        <button id="restart">Restart</button>
     </div>
 
-    <div id="status">Preme unha frecha para comezar</div>
+    <div id="status">Press an arrow key to start</div>
 
     <canvas id="canvas"></canvas>
 
@@ -91,6 +167,45 @@
             <button data-dir="right">▶</button>
         </div>
     </div>
+
+    <section id="start-screen" aria-labelledby="start-title">
+        <div class="start-panel">
+            <h1 id="start-title">Choose your character</h1>
+            <p>Play as Pac-Man or control one of the ghosts.</p>
+            <div class="character-choices">
+                <button class="character-choice" data-character="pacman">
+                    <svg class="character-figure" viewBox="0 0 48 48" aria-hidden="true">
+                        <path d="M24 4a20 20 0 1 0 0 40c11 0 20-9 20-20H24L38 10A20 20 0 0 0 24 4Z" fill="#ffd43b"/>
+                    </svg>
+                    <span>Pac-Man</span>
+                </button>
+                <button class="character-choice" data-character="ghost-0">
+                    <svg class="character-figure" viewBox="0 0 48 48" aria-hidden="true">
+                        <path d="M5 43V23a19 19 0 0 1 38 0v20l-7-5-7 5-7-5-7 5-5-5Z" fill="#e05252"/>
+                        <ellipse cx="18" cy="23" rx="5" ry="7" fill="white"/><ellipse cx="31" cy="23" rx="5" ry="7" fill="white"/>
+                        <circle cx="20" cy="24" r="2.5" fill="#111827"/><circle cx="33" cy="24" r="2.5" fill="#111827"/>
+                    </svg>
+                    <span>Red Ghost</span>
+                </button>
+                <button class="character-choice" data-character="ghost-1">
+                    <svg class="character-figure" viewBox="0 0 48 48" aria-hidden="true">
+                        <path d="M5 43V23a19 19 0 0 1 38 0v20l-7-5-7 5-7-5-7 5-5-5Z" fill="#e99b35"/>
+                        <ellipse cx="18" cy="23" rx="5" ry="7" fill="white"/><ellipse cx="31" cy="23" rx="5" ry="7" fill="white"/>
+                        <circle cx="20" cy="24" r="2.5" fill="#111827"/><circle cx="33" cy="24" r="2.5" fill="#111827"/>
+                    </svg>
+                    <span>Orange Ghost</span>
+                </button>
+                <button class="character-choice" data-character="ghost-2">
+                    <svg class="character-figure" viewBox="0 0 48 48" aria-hidden="true">
+                        <path d="M5 43V23a19 19 0 0 1 38 0v20l-7-5-7 5-7-5-7 5-5-5Z" fill="#d66ad9"/>
+                        <ellipse cx="18" cy="23" rx="5" ry="7" fill="white"/><ellipse cx="31" cy="23" rx="5" ry="7" fill="white"/>
+                        <circle cx="20" cy="24" r="2.5" fill="#111827"/><circle cx="33" cy="24" r="2.5" fill="#111827"/>
+                    </svg>
+                    <span>Pink Ghost</span>
+                </button>
+            </div>
+        </div>
+    </section>
 
 </div>
 
