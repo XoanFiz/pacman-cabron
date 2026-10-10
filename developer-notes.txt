@@ -5,10 +5,11 @@ Make walls map better: still too difficult
 
 SUGGESTIONS
 Campaign mode?
+When a map is edited add the modified map as fixed selectable one. Add also a way to remove them. They are stored in localStorage.
 
 AGENT NOTES:
 Copilot, please take the following points into account when working:
 - Do not waste time checking every possible language. Just ensure that all languages have the same structure and test only English and one else.
 - After doing changes check if the request is here and ask to delete it and include it in the commit and the commit message.
 - After doing any changes check if this file was changed by the human developer and include the change in the commit message.
-- Limit Playwright tests to save tokens. Ask developer to either perform the tests by themself or let Copilot do them.
+- Limit Playwright tests to save tokens. Ask developer to either perform the tests by themself or let Copilot do them. If the developer chooses the first option, give them a list of the tests to do.
