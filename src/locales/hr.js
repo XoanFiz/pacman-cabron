@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Prilagođena karta",
     "addGhostHouse": "Dodajte kuću duhova",
     "mapEditorHouseInstructions": "Pritisnite otvorenu pločicu da biste dodali kuću duhova. Pritisnite kuću kako biste je uklonili; zadržite barem jednu kuću na svakoj karti.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Pomakni se lijevo",
                        "right":  "Pomakni se desno",

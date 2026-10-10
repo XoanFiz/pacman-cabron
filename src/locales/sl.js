@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Zemljevid po meri",
     "addGhostHouse": "Dodajte hišo duhov",
     "mapEditorHouseInstructions": "Kliknite odprto ploščico, da dodate hišo duhov. Kliknite hišo, da jo odstranite; obdrži vsaj eno hišo na vsakem zemljevidu.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Premakni se levo",
                        "right":  "Premakni se desno",

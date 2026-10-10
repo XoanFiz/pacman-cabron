@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Khariidad gaar ah",
     "addGhostHouse": "Ku dar guri rooxaan",
     "mapEditorHouseInstructions": "Click an open tile to add a ghost house. Click a house to remove it; keep at least one house on each map.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Bidix u dhaqaaq",
                        "right":  "Midig u dhaqaaq",

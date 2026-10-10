@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "ਕਸਟਮ ਨਕਸ਼ਾ",
     "addGhostHouse": "ਭੂਤ ਘਰ ਸ਼ਾਮਲ ਕਰੋ",
     "mapEditorHouseInstructions": "ਇੱਕ ਭੂਤ ਘਰ ਨੂੰ ਜੋੜਨ ਲਈ ਇੱਕ ਖੁੱਲੀ ਟਾਇਲ \u0027ਤੇ ਕਲਿੱਕ ਕਰੋ। ਇਸ ਨੂੰ ਹਟਾਉਣ ਲਈ ਇੱਕ ਘਰ \u0027ਤੇ ਕਲਿੱਕ ਕਰੋ; ਹਰੇਕ ਨਕਸ਼ੇ \u0027ਤੇ ਘੱਟੋ-ਘੱਟ ਇੱਕ ਘਰ ਰੱਖੋ।",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "ਖੱਬੇ ਪਾਸੇ ਜਾਓ",
                        "right":  "ਸੱਜੇ ਮੂਵ ਕਰੋ",

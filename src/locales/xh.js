@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "imephu Custom",
     "addGhostHouse": "Yongeza indlu yesiporho",
     "mapEditorHouseInstructions": "Cofa ithayile evulekileyo ukongeza indlu yesiporho. Cofa indlu ukuze uyisuse; gcina indlu enye ubuncinane kwimephu nganye.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Shenxela ngasekhohlo",
                        "right":  "Shenxela ngasekunene",

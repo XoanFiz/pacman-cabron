@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Спеціальна карта",
     "addGhostHouse": "Додати будинок-привид",
     "mapEditorHouseInstructions": "Клацніть відкриту плитку, щоб додати будинок-привид. Натисніть будинок, щоб видалити його; залишити принаймні один будинок на кожній карті.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Вгору",
         "left": "Ліворуч",

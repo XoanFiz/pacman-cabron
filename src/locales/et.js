@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Kohandatud kaart",
     "addGhostHouse": "Lisa kummitusmaja",
     "mapEditorHouseInstructions": "Kummitusmaja lisamiseks klõpsake avatud paanil. Klõpsake maja selle eemaldamiseks; hoidke igal kaardil vähemalt ühte maja.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Liigu vasakule",
                        "right":  "Liigu paremale",

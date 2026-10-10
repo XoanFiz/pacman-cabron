@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "අභිරුචි සිතියම",
     "addGhostHouse": "අවතාර නිවස එකතු කරන්න",
     "mapEditorHouseInstructions": "අවතාර නිවසක් එක් කිරීමට විවෘත ටයිල් එකක් ක්ලික් කරන්න. එය ඉවත් කිරීමට නිවසක් ක්ලික් කරන්න; සෑම සිතියමකම අවම වශයෙන් එක් නිවසක් තබා ගන්න.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "වමට යන්න",
                        "right":  "දකුණට යන්න",

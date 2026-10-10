@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "peta custom",
     "addGhostHouse": "Tambahkeun imah hantu",
     "mapEditorHouseInstructions": "Klik ubin kabuka pikeun nambahkeun imah hantu. Klik imah pikeun nyabut eta; tetep sahanteuna hiji imah dina unggal peta.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Pindah ka kénca",
                        "right":  "Pindah ka katuhu",

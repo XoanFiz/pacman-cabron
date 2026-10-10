@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Պատվերով քարտեզ",
     "addGhostHouse": "Ավելացնել ուրվական տուն",
     "mapEditorHouseInstructions": "Սեղմեք բաց սալիկի վրա՝ ուրվականների տուն ավելացնելու համար: Կտտացրեք տունը՝ այն հեռացնելու համար; յուրաքանչյուր քարտեզի վրա պահել առնվազն մեկ տուն:",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Շարժվեք ձախ",
                        "right":  "Տեղափոխեք աջ",

@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Mapi ritenga",
     "addGhostHouse": "Tāpiri whare kēhua",
     "mapEditorHouseInstructions": "Patohia tetahi taera tuwhera hei taapiri i tetahi whare wairua. Patohia tetahi whare hei tango; kia kotahi rawa te whare ki ia mapi.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Nuku maui",
                        "right":  "Nuku matau",

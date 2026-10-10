@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "কাস্টম মানচিত্র",
     "addGhostHouse": "ভূতের বাড়ি যোগ করুন",
     "mapEditorHouseInstructions": "একটি ভূত ঘর যোগ করতে একটি খোলা টাইল ক্লিক করুন. এটি অপসারণ করতে একটি বাড়িতে ক্লিক করুন; প্রতিটি মানচিত্রে অন্তত একটি বাড়ি রাখুন।",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "বামে সরান",
                        "right":  "ডানদিকে সরান",

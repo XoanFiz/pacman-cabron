@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "خريطة مخصصة",
     "addGhostHouse": "أضف بيت الأشباح",
     "mapEditorHouseInstructions": "انقر على البلاط المفتوح لإضافة بيت الأشباح. انقر على منزل لإزالته؛ احتفظ بمنزل واحد على الأقل في كل خريطة.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "تحرّك للأعلى",
         "left": "تحرّك لليسار",

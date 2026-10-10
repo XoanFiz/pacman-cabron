@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Özel harita",
     "addGhostHouse": "Hayalet ev ekle",
     "mapEditorHouseInstructions": "Hayalet ev eklemek için açık bir kutucuğa tıklayın. Kaldırmak için bir evi tıklayın; Her haritada en az bir ev bulundurun.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Yukarı",
         "left": "Sola",

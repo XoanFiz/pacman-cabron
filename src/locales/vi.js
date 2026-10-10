@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Bản đồ tùy chỉnh",
     "addGhostHouse": "Thêm ngôi nhà ma",
     "mapEditorHouseInstructions": "Nhấp vào ô mở để thêm ngôi nhà ma. Bấm vào một ngôi nhà để loại bỏ nó; giữ ít nhất một ngôi nhà trên mỗi bản đồ.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Đi lên",
         "left": "Sang trái",

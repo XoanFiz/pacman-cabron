@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Benutzerdefinierte Karte",
     "addGhostHouse": "Geisterhaus hinzufügen",
     "mapEditorHouseInstructions": "Klicken Sie auf eine offene Kachel, um ein Geisterhaus hinzuzufügen. Klicken Sie auf ein Haus, um es zu entfernen. Behalte mindestens ein Haus auf jeder Karte.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Nach oben",
         "left": "Nach links",

@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Carte personnalisée",
     "addGhostHouse": "Ajouter une maison fantôme",
     "mapEditorHouseInstructions": "Cliquez sur une tuile ouverte pour ajouter une maison fantôme. Cliquez sur une maison pour la supprimer ; gardez au moins une maison sur chaque carte.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Aller en haut",
         "left": "Aller à gauche",

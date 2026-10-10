@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Ramani maalum",
     "addGhostHouse": "Ongeza nyumba ya roho",
     "mapEditorHouseInstructions": "Bofya kigae kilicho wazi ili kuongeza nyumba ya mizimu. Bofya nyumba ili kuiondoa; weka angalau nyumba moja kwenye kila ramani.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Sogeza kushoto",
                        "right":  "Sogeza kulia",

@@ -4,6 +4,7 @@ const ctx = canvas.getContext("2d");
 const scoreElement = document.getElementById("score");
 const livesElement = document.getElementById("lives");
 const statusElement = document.getElementById("status");
+const editorToastElement = document.getElementById("editor-toast");
 const startScreenElement = document.getElementById("start-screen");
 const editorToolbarElement = document.getElementById("map-editor-toolbar");
 const editorBackButton = document.getElementById("editor-back");
@@ -49,6 +50,15 @@ function localizeContent() {
 
 function setStatus(messageKey) {
     statusElement.textContent = messages[messageKey];
+}
+
+function showEditorToast(messageKey) {
+    editorToastElement.textContent = messages[messageKey];
+    editorToastElement.hidden = false;
+    window.clearTimeout(editorToastTimer);
+    editorToastTimer = window.setTimeout(() => {
+        editorToastElement.hidden = true;
+    }, 2600);
 }
 
 function setMapEditorInstructions() {
@@ -173,6 +183,7 @@ let editorDraftMap = null;
 let nextCustomMapNumber = 1;
 let editorMode = false;
 let editorGesture = null;
+let editorToastTimer = 0;
 
 let running = false;
 let gameWon = false;
@@ -3605,6 +3616,8 @@ function enterMapEditor() {
     );
     editorMode = true;
     editorGesture = null;
+    window.clearTimeout(editorToastTimer);
+    editorToastElement.hidden = true;
     resetGame();
     document.body.classList.add("map-editor-active");
     editorToolbarElement.hidden = false;
@@ -3646,6 +3659,8 @@ function leaveMapEditor(saveChanges) {
     editorDraftMap = null;
     editorMode = false;
     editorGesture = null;
+    window.clearTimeout(editorToastTimer);
+    editorToastElement.hidden = true;
     document.body.classList.remove("map-editor-active");
     editorToolbarElement.hidden = true;
     resetGame();
@@ -3721,13 +3736,26 @@ function toggleEditorBoundary(boundary) {
         return;
     }
 
-    if (MAP_EDGES.has(boundary.key)) {
+    const wasBlocked = MAP_EDGES.has(boundary.key);
+
+    if (wasBlocked) {
         MAP_EDGES.delete(boundary.key);
     } else {
         MAP_EDGES.add(boundary.key);
     }
 
     buildGraph();
+
+    if (!isEditorMapConnected()) {
+        if (wasBlocked) {
+            MAP_EDGES.add(boundary.key);
+        } else {
+            MAP_EDGES.delete(boundary.key);
+        }
+
+        buildGraph();
+        showEditorToast("mapConnectivityError");
+    }
 }
 
 
@@ -3795,11 +3823,24 @@ function moveEditorEntity(gesture, position) {
     }
 
     const entity = gesture.entity;
+    const previousPosition = {
+        x: entity.x,
+        y: entity.y,
+        px: entity.px,
+        py: entity.py,
+        progress: entity.progress
+    };
     entity.x = x;
     entity.y = y;
     entity.px = x;
     entity.py = y;
     entity.progress = 0;
+
+    if (!isEditorMapConnected()) {
+        Object.assign(entity, previousPosition);
+        showEditorToast("mapConnectivityError");
+        return false;
+    }
 
     if (gesture.type === "player") {
         entity.nextDirection = { ...entity.direction };
@@ -3808,6 +3849,43 @@ function moveEditorEntity(gesture, position) {
     }
 
     return true;
+}
+
+
+function isEditorMapConnected() {
+    const targets = [
+        { x: player.x, y: player.y },
+        ...ghosts.map(ghost => ({ x: ghost.x, y: ghost.y })),
+        ...GHOST_HOUSES,
+        ...MAP.flatMap((row, y) =>
+            Array.from(row, (tile, x) =>
+                tile === "." || tile === "o"
+                    ? { x, y }
+                    : null
+            ).filter(Boolean)
+        )
+    ];
+    const reached = new Set([`${player.x},${player.y}`]);
+    const queue = [{ x: player.x, y: player.y }];
+
+    for (let index = 0; index < queue.length; index++) {
+        const current = queue[index];
+
+        for (const next of graph[current.y][current.x]) {
+            const key = `${next.x},${next.y}`;
+
+            if (reached.has(key)) {
+                continue;
+            }
+
+            reached.add(key);
+            queue.push({ x: next.x, y: next.y });
+        }
+    }
+
+    return targets.every(target =>
+        reached.has(`${target.x},${target.y}`)
+    );
 }
 
 
@@ -3825,8 +3903,13 @@ function cycleEditorTile(position) {
         nextTile !== "house" &&
         GHOST_HOUSES.length <= 1
     ) {
+        showEditorToast("mapHouseRequiredError");
         return;
     }
+
+    const previousRow = MAP[position.y];
+    const previousEdges = new Set(MAP_EDGES);
+    const previousHouses = GHOST_HOUSES.map(cloneMapPosition);
 
     if (houseIndex >= 0) {
         GHOST_HOUSES.splice(houseIndex, 1);
@@ -3856,6 +3939,17 @@ function cycleEditorTile(position) {
         total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
     0);
     buildGraph();
+
+    if (!isEditorMapConnected()) {
+        MAP[position.y] = previousRow;
+        MAP_EDGES = previousEdges;
+        GHOST_HOUSES = previousHouses;
+        pellets = MAP.reduce((total, row) =>
+            total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
+        0);
+        buildGraph();
+        showEditorToast("mapConnectivityError");
+    }
 }
 
 

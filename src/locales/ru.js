@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Пользовательская карта",
     "addGhostHouse": "Добавить дом-призрак",
     "mapEditorHouseInstructions": "Нажмите на открытую плитку, чтобы добавить дом-призрак. Нажмите на дом, чтобы удалить его; держите хотя бы один дом на каждой карте.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Вверх",
         "left": "Влево",

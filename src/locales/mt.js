@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Mappa tad-dwana",
     "addGhostHouse": "Żid dar ghost",
     "mapEditorHouseInstructions": "Ikklikkja maduma miftuħa biex iżżid dar ghost. Ikklikkja dar biex tneħħiha; żomm mill-inqas dar waħda fuq kull mappa.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Nimxu lejn ix-xellug",
                        "right":  "Imxi lejn il-lemin",

@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "ብጁ ካርታ",
     "addGhostHouse": "ghost ቤት ጨምር",
     "mapEditorHouseInstructions": "ghost ቤት ለመጨመር ክፍት ንጣፍን ጠቅ ያድርጉ። እሱን ለማስወገድ ቤትን ጠቅ ያድርጉ; በእያንዳንዱ ካርታ ላይ ቢያንስ አንድ ቤት ያስቀምጡ.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "ወደ ግራ ውሰድ",
                        "right":  "ወደ ቀኝ አንቀሳቅስ",

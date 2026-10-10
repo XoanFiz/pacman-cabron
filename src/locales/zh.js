@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "自定义地图",
     "addGhostHouse": "添加鬼屋",
     "mapEditorHouseInstructions": "单击打开的图块以添加鬼屋。单击房屋将其删除；每张地图上至少保留一所房子。",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "向上移动",
         "left": "向左移动",

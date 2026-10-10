@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Арнаулы карта",
     "addGhostHouse": "Елес үйді қосыңыз",
     "mapEditorHouseInstructions": "Елес үйді қосу үшін ашық тақтаны басыңыз. Оны жою үшін үйді басыңыз; әр картада кем дегенде бір үй қалдырыңыз.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Солға жылжытыңыз",
                        "right":  "Оңға жылжытыңыз",

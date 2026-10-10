@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Pasgemaakte kaart",
     "addGhostHouse": "Voeg spookhuis by",
     "mapEditorHouseInstructions": "Klik op \u0027n oop teël om \u0027n spookhuis by te voeg. Klik op \u0027n huis om dit te verwyder; hou ten minste een huis op elke kaart.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Beweeg links",
                        "right":  "Beweeg regs",

@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Custom kat jeyografik",
     "addGhostHouse": "Ajoute kay fantom",
     "mapEditorHouseInstructions": "Klike sou yon mozayik ouvè pou ajoute yon kay fantom. Klike sou yon kay pou retire li; kenbe omwen yon kay sou chak kat.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Deplase agoch",
                        "right":  "Deplase dwat",

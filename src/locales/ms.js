@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Peta tersuai",
     "addGhostHouse": "Tambah rumah hantu",
     "mapEditorHouseInstructions": "Klik jubin terbuka untuk menambah rumah hantu. Klik rumah untuk mengalih keluarnya; simpan sekurang-kurangnya satu rumah pada setiap peta.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Gerak ke atas",
         "left": "Gerak ke kiri",

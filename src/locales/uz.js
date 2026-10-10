@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Maxsus xarita",
     "addGhostHouse": "Arvoh uyini qo\u0027shing",
     "mapEditorHouseInstructions": "Arvoh uyini qo\u0027shish uchun ochiq plitka ustiga bosing. Uni olib tashlash uchun uyni bosing; har bir xaritada kamida bitta uyni saqlang.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Chapga siljiting",
                        "right":  "O\u0027ngga siljiting",

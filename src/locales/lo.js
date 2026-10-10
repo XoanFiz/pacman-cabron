@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "ແຜນທີ່ກຳນົດເອງ",
     "addGhostHouse": "ເພີ່ມເຮືອນຜີ",
     "mapEditorHouseInstructions": "ກົດກະເບື້ອງເປີດເພື່ອເພີ່ມເຮືອນຜີ. ຄລິກເຮືອນເພື່ອເອົາມັນອອກ; ຮັກສາຢ່າງຫນ້ອຍຫນຶ່ງເຮືອນໃນແຕ່ລະແຜນທີ່.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "ຍ້າຍຊ້າຍ",
                        "right":  "ຍ້າຍໄປຂວາ",

@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Egendefinert kart",
     "addGhostHouse": "Legg til spøkelseshus",
     "mapEditorHouseInstructions": "Klikk på en åpen flis for å legge til et spøkelseshus. Klikk på et hus for å fjerne det; ha minst ett hus på hvert kart.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Flytt opp",
         "left": "Flytt til venstre",

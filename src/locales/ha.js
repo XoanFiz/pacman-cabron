@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Taswirar al\u0027ada",
     "addGhostHouse": "Ƙara gidan fatalwa",
     "mapEditorHouseInstructions": "Danna buɗaɗɗen tayal don ƙara gidan fatalwa. Danna gida don cire shi; ajiye aƙalla gida ɗaya akan kowace taswira.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Matsa hagu",
                        "right":  "Matsa dama",

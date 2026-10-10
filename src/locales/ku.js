@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Nexşeya Custom",
     "addGhostHouse": "Mala ruhê zêde bikin",
     "mapEditorHouseInstructions": "Bişkojkek vekirî bikirtînin da ku xaniyek giyan lê zêde bikin. Ji bo rakirina xaniyek bikirtînin; li ser her nexşeyê herî kêm xaniyek bihêle.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Biçe çepê",
                        "right":  "Rast bigerin",

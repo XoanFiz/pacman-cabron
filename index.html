@@ -34,6 +34,28 @@
         font-weight: bold;
     }
 
+    #editor-toast {
+        position: fixed;
+        z-index: 10;
+        left: 50%;
+        bottom: 24px;
+        width: max-content;
+        max-width: calc(100vw - 32px);
+        padding: 12px 16px;
+        transform: translateX(-50%);
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        background: #b91c1c;
+        color: white;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        font-weight: 700;
+        text-align: center;
+    }
+
+    #editor-toast[hidden] {
+        display: none;
+    }
+
     .map-editor-active #status {
         height: auto;
         min-height: 22px;
@@ -216,6 +238,7 @@
     </div>
 
     <div id="status" aria-live="polite">Press an arrow key to start</div>
+    <div id="editor-toast" role="alert" hidden></div>
 
     <div id="map-editor-toolbar" hidden>
         <button id="editor-back" data-i18n="backToCharacters">Back to characters</button>

@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Тусгай газрын зураг",
     "addGhostHouse": "Сүнстэй байшин нэмнэ",
     "mapEditorHouseInstructions": "Сүнстэй байшин нэмэхийн тулд нээлттэй хавтан дээр дарна уу. Үүнийг арилгахын тулд байшин дээр дарна уу; газрын зураг бүр дээр дор хаяж нэг байшин үлдээ.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Зүүн тийш шилжих",
                        "right":  "Баруун тийш хөдөл",

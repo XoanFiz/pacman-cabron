@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "सानुकूल नकाशा",
     "addGhostHouse": "भूत घर जोडा",
     "mapEditorHouseInstructions": "भूत घर जोडण्यासाठी खुल्या टाइलवर क्लिक करा. ते काढण्यासाठी घर क्लिक करा; प्रत्येक नकाशावर किमान एक घर ठेवा.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "डावीकडे हलवा",
                        "right":  "उजवीकडे हलवा",

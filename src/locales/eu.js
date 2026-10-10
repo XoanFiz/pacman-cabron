@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Mapa pertsonalizatua",
     "addGhostHouse": "Gehitu ghost house",
     "mapEditorHouseInstructions": "Egin klik irekitako fitxa batean etxe mamu bat gehitzeko. Egin klik etxe batean kentzeko; eduki gutxienez etxe bat mapa bakoitzean.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Mugitu ezkerrera",
                        "right":  "Mugitu eskuinera",

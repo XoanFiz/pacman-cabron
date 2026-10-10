@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "اپنی مرضی کا نقشہ",
     "addGhostHouse": "بھوت گھر شامل کریں۔",
     "mapEditorHouseInstructions": "گھوسٹ ہاؤس شامل کرنے کے لیے کھلی ٹائل پر کلک کریں۔ اسے ہٹانے کے لیے گھر پر کلک کریں؛ ہر نقشے پر کم از کم ایک گھر رکھیں۔",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "بائیں منتقل کریں۔",
                        "right":  "دائیں طرف بڑھیں۔",

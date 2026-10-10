@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Mukautettu kartta",
     "addGhostHouse": "Lisää haamutalo",
     "mapEditorHouseInstructions": "Lisää haamutalo napsauttamalla avointa ruutua. Napsauta taloa poistaaksesi sen; pidä jokaisella kartalla vähintään yksi talo.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Ylös",
         "left": "Vasemmalle",

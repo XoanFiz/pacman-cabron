@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "ഇഷ്ടാനുസൃത മാപ്പ്",
     "addGhostHouse": "ഗോസ്റ്റ് ഹൗസ് ചേർക്കുക",
     "mapEditorHouseInstructions": "ഒരു ഗോസ്റ്റ് ഹൗസ് ചേർക്കാൻ തുറന്ന ടൈലിൽ ക്ലിക്ക് ചെയ്യുക. അത് നീക്കം ചെയ്യാൻ ഒരു വീട് ക്ലിക്ക് ചെയ്യുക; ഓരോ ഭൂപടത്തിലും കുറഞ്ഞത് ഒരു വീടെങ്കിലും സൂക്ഷിക്കുക.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "ഇടത്തേക്ക് നീങ്ങുക",
                        "right":  "വലത്തേക്ക് നീങ്ങുക",

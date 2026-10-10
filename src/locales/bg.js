@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Персонализирана карта",
     "addGhostHouse": "Добавете къща за призраци",
     "mapEditorHouseInstructions": "Щракнете върху отворена плочка, за да добавите къща за призраци. Кликнете върху къща, за да я премахнете; запазете поне една къща на всяка карта.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Преместете се наляво",
                        "right":  "Преместете се надясно",

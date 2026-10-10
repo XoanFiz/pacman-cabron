@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "מנהג מאַפּע",
     "addGhostHouse": "לייג גייַסט הויז",
     "mapEditorHouseInstructions": "דריקט אויף אַ עפענען קאַכל צו לייגן אַ גייַסט הויז. גיט אַ הויז צו באַזייַטיקן עס; האַלטן בייַ מינדסטער איין הויז אויף יעדער מאַפּע.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "מאַך לינקס",
                        "right":  "מאַך רעכט",

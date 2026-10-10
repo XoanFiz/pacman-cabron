@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Mapu mwamakonda",
     "addGhostHouse": "Onjezani nyumba ya mizimu",
     "mapEditorHouseInstructions": "Dinani tile yotseguka kuti muwonjezere nyumba ya mizimu. Dinani nyumba kuti muchotse; khalani ndi nyumba imodzi pamapu aliwonse.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Pitani kumanzere",
                        "right":  "Yendani kumanja",

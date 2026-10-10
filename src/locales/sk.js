@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Vlastná mapa",
     "addGhostHouse": "Pridajte dom duchov",
     "mapEditorHouseInstructions": "Kliknutím na otvorenú dlaždicu pridáte dom duchov. Kliknutím na dom ho odstránite; ponechajte aspoň jeden dom na každej mape.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Presuňte sa doľava",
                        "right":  "Presuňte sa doprava",

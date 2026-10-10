@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Ikarita yihariye",
     "addGhostHouse": "Ongeramo inzu yizimu",
     "mapEditorHouseInstructions": "Kanda tile ifunguye kugirango wongere inzu yizimu. Kanda inzu kugirango uyikureho; gumana byibuze inzu imwe kuri buri karita.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Himura ibumoso",
                        "right":  "Himura iburyo",

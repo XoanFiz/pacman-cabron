@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Oanpaste kaart",
     "addGhostHouse": "Spookhûs tafoegje",
     "mapEditorHouseInstructions": "Klikje op in iepen tegel om in spoekhûs ta te foegjen. Klikje op in hûs om it te ferwiderjen; hâld op syn minst ien hûs op elke kaart.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Gean nei links",
                        "right":  "Gean nei rjochts",

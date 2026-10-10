@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "מפה מותאמת אישית",
     "addGhostHouse": "הוסף בית רפאים",
     "mapEditorHouseInstructions": "לחץ על אריח פתוח כדי להוסיף בית רפאים. לחץ על בית כדי להסיר אותו; לשמור על בית אחד לפחות בכל מפה.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "למעלה",
         "left": "שמאלה",

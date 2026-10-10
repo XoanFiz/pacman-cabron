@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "แผนที่ที่กำหนดเอง",
     "addGhostHouse": "เพิ่มบ้านผี",
     "mapEditorHouseInstructions": "คลิกไทล์ที่เปิดเพื่อเพิ่มบ้านผี คลิกที่บ้านเพื่อลบออก เก็บบ้านไว้อย่างน้อยหนึ่งหลังในแต่ละแผนที่",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "ขึ้น",
         "left": "ซ้าย",

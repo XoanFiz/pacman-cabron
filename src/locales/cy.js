@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Map personol",
     "addGhostHouse": "Ychwanegu ty ysbrydion",
     "mapEditorHouseInstructions": "Cliciwch ar deilsen agored i ychwanegu tŷ ysbrydion. Cliciwch tŷ i gael gwared arno; cadw o leiaf un tŷ ar bob map.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Symud i\u0027r chwith",
                        "right":  "Symud i\u0027r dde",

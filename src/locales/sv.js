@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Anpassad karta",
     "addGhostHouse": "Lägg till spökhus",
     "mapEditorHouseInstructions": "Klicka på en öppen bricka för att lägga till ett spökhus. Klicka på ett hus för att ta bort det; ha minst ett hus på varje karta.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Flytta uppåt",
         "left": "Flytta åt vänster",

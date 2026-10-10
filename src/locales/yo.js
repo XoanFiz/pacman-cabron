@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Aṣa maapu",
     "addGhostHouse": "Fi ile iwin",
     "mapEditorHouseInstructions": "Tẹ tile ṣiṣi kan lati ṣafikun ile iwin kan. Tẹ ile kan lati yọ kuro; pa o kere ju ile kan lori maapu kọọkan.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Gbe si osi",
                        "right":  "Gbe ọtun",

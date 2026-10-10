@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Egyedi térkép",
     "addGhostHouse": "Szellemház hozzáadása",
     "mapEditorHouseInstructions": "Szellemház hozzáadásához kattintson egy nyitott lapkára. Kattintson egy házra az eltávolításához; minden térképen legyen legalább egy ház.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Mozgás balra",
                        "right":  "Mozgás jobbra",

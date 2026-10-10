@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Propra mapo",
     "addGhostHouse": "Aldonu fantoman domon",
     "mapEditorHouseInstructions": "Alklaku malfermitan kahelon por aldoni fantoman domon. Klaku domon por forigi ĝin; konservu almenaŭ unu domon sur ĉiu mapo.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Movu maldekstren",
                        "right":  "Movu dekstren",

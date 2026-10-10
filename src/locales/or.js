@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "କଷ୍ଟମ୍ ମାନଚିତ୍ର",
     "addGhostHouse": "ଭୂତ ଘର ଯୋଡନ୍ତୁ |",
     "mapEditorHouseInstructions": "ଏକ ଭୂତ ଘର ଯୋଡିବାକୁ ଏକ ଖୋଲା ଟାଇଲ୍ କ୍ଲିକ୍ କରନ୍ତୁ | ଏହାକୁ ହଟାଇବା ପାଇଁ ଏକ ଘର କ୍ଲିକ୍ କରନ୍ତୁ; ପ୍ରତ୍ୟେକ ମାନଚିତ୍ରରେ ଅତି କମରେ ଗୋଟିଏ ଘର ରଖନ୍ତୁ |",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "ବାମକୁ ଘୁଞ୍ଚନ୍ତୁ |",
                        "right":  "ଡାହାଣକୁ ଯାଆନ୍ତୁ |",

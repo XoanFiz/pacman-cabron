@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Pasirinktinis žemėlapis",
     "addGhostHouse": "Pridėti vaiduoklių namą",
     "mapEditorHouseInstructions": "Spustelėkite atvirą plytelę, kad pridėtumėte namą vaiduokliu. Spustelėkite namą, kad jį pašalintumėte; kiekviename žemėlapyje palikite bent vieną namą.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Pereiti į kairę",
                        "right":  "Judėti į dešinę",

@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Mapa gnàthaichte",
     "addGhostHouse": "Cuir taigh taibhse ris",
     "mapEditorHouseInstructions": "Cliog air leacag fosgailte gus taigh taibhse a chur ris. Cliog air taigh airson a thoirt air falbh; cùm co-dhiù aon taigh air gach mapa.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Gluais air chlì",
                        "right":  "Gluais gu deas",

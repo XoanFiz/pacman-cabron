@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Custom map",
     "addGhostHouse": "Adde domum exspiravit",
     "mapEditorHouseInstructions": "Tegula aperta preme ut domum exspiravit add. Preme domum ad depellendum eam; ut saltem unam domum in unaquaque tabula.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Movere sinistram",
                        "right":  "Movere dextram",

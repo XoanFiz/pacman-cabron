@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "ಕಸ್ಟಮ್ ನಕ್ಷೆ",
     "addGhostHouse": "ಗೋಸ್ಟ್ ಹೌಸ್ ಸೇರಿಸಿ",
     "mapEditorHouseInstructions": "ಘೋಸ್ಟ್ ಹೌಸ್ ಅನ್ನು ಸೇರಿಸಲು ತೆರೆದ ಟೈಲ್ ಅನ್ನು ಕ್ಲಿಕ್ ಮಾಡಿ. ಅದನ್ನು ತೆಗೆದುಹಾಕಲು ಮನೆಯನ್ನು ಕ್ಲಿಕ್ ಮಾಡಿ; ಪ್ರತಿ ನಕ್ಷೆಯಲ್ಲಿ ಕನಿಷ್ಠ ಒಂದು ಮನೆಯನ್ನು ಇರಿಸಿ.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "ಎಡಕ್ಕೆ ಸರಿಸಿ",
                        "right":  "ಬಲಕ್ಕೆ ಸರಿಸಿ",

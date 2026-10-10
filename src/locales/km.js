@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "ផែនទីផ្ទាល់ខ្លួន",
     "addGhostHouse": "បន្ថែមផ្ទះខ្មោច",
     "mapEditorHouseInstructions": "ចុចផ្ទាំងបើកដើម្បីបន្ថែមផ្ទះខ្មោច។ ចុចផ្ទះដើម្បីយកវាចេញ; រក្សាផ្ទះយ៉ាងហោចណាស់មួយនៅលើផែនទីនីមួយៗ។",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "ផ្លាស់ទីទៅឆ្វេង",
                        "right":  "ផ្លាស់ទីទៅស្តាំ",

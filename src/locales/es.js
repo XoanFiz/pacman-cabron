@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Mapa personalizado",
     "addGhostHouse": "Añadir casa fantasma",
     "mapEditorHouseInstructions": "Haga clic en un mosaico abierto para agregar una casa fantasma. Haga clic en una casa para eliminarla; Mantenga al menos una casa en cada mapa.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Mover arriba",
         "left": "Mover a la izquierda",

@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Sarintany manokana",
     "addGhostHouse": "Ampio trano matoatoa",
     "mapEditorHouseInstructions": "Kitiho ny taila misokatra mba hanampiana trano matoatoa. Kitiho trano iray hanesorana azy; mitazona trano iray farafahakeliny amin\u0027ny sarintany tsirairay.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Mifindra miankavia",
                        "right":  "Mandrosoa miankavanana",

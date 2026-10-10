@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Hartă personalizată",
     "addGhostHouse": "Adăugați casa fantomă",
     "mapEditorHouseInstructions": "Faceți clic pe o țiglă deschisă pentru a adăuga o casă fantomă. Faceți clic pe o casă pentru a o elimina; păstrați cel puțin o casă pe fiecare hartă.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Sus",
         "left": "La stânga",

@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "अनुकूलन नक्सा",
     "addGhostHouse": "भूत घर थप्नुहोस्",
     "mapEditorHouseInstructions": "भूत घर थप्न खुला टाइलमा क्लिक गर्नुहोस्। यसलाई हटाउन घर क्लिक गर्नुहोस्; प्रत्येक नक्सामा कम्तिमा एउटा घर राख्नुहोस्।",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "बायाँ सार्नुहोस्",
                        "right":  "दायाँ सार्नुहोस्",

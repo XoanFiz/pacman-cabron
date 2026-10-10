@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Sersniðgivið kort",
     "addGhostHouse": "Legg spøkilsishús til",
     "mapEditorHouseInstructions": "Trýst á eina opna flís fyri at leggja eitt spøkilsishús til. Trýst á eitt hús fyri at taka tað burtur; halda minst eitt hús á hvørjum korti.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Flyt til vinstru",
                        "right":  "Flyt til høgru",

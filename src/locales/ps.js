@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "دودیز نقشه",
     "addGhostHouse": "د شیطان کور اضافه کړئ",
     "mapEditorHouseInstructions": "د شیطان کور اضافه کولو لپاره خلاص ټایل کلیک وکړئ. د لرې کولو لپاره یو کور کلیک وکړئ؛ په هره نقشه کې لږترلږه یو کور وساتئ.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "کیڼ لور ته حرکت وکړئ",
                        "right":  "ښي خوا ته حرکت وکړئ",

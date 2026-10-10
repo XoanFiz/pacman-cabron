@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Custom na mapa",
     "addGhostHouse": "Magdagdag ng ghost house",
     "mapEditorHouseInstructions": "Mag-click ng bukas na tile para magdagdag ng ghost house. Mag-click sa isang bahay upang alisin ito; panatilihin ang hindi bababa sa isang bahay sa bawat mapa.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Lumipat pakaliwa",
                        "right":  "Lumipat pakanan",

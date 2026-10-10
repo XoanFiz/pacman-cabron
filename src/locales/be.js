@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Карыстальніцкая карта",
     "addGhostHouse": "Дадаць дом-прывід",
     "mapEditorHouseInstructions": "Націсніце на адкрытую плітку, каб дадаць дом-прывід. Націсніце дом, каб выдаліць яго; захавайце хаця б адзін дом на кожнай карце.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Рух налева",
                        "right":  "Рух направа",

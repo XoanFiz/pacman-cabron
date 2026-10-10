@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Maapụ omenala",
     "addGhostHouse": "Tinye ụlọ mmụọ",
     "mapEditorHouseInstructions": "Pịa taịlị mepere emepe ka ịgbakwunye ụlọ mmụọ. Pịa ụlọ iji wepụ ya; debe opekata mpe otu ụlọ na maapụ nke ọ bụla.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Gaa n\u0027aka ekpe",
                        "right":  "Gaa aka nri",

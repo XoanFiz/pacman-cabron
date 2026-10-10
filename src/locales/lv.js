@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Pielāgota karte",
     "addGhostHouse": "Pievienojiet spoku māju",
     "mapEditorHouseInstructions": "Noklikšķiniet uz atvērtas flīzes, lai pievienotu spoku māju. Noklikšķiniet uz mājas, lai to noņemtu; saglabājiet vismaz vienu māju katrā kartē.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Pārvietojieties pa kreisi",
                        "right":  "Pārvietojieties pa labi",

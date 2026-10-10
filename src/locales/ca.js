@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Mapa personalitzat",
     "addGhostHouse": "Afegeix la casa fantasma",
     "mapEditorHouseInstructions": "Feu clic a una fitxa oberta per afegir una casa fantasma. Feu clic a una casa per eliminar-la; mantenir almenys una casa a cada mapa.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Mou a l\u0027esquerra",
                        "right":  "Mou a la dreta",

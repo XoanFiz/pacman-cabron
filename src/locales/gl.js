@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Mapa personalizado",
     "addGhostHouse": "Engadir casa pantasma",
     "mapEditorHouseInstructions": "Fai clic nunha tella aberta para engadir unha casa pantasma. Fai clic nunha casa para eliminala; mantén polo menos unha casa en cada mapa.",
+    "mapConnectivityError": "Este cambio desconectaría do mapa unha casa, un personaxe ou un pellet.",
+    "mapHouseRequiredError": "Debe quedar polo menos unha casa pantasma no mapa.",
     "directions": {
         "up": "Mover cara arriba",
         "left": "Mover á esquerda",

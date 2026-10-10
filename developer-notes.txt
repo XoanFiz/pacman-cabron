@@ -1,12 +1,14 @@
 TODO
 Improve strategy. Ghosts are not guarding successfully, oscillation or lack of determination when keeping a position doesn't make them sharp enough.
-Ensure maps connectivity, including maps created or edited in the map editor.
 Make front screen more coherent
-Make walls map better
+Make walls map better: still too difficult
 
 SUGGESTIONS
 Campaign mode?
 
 AGENT NOTES:
-Please take this into account when working:
+Copilot, please take the following points into account when working:
 - Do not waste time checking every possible language. Just ensure that all languages have the same structure and test only English and one else.
+- After doing changes check if the request is here and ask to delete it and include it in the commit and the commit message.
+- After doing any changes check if this file was changed by the human developer and include the change in the commit message.
+- Limit Playwright tests to save tokens. Ask developer to either perform the tests by themself or let Copilot do them.

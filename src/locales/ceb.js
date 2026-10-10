@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Custom nga mapa",
     "addGhostHouse": "Idugang ang ghost house",
     "mapEditorHouseInstructions": "Pag-klik sa usa ka bukas nga tile aron makadugang usa ka ghost house. Pag-klik sa usa ka balay aron makuha kini; tipigi ang labing menos usa ka balay sa matag mapa.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Lihok sa wala",
                        "right":  "Lihok sa tuo",

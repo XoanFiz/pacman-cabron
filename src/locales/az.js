@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Fərdi xəritə",
     "addGhostHouse": "Xəyal evi əlavə edin",
     "mapEditorHouseInstructions": "Bir xəyal evi əlavə etmək üçün açıq kafel üzərinə klikləyin. Evi silmək üçün üzərinə klikləyin; hər xəritədə ən azı bir ev saxlayın.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Sola keçin",
                        "right":  "Sağa hərəkət edin",

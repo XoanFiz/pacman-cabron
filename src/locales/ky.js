@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Ыңгайлаштырылган карта",
     "addGhostHouse": "Арбак үйүн кошуу",
     "mapEditorHouseInstructions": "Арбак үйүн кошуу үчүн ачык плитканы басыңыз. Аны алып салуу үчүн үйдү басыңыз; ар бир картада жок дегенде бир үйдү сактаңыз.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Солго жылдыруу",
                        "right":  "Оңго жылдырыңыз",

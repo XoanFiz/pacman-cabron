@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "कस्टम मानचित्र",
     "addGhostHouse": "भूत घर जोड़ें",
     "mapEditorHouseInstructions": "भूत घर जोड़ने के लिए एक खुली टाइल पर क्लिक करें। किसी घर को हटाने के लिए उस पर क्लिक करें; प्रत्येक मानचित्र पर कम से कम एक घर रखें।",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "ऊपर जाएँ",
         "left": "बाएँ जाएँ",

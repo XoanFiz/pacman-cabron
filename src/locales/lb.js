@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Benotzerdefinéiert Kaart",
     "addGhostHouse": "Gitt Geeschterhaus dobäi",
     "mapEditorHouseInstructions": "Klickt op eng oppe Fliesen fir e Geeschterhaus ze addéieren. Klickt op en Haus fir et ze läschen; halen op d\u0027mannst een Haus op all Kaart.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Beweegt lénks",
                        "right":  "Géi riets",

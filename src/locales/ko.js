@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "맞춤 지도",
     "addGhostHouse": "유령의 집 추가",
     "mapEditorHouseInstructions": "열린 타일을 클릭하여 유령 집을 추가하세요. 집을 클릭하면 제거됩니다. 각 지도에 최소한 하나의 집을 유지하세요.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "위로 이동",
         "left": "왼쪽으로 이동",

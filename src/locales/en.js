@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorInstructions": "Click a tile to cycle pellet → power pellet → empty → wall. Click near a grid line to add or remove a wall between open tiles. Click a character to rotate it; drag to move it. Choose New map to create another editable map.",
     "addGhostHouse": "Add ghost house",
     "mapEditorHouseInstructions": "Click an open tile to add a ghost house. Click a house to remove it; keep at least one house on each map.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Move up",
         "left": "Move left",

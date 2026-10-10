@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "カスタムマップ",
     "addGhostHouse": "ゴーストハウスを追加",
     "mapEditorHouseInstructions": "開いているタイルをクリックしてゴースト ハウスを追加します。家をクリックして削除します。各マップ上に少なくとも 1 つの家を維持してください。",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "上へ移動",
         "left": "左へ移動",

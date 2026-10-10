@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "అనుకూల మ్యాప్",
     "addGhostHouse": "గోస్ట్ హౌస్ జోడించండి",
     "mapEditorHouseInstructions": "ఘోస్ట్ హౌస్‌ని జోడించడానికి ఓపెన్ టైల్‌ను క్లిక్ చేయండి. ఇంటిని తీసివేయడానికి దాన్ని క్లిక్ చేయండి; ప్రతి మ్యాప్‌లో కనీసం ఒక ఇంటిని ఉంచండి.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "ఎడమకు తరలించు",
                        "right":  "కుడివైపు తరలించు",

@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Niestandardowa mapa",
     "addGhostHouse": "Dodaj dom duchów",
     "mapEditorHouseInstructions": "Kliknij otwarty kafelek, aby dodać dom duchów. Kliknij dom, aby go usunąć; trzymaj co najmniej jeden dom na każdej mapie.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "W górę",
         "left": "W lewo",

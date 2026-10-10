@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Harta e personalizuar",
     "addGhostHouse": "Shto shtëpinë fantazmë",
     "mapEditorHouseInstructions": "Klikoni një pllakë të hapur për të shtuar një shtëpi fantazmë. Klikoni një shtëpi për ta hequr atë; mbani të paktën një shtëpi në çdo hartë.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "Lëviz majtas",
                        "right":  "Lëviz djathtas",

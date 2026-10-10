@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Aangepaste kaart",
     "addGhostHouse": "Spookhuis toevoegen",
     "mapEditorHouseInstructions": "Klik op een open tegel om een spookhuis toe te voegen. Klik op een huis om het te verwijderen; houd minstens één huis op elke kaart.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Omhoog",
         "left": "Naar links",

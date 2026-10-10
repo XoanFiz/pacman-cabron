@@ -20,6 +20,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "მორგებული რუკა",
     "addGhostHouse": "დაამატეთ მოჩვენების სახლი",
     "mapEditorHouseInstructions": "დააწკაპუნეთ ღია ფილაზე მოჩვენებების სახლის დასამატებლად. დააწკაპუნეთ სახლზე მის მოსაშორებლად; შეინახეთ მინიმუმ ერთი სახლი თითოეულ რუკაზე.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions":  {
                        "left":  "მარცხნივ გადაადგილება",
                        "right":  "გადაადგილება მარჯვნივ",

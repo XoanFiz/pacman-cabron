@@ -25,6 +25,8 @@ window.PACMAN_TRANSLATIONS = {
     "customMap": "Προσαρμοσμένος χάρτης",
     "addGhostHouse": "Προσθέστε το σπίτι-φάντασμα",
     "mapEditorHouseInstructions": "Κάντε κλικ σε ένα ανοιχτό πλακίδιο για να προσθέσετε ένα σπίτι φάντασμα. Κάντε κλικ σε ένα σπίτι για να το αφαιρέσετε. κρατήστε τουλάχιστον ένα σπίτι σε κάθε χάρτη.",
+    "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
+    "mapHouseRequiredError": "At least one ghost house must remain on the map.",
     "directions": {
         "up": "Πάνω",
         "left": "Αριστερά",
