@@ -280,15 +280,114 @@ function createBoundaryOnlyMap() {
         }
     }
 
+    const connectedEdges = connectBoundaryMap(tiles, edges);
+
     return {
         id: "boundary-only",
         nameKey: "boundaryMap",
         tiles,
-        edges,
+        edges: connectedEdges,
         ghostHouses,
         playerStart: { ...DEFAULT_PLAYER_START },
         ghostStarts: DEFAULT_GHOST_STARTS.map(cloneMapPosition)
     };
+}
+
+
+function getBoundaryMapReachableCells(tiles, edges) {
+    const startY = tiles.findIndex(row =>
+        Array.from(row).some(cell => cell !== "#")
+    );
+
+    if (startY < 0) {
+        return [];
+    }
+
+    const startX = Array.from(tiles[startY]).findIndex(cell => cell !== "#");
+    const queue = [{ x: startX, y: startY }];
+    const reached = new Set([`${startX},${startY}`]);
+
+    for (let index = 0; index < queue.length; index++) {
+        const current = queue[index];
+
+        for (const direction of Object.values(DIRECTIONS)) {
+            const next = getWrappedPosition(
+                current.x + direction.x,
+                current.y + direction.y
+            );
+            const nextKey = `${next.x},${next.y}`;
+
+            if (
+                tiles[next.y][next.x] === "#" ||
+                edges.has(getBoundaryKey(current.x, current.y, direction)) ||
+                reached.has(nextKey)
+            ) {
+                continue;
+            }
+
+            reached.add(nextKey);
+            queue.push(next);
+        }
+    }
+
+    return queue;
+}
+
+
+function connectBoundaryMap(tiles, edges) {
+    const connectedEdges = new Set(edges);
+    const openCellCount = tiles.reduce(
+        (total, row) => total + Array.from(row).filter(cell => cell !== "#").length,
+        0
+    );
+
+    while (true) {
+        const reachable = getBoundaryMapReachableCells(tiles, connectedEdges);
+
+        if (reachable.length === openCellCount) {
+            return Array.from(connectedEdges);
+        }
+
+        const reachableKeys = new Set(
+            reachable.map(position => `${position.x},${position.y}`)
+        );
+        let openedBoundary = false;
+
+        for (const current of reachable) {
+            for (const direction of Object.values(DIRECTIONS)) {
+                const next = getWrappedPosition(
+                    current.x + direction.x,
+                    current.y + direction.y
+                );
+
+                if (
+                    tiles[next.y][next.x] === "#" ||
+                    reachableKeys.has(`${next.x},${next.y}`)
+                ) {
+                    continue;
+                }
+
+                const edgeKey = getBoundaryKey(
+                    current.x,
+                    current.y,
+                    direction
+                );
+
+                if (connectedEdges.delete(edgeKey)) {
+                    openedBoundary = true;
+                    break;
+                }
+            }
+
+            if (openedBoundary) {
+                break;
+            }
+        }
+
+        if (!openedBoundary) {
+            throw new Error("Unable to connect all open cells in the boundary map.");
+        }
+    }
 }
 
 

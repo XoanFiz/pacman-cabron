@@ -1,6 +1,11 @@
 TODO
 Improve strategy. Ghosts are not guarding successfully, oscillation or lack of determination when keeping a position doesn't make them sharp enough.
-Ensure maps connectivity.
+Make front screen more coherent
+Make walls map better
 
 SUGGESTIONS
 Campaign mode?
+
+AGENT NOTES:
+Please take this into account when working:
+- Do not waste time checking every possible language. Just ensure that all languages have the same structure and test only English and one else.
