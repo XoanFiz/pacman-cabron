@@ -111,6 +111,7 @@ let gameTime = 0;
 let frightenedTimer = 0;
 
 const FRIGHTENED_DURATION = 7;
+const GHOST_COLLISION_DISTANCE = 0.55;
 
 let MAP;
 
@@ -139,6 +140,11 @@ const WEIGHT_BLUE = 1;
 // Total value reserved for all remaining pellets.
 // The individual value is TOTAL / remaining pellets.
 const TOTAL_PELLET_VALUE = 1000;
+const INITIAL_LIVES = 3;
+const SEARCH_LIFE_PRIORITY =
+    ROWS * COLS +
+    2 * TOTAL_PELLET_VALUE +
+    1;
 
 const EPSILON = 1e-9;
 const SEARCH_EPSILON = 1e-7;
@@ -1122,10 +1128,12 @@ function createSearchState(readyGhostIndices) {
     return {
         map: MAP.slice(),
         pellets,
+        lives,
         time: gameTime,
         frightenedTimer,
         player: cloneSearchCharacter(player),
         ghosts: ghosts.map(cloneSearchCharacter),
+        terminal: false,
         readyPlayer: false,
         readyGhosts: ghosts.map((_, index) => readyGhostSet.has(index))
     };
@@ -1146,6 +1154,8 @@ function searchStateKey(state) {
     return JSON.stringify([
         state.map,
         state.pellets,
+        state.lives,
+        state.terminal,
         Number(state.frightenedTimer.toFixed(5)),
         characterKey(state.player),
         state.player.nextDirection.x,
@@ -1175,7 +1185,13 @@ function evaluateSearchState(state) {
         player = cloneSearchCharacter(state.player);
         ghosts = state.ghosts.map(cloneSearchCharacter);
 
-        return evaluateDomain(calculateDomain()).total;
+        const domainValue =
+            evaluateDomain(calculateDomain()).total;
+
+        return (
+            (INITIAL_LIVES - state.lives) *
+            SEARCH_LIFE_PRIORITY
+        ) + domainValue;
     } finally {
         MAP = previousState.MAP;
         pellets = previousState.pellets;
@@ -1274,11 +1290,92 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
 
     findNextEvent(next.player, PACMAN_SPEED);
 
+    if (next.frightenedTimer > 0) {
+        nextEventTime = Math.min(
+            nextEventTime,
+            next.frightenedTimer
+        );
+    }
+
+    const playerX =
+        next.player.x +
+        next.player.direction.x *
+        next.player.progress;
+    const playerY =
+        next.player.y +
+        next.player.direction.y *
+        next.player.progress;
+    const playerVelocityX =
+        next.player.direction.x * PACMAN_SPEED;
+    const playerVelocityY =
+        next.player.direction.y * PACMAN_SPEED;
+
     for (const ghost of next.ghosts) {
         findNextEvent(
             ghost,
             ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED
         );
+
+        if (ghost.eaten) {
+            continue;
+        }
+
+        const relativeX =
+            ghost.x +
+            ghost.direction.x * ghost.progress -
+            playerX;
+        const relativeY =
+            ghost.y +
+            ghost.direction.y * ghost.progress -
+            playerY;
+        const relativeVelocityX =
+            ghost.direction.x *
+            (ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED) -
+            playerVelocityX;
+        const relativeVelocityY =
+            ghost.direction.y *
+            (ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED) -
+            playerVelocityY;
+        const velocitySquared =
+            relativeVelocityX * relativeVelocityX +
+            relativeVelocityY * relativeVelocityY;
+        const distanceSquared =
+            relativeX * relativeX +
+            relativeY * relativeY;
+
+        if (distanceSquared <= GHOST_COLLISION_DISTANCE ** 2) {
+            nextEventTime = 0;
+            continue;
+        }
+
+        if (velocitySquared === 0) {
+            continue;
+        }
+
+        const linear =
+            2 * (
+                relativeX * relativeVelocityX +
+                relativeY * relativeVelocityY
+            );
+        const discriminant =
+            linear * linear -
+            4 * velocitySquared *
+            (distanceSquared - GHOST_COLLISION_DISTANCE ** 2);
+
+        if (discriminant < 0) {
+            continue;
+        }
+
+        const collisionTime =
+            (-linear - Math.sqrt(discriminant)) /
+            (2 * velocitySquared);
+
+        if (collisionTime >= 0) {
+            nextEventTime = Math.min(
+                nextEventTime,
+                collisionTime
+            );
+        }
     }
 
     if (!Number.isFinite(nextEventTime)) {
@@ -1367,11 +1464,63 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         }
     }
 
+    const currentPlayerX =
+        next.player.x +
+        next.player.direction.x *
+        next.player.progress;
+    const currentPlayerY =
+        next.player.y +
+        next.player.direction.y *
+        next.player.progress;
+
+    for (const ghost of next.ghosts) {
+        const dx =
+            ghost.x +
+            ghost.direction.x *
+            ghost.progress -
+            currentPlayerX;
+        const dy =
+            ghost.y +
+            ghost.direction.y *
+            ghost.progress -
+            currentPlayerY;
+
+        if (
+            Math.sqrt(dx * dx + dy * dy) >
+            GHOST_COLLISION_DISTANCE + SEARCH_EPSILON ||
+            ghost.eaten
+        ) {
+            continue;
+        }
+
+        if (ghost.frightened) {
+            ghost.eaten = true;
+            ghost.frightened = false;
+            continue;
+        }
+
+        next.lives--;
+        next.terminal = true;
+        next.frightenedTimer = 0;
+
+        for (const remainingGhost of next.ghosts) {
+            if (!remainingGhost.eaten) {
+                remainingGhost.frightened = false;
+            }
+        }
+
+        break;
+    }
+
     return next;
 }
 
 
 function getSearchActionProfiles(state) {
+    if (state.terminal) {
+        return [];
+    }
+
     const readyGhosts = state.readyGhosts
         .map((ready, index) => ready ? index : -1)
         .filter(index => index >= 0);
@@ -1431,14 +1580,17 @@ function createStrategicSearchNode(state, parent, parentEdge, depth, value) {
         value,
         candidates: null,
         nextCandidate: 0,
-        expanded: false,
+        expanded: state.terminal,
         heapIndex: -1,
         readyGhosts: state.readyGhosts.some(Boolean),
         readyPlayer: state.readyPlayer
     };
 
     strategicSearch.nodes.set(key, node);
-    pushStrategicSearchFrontier(node);
+
+    if (!node.expanded) {
+        pushStrategicSearchFrontier(node);
+    }
 
     return node;
 }
@@ -1826,11 +1978,6 @@ function chooseStrategicGhostDirections(readyGhosts) {
 }
 
 
-function chooseStrategicGhostDirection(ghost) {
-    return chooseStrategicGhostDirections([ghost]).get(ghost);
-}
-
-
 // ============================================================
 // GHOST MOVE EVALUATION
 // ============================================================
@@ -1920,38 +2067,6 @@ function getShortestPathDirection(startX, startY, targetX, targetY) {
     return null;
 }
 
-function chooseNormalGhostDirection(ghost) {
-    return chooseStrategicGhostDirection(ghost);
-}
-
-
-function chooseGhostDirection(
-    ghost
-) {
-
-    // Ghost eaten:
-    // mandatory return home via the shortest route.
-    if (ghost.eaten) {
-        const direction = getShortestPathDirection(
-            ghost.x,
-            ghost.y,
-            10,
-            8
-        );
-
-        if (direction) {
-            return direction;
-        }
-
-        return ghost.direction;
-    }
-
-    // This is the current behavior 
-    // of the uneaten ghosts.
-    return chooseNormalGhostDirection(ghost);
-}
-
-
 // ============================================================
 // START / RESTART
 // ============================================================
@@ -1959,7 +2074,7 @@ function chooseGhostDirection(
 function resetGame() {
 
     score = 0;
-    lives = 3;
+    lives = INITIAL_LIVES;
 
     resetLevel();
     gameWon = false;
@@ -2548,9 +2663,7 @@ function checkGhostCollisions() {
             );
 
 
-        if (
-            distance >= 0.55
-        ) {
+        if (distance >= GHOST_COLLISION_DISTANCE) {
             continue;
         }
 
