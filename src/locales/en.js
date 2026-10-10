@@ -1,6 +1,9 @@
 window.PACMAN_TRANSLATIONS = {
     "score": "Score",
     "lives": "Lives",
+    "pause": "Pause",
+    "resume": "Resume",
+    "paused": "Paused",
     "restart": "Restart",
     "chooseCharacter": "Choose your character",
     "chooseCharacterDescription": "Play as Pac-Man or control one of the ghosts.",

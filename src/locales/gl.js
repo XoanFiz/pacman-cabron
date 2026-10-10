@@ -1,6 +1,9 @@
 window.PACMAN_TRANSLATIONS = {
     "score": "Puntos",
     "lives": "Vidas",
+    "pause": "Pausa",
+    "resume": "Continuar",
+    "paused": "Partida en pausa",
     "restart": "Reiniciar",
     "chooseCharacter": "Escolle personaxe",
     "chooseCharacterDescription": "Xoga como Pac-Man ou dirixe unha das pantasmas.",

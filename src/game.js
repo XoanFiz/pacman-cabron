@@ -3,6 +3,7 @@ const ctx = canvas.getContext("2d");
 
 const scoreElement = document.getElementById("score");
 const livesElement = document.getElementById("lives");
+const pauseButton = document.getElementById("pause");
 const statusElement = document.getElementById("status");
 const editorToastElement = document.getElementById("editor-toast");
 const startScreenElement = document.getElementById("start-screen");
@@ -270,6 +271,7 @@ let editorToastTimer = 0;
 let addingGhost = false;
 
 let running = false;
+let paused = false;
 let gameWon = false;
 let deathTimer = 0;
 let currentTime = 0;
@@ -286,28 +288,28 @@ let MAP;
 let MAP_EDGES = new Set();
 let GHOST_HOUSES = [];
 
+const PACMAN_SPEED = 3.5;
+const GHOST_SPEED = 2.25;
+const EATEN_GHOST_SPEED = 4;
 
 // ============================================================
 // GHOST AI
 // ============================================================
 
-const PACMAN_SPEED = 3.5;
-const GHOST_SPEED = 2.25;
-const EATEN_GHOST_SPEED = 4;
-
 // Strategic weights.
 // Equal for now; we can adjust them later.
 const WEIGHT_NORMAL = 1;
 const WEIGHT_PELLET = 1;
-const WEIGHT_BLUE = 1;
+const WEIGHT_BLUE = 0;
 
 
 // Total value reserved for all remaining pellets.
 // The individual value is TOTAL / remaining pellets.
 const TOTAL_PELLET_VALUE = 1000;
+const TOTAL_NORMAL_VALUE = 1000;
 const INITIAL_LIVES = 3;
 const SEARCH_LIFE_PRIORITY =
-    ROWS * COLS +
+    TOTAL_NORMAL_VALUE +
     2 * TOTAL_PELLET_VALUE +
     1;
 
@@ -1052,7 +1054,9 @@ function checkAndUpdateImprovedDomain(assessedDomainCell, currentDomainCell) {
 }
 
 
-function calculateDomain() {
+function calculateDomain({
+    respectCurrentMovement = true
+} = {}) {
 
     const domain =
         Array.from(
@@ -1065,6 +1069,7 @@ function calculateDomain() {
 
 
     let queue = new MinHeap();
+    const processedStates = new Set();
 
 
     // --------------------------------------------------------
@@ -1076,10 +1081,16 @@ function calculateDomain() {
         y: player.y,
         time: gameTime,
         owner: "pacman",
+        originX: player.x,
+        originY: player.y,
         speed: PACMAN_SPEED,
         initialProgress: player.progress,
         initialDirection: player.direction,
-        initialMove: player.progress > 0
+        initialMove:
+            respectCurrentMovement &&
+            player.progress > 0 &&
+            (player.direction.x !== 0 || player.direction.y !== 0) &&
+            canMove(player.x, player.y, player.direction)
     });
 
 
@@ -1092,15 +1103,59 @@ function calculateDomain() {
         const ghost = ghosts[i];
         const owner = `ghost${i}`;
 
+        if (ghost.eaten) {
+            const isMoving =
+                ghost.progress > 0 &&
+                (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
+                canMove(ghost.x, ghost.y, ghost.direction);
+            const nextX =
+                wrap(ghost.x + ghost.direction.x, COLS);
+            const nextY =
+                wrap(ghost.y + ghost.direction.y, ROWS);
+
+            for (const house of GHOST_HOUSES) {
+                const distance =
+                    isMoving
+                        ? 1 - ghost.progress +
+                            shortestDistance(nextX, nextY, house.x, house.y)
+                        : shortestDistance(ghost.x, ghost.y, house.x, house.y);
+
+                if (!Number.isFinite(distance)) {
+                    continue;
+                }
+
+                queue.push({
+                    x: house.x,
+                    y: house.y,
+                    time: gameTime + distance / EATEN_GHOST_SPEED,
+                    owner,
+                    originX: house.x,
+                    originY: house.y,
+                    speed: GHOST_SPEED,
+                    initialProgress: 0,
+                    initialDirection: { x: 0, y: 0 },
+                    initialMove: false
+                });
+            }
+
+            continue;
+        }
+
         queue.push({
             x: ghost.x,
             y: ghost.y,
             time: gameTime,
             owner,
-            speed: ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED,
+            originX: ghost.x,
+            originY: ghost.y,
+            speed: GHOST_SPEED,
             initialProgress: ghost.progress,
             initialDirection: ghost.direction,
-            initialMove: ghost.progress > 0
+            initialMove:
+                respectCurrentMovement &&
+                ghost.progress > 0 &&
+                (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
+                canMove(ghost.x, ghost.y, ghost.direction)
         });
     }
 
@@ -1123,20 +1178,38 @@ function calculateDomain() {
             ];
 
         if (assessedDomainCell.time > currentDomainCell.arrival) {
-            // A slower arrival cannot claim or propagate through this cell.
-            continue;
+            // An owner may revisit its starting cell after the forced first move.
+            if (
+                (
+                    assessedDomainCell.x !== assessedDomainCell.originX ||
+                    assessedDomainCell.y !== assessedDomainCell.originY
+                ) ||
+                currentDomainCell.owners.length !== 1 ||
+                currentDomainCell.owners[0] !== assessedDomainCell.owner
+            ) {
+                continue;
+            }
         }
 
         if (assessedDomainCell.time < currentDomainCell.arrival) {
             currentDomainCell.arrival = assessedDomainCell.time;
             currentDomainCell.owners = [assessedDomainCell.owner];
             currentDomainCell.direction = assessedDomainCell.direction;
-        } else if (currentDomainCell.owners.includes(assessedDomainCell.owner)) {
-            // Ignore duplicate equal-time paths from the same character.
-            continue;
-        } else {
+        } else if (
+            assessedDomainCell.time === currentDomainCell.arrival &&
+            !currentDomainCell.owners.includes(assessedDomainCell.owner)
+        ) {
             currentDomainCell.owners.push(assessedDomainCell.owner);
         }
+
+        const stateKey =
+            `${assessedDomainCell.owner}:${assessedDomainCell.x},${assessedDomainCell.y}:${Number(assessedDomainCell.initialMove)}`;
+
+        if (processedStates.has(stateKey)) {
+            continue;
+        }
+
+        processedStates.add(stateKey);
 
         // Stop at a meeting point: a character must not propagate into
         // territory already reached by another character at the same time.
@@ -1193,8 +1266,15 @@ function calculateDomain() {
              * We only want to propagate if we can
              * improve the time.
              */
-            if (nextTime >
-                nextCell.arrival) {
+            if (
+                nextTime > nextCell.arrival &&
+                (
+                    next.x !== assessedDomainCell.originX ||
+                    next.y !== assessedDomainCell.originY ||
+                    nextCell.owners.length !== 1 ||
+                    nextCell.owners[0] !== assessedDomainCell.owner
+                )
+            ) {
                 continue;
             }
 
@@ -1204,6 +1284,8 @@ function calculateDomain() {
                 y: next.y,
                 time: nextTime,
                 owner: assessedDomainCell.owner,
+                originX: assessedDomainCell.originX,
+                originY: assessedDomainCell.originY,
                 speed: assessedDomainCell.speed,
                 direction: next.direction,
                 initialMove: false
@@ -1221,7 +1303,9 @@ function drawVoronoiDomains() {
         return;
     }
 
-    const domain = calculateDomain();
+    const domain = calculateDomain({
+        respectCurrentMovement: running
+    });
 
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
@@ -1339,10 +1423,23 @@ function calculateNormalAndPelletScore(
     domain
 ) {
 
-    let normalScore = 0;
     let pelletScore = 0;
 
+    let pacmanControlledSquares = 0;
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            if (
+                MAP[y][x] !== "#" &&
+                domain[y][x].owners.includes("pacman")
+            ) {
+                pacmanControlledSquares++;
+            }
+        }
+    }
 
+    const normalScore =
+        TOTAL_NORMAL_VALUE /
+        Math.max(1, pacmanControlledSquares);
     const pelletValue =
         pellets > 0
             ? TOTAL_PELLET_VALUE / pellets
@@ -1357,8 +1454,12 @@ function calculateNormalAndPelletScore(
                 MAP[y][x];
 
 
-            if (cell === "#")
+            if (
+                cell !== "." &&
+                cell !== "o"
+            ) {
                 continue;
+            }
 
 
             const ghostOwners =
@@ -1370,31 +1471,9 @@ function calculateNormalAndPelletScore(
             if (ghostOwners.length === 0)
                 continue;
 
-
-            let value;
-
-
-            if (
-                cell === "." ||
-                cell === "o"
-            ) {
-
-                value =
-                    pelletValue;
-
-                pelletScore +=
-                    value /
-                    ghostOwners.length;
-            }
-
-            else {
-
-                value = 1;
-
-                normalScore +=
-                    value /
-                    ghostOwners.length;
-            }
+            pelletScore +=
+                pelletValue /
+                ghostOwners.length;
         }
     }
 
@@ -2626,6 +2705,7 @@ function resetLevel() {
 
     pellets = 0;
     gameTime = 0;
+    paused = false;
     strategicSearch.nodes.clear();
     strategicSearch.frontier = [];
     strategicSearch.root = null;
@@ -2796,6 +2876,7 @@ function updatePlayer(dt) {
         ) {
 
             setPlayerDirection({ x: 0, y: 0 });
+            player.progress = 0;
 
             break;
         }
@@ -4380,7 +4461,7 @@ function setDirection(
     direction
 ) {
 
-    if (editorMode) {
+    if (editorMode || paused) {
         return;
     }
 
@@ -4401,6 +4482,7 @@ function setDirection(
         running = true;
 
         statusElement.textContent = "";
+        updatePauseButton();
 
         if (controlledGhost) {
             if (canMove(controlledGhost.x, controlledGhost.y, direction)) {
@@ -4572,10 +4654,41 @@ document
         }
     );
 
+pauseButton.addEventListener("click", () => {
+    if (editorMode || gameWon || lives <= 0 || deathTimer > 0) {
+        return;
+    }
+
+    if (running) {
+        running = false;
+        paused = true;
+        statusElement.textContent =
+            messages.paused || "Paused";
+    } else if (paused) {
+        paused = false;
+        running = true;
+        statusElement.textContent = "";
+    } else {
+        return;
+    }
+
+    updatePauseButton();
+});
+
 
 // ============================================================
 // UI
 // ============================================================
+
+function updatePauseButton() {
+    pauseButton.textContent = paused
+        ? messages.resume || "Resume"
+        : messages.pause || "Pause";
+    pauseButton.setAttribute("aria-label", pauseButton.textContent);
+    pauseButton.setAttribute("aria-pressed", String(paused));
+    pauseButton.disabled = !running && !paused;
+}
+
 
 function updateUI() {
 
@@ -4584,6 +4697,8 @@ function updateUI() {
 
     livesElement.textContent =
         lives;
+
+    updatePauseButton();
 }
 
 
