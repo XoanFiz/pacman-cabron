@@ -2598,6 +2598,13 @@ function loseLife() {
     running = false;
 
     deathTimer = 1.0;
+    frightenedTimer = 0;
+
+    for (const ghost of ghosts) {
+        if (!ghost.eaten) {
+            ghost.frightened = false;
+        }
+    }
 
 
     statusElement.textContent =
