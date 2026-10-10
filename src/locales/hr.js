@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Uredi kartu",
     "backToCharacters": "Natrag na znakove",
     "useMap": "Koristite ovu kartu",
-    "mapEditorInstructions": "Pritisnite pločicu da biste kružili peletom, električnim peletom, praznim prostorom i zidom. Pritisnite blizu crte rešetke da biste dodali ili uklonili zid između otvorenih pločica. Pritisnite znak da biste ga rotirali; povucite za pomicanje.",
+    "mapEditorInstructions": "Pritisnite pločicu za ciklus pelet, električni pelet, prazan i zid. Pritisnite blizu crte rešetke da biste dodali ili uklonili zid između otvorenih pločica. Pritisnite znak da biste ga rotirali; povucite za pomicanje. Odaberite Nova karta za izradu druge karte koju je moguće uređivati.",
+    "selectMap": "Karta",
+    "classicMap": "Klasični labirint",
+    "boundaryMap": "Labirint s graničnim zidom",
+    "newMap": "Nova karta",
+    "customMap": "Prilagođena karta",
     "directions":  {
                        "left":  "Pomakni se lijevo",
                        "right":  "Pomakni se desno",

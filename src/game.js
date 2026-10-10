@@ -8,6 +8,8 @@ const startScreenElement = document.getElementById("start-screen");
 const editorToolbarElement = document.getElementById("map-editor-toolbar");
 const editorBackButton = document.getElementById("editor-back");
 const editorSaveButton = document.getElementById("editor-save");
+const mapSelectElement = document.getElementById("map-select");
+const newMapButton = document.getElementById("editor-new-map");
 const pressedDirectionKeys = new Set();
 
 const messages = window.PACMAN_TRANSLATIONS;
@@ -160,9 +162,10 @@ let pellets;
 let player;
 let ghosts;
 let selectedCharacter = "pacman";
-let customMap = null;
-let customPlayerStart = null;
-let customGhostStarts = null;
+let maps;
+let activeMapId = "classic";
+let editorDraftMap = null;
+let nextCustomMapNumber = 1;
 let editorMode = false;
 let editorGesture = null;
 
@@ -237,6 +240,131 @@ const DIRECTIONS = {
     left: { x: -1, y: 0 },
     right: { x: 1, y: 0 }
 };
+
+
+function createBoundaryOnlyMap() {
+    const occupied = [
+        DEFAULT_PLAYER_START,
+        ...DEFAULT_GHOST_STARTS
+    ];
+    const tiles = Array.from({ length: ROWS }, (_, y) =>
+        Array.from({ length: COLS }, (_, x) =>
+            occupied.some(position => position.x === x && position.y === y)
+                ? " "
+                : "."
+        ).join("")
+    );
+    const edges = [];
+
+    for (let y = 1; y < ROWS - 1; y += 2) {
+        const gap = (y * 7) % (COLS - 2) + 1;
+
+        for (let x = 0; x < COLS; x++) {
+            if (x !== gap && x !== gap + 1) {
+                edges.push(`v:${x}:${y}`);
+            }
+        }
+    }
+
+    for (let x = 3; x < COLS - 1; x += 4) {
+        const gap = (x * 5) % (ROWS - 2) + 1;
+
+        for (let y = 0; y < ROWS; y++) {
+            if (y !== gap && y !== gap + 1) {
+                edges.push(`h:${x}:${y}`);
+            }
+        }
+    }
+
+    return {
+        id: "boundary-only",
+        nameKey: "boundaryMap",
+        tiles,
+        edges,
+        playerStart: { ...DEFAULT_PLAYER_START },
+        ghostStarts: DEFAULT_GHOST_STARTS.map(cloneMapPosition)
+    };
+}
+
+
+function cloneMapPosition(position) {
+    return {
+        x: position.x,
+        y: position.y,
+        direction: position.direction
+            ? { ...position.direction }
+            : undefined
+    };
+}
+
+
+function cloneMapDefinition(map) {
+    return {
+        ...map,
+        tiles: map.tiles.slice(),
+        edges: map.edges.slice(),
+        playerStart: cloneMapPosition(map.playerStart),
+        ghostStarts: map.ghostStarts.map(cloneMapPosition)
+    };
+}
+
+
+const PREDEFINED_MAPS = [
+    {
+        id: "classic",
+        nameKey: "classicMap",
+        tiles: LEVEL_MAP,
+        edges: [],
+        playerStart: DEFAULT_PLAYER_START,
+        ghostStarts: DEFAULT_GHOST_STARTS
+    },
+    createBoundaryOnlyMap()
+];
+
+maps = PREDEFINED_MAPS.map(cloneMapDefinition);
+
+
+function getCurrentMapDefinition() {
+    return editorDraftMap ||
+        maps.find(map => map.id === activeMapId) ||
+        maps[0];
+}
+
+
+function getMapLabel(map) {
+    return map.nameKey
+        ? messages[map.nameKey]
+        : `${messages.customMap} ${map.customNumber}`;
+}
+
+
+function updateMapSelector() {
+    mapSelectElement.replaceChildren();
+
+    for (const map of maps) {
+        const option = document.createElement("option");
+        option.value = map.id;
+        option.textContent = getMapLabel(map);
+        mapSelectElement.append(option);
+    }
+
+    mapSelectElement.value = activeMapId;
+}
+
+
+function saveEditorMap() {
+    const savedMap = cloneMapDefinition(editorDraftMap);
+    const existingIndex = maps.findIndex(map => map.id === savedMap.id);
+
+    if (existingIndex < 0) {
+        maps.push(savedMap);
+    } else {
+        maps[existingIndex] = savedMap;
+    }
+
+    activeMapId = savedMap.id;
+    updateMapSelector();
+}
 
 
 // ============================================================
@@ -2268,12 +2396,14 @@ function resetLevel() {
     /*
      * Normalize each row to COLS.
      */
+    const mapDefinition = getCurrentMapDefinition();
+
     MAP =
-        (customMap ? customMap.tiles : LEVEL_MAP).map(
+        mapDefinition.tiles.map(
             row =>
                 row.slice(0, COLS)
         );
-    MAP_EDGES = new Set(customMap ? customMap.edges : []);
+    MAP_EDGES = new Set(mapDefinition.edges);
 
 
     for (const row of MAP) {
@@ -2290,7 +2420,7 @@ function resetLevel() {
     }
 
 
-    const playerStart = customPlayerStart || DEFAULT_PLAYER_START;
+    const playerStart = mapDefinition.playerStart;
 
     player = {
         x: playerStart.x,
@@ -2311,7 +2441,7 @@ function resetLevel() {
     };
 
 
-    const ghostStarts = customGhostStarts || DEFAULT_GHOST_STARTS;
+    const ghostStarts = mapDefinition.ghostStarts;
 
     ghosts = ghostStarts.map(start => ({
         x: start.x,
@@ -3011,7 +3141,8 @@ function update(dt) {
 
 function resetPositions() {
 
-    const playerStart = customPlayerStart || DEFAULT_PLAYER_START;
+    const mapDefinition = getCurrentMapDefinition();
+    const playerStart = mapDefinition.playerStart;
 
     player.x = playerStart.x;
     player.y = playerStart.y;
@@ -3034,7 +3165,7 @@ function resetPositions() {
     };
 
 
-    const ghostStarts = customGhostStarts || DEFAULT_GHOST_STARTS;
+    const ghostStarts = mapDefinition.ghostStarts;
 
     ghosts.forEach((ghost, index) => {
         const start = ghostStarts[index];
@@ -3478,9 +3609,12 @@ const EDITOR_DIRECTIONS = [
 
 
 function enterMapEditor() {
-    resetGame();
+    editorDraftMap = cloneMapDefinition(
+        maps.find(map => map.id === activeMapId) || maps[0]
+    );
     editorMode = true;
     editorGesture = null;
+    resetGame();
     document.body.classList.add("map-editor-active");
     editorToolbarElement.hidden = false;
     startScreenElement.hidden = true;
@@ -3488,24 +3622,36 @@ function enterMapEditor() {
 }
 
 
+function createNewMap() {
+    const sourceMap = editorDraftMap || getCurrentMapDefinition();
+
+    editorDraftMap = cloneMapDefinition(sourceMap);
+    editorDraftMap.id = `custom-${nextCustomMapNumber}`;
+    editorDraftMap.nameKey = null;
+    editorDraftMap.customNumber = nextCustomMapNumber++;
+    resetGame();
+    setStatus("mapEditorInstructions");
+}
+
+
 function leaveMapEditor(saveChanges) {
     if (saveChanges) {
-        customMap = {
-            tiles: MAP.map(row => row.slice()),
-            edges: Array.from(MAP_EDGES)
-        };
-        customPlayerStart = {
+        editorDraftMap.tiles = MAP.map(row => row.slice());
+        editorDraftMap.edges = Array.from(MAP_EDGES);
+        editorDraftMap.playerStart = {
             x: player.x,
             y: player.y,
             direction: { ...player.facingDirection }
         };
-        customGhostStarts = ghosts.map(ghost => ({
+        editorDraftMap.ghostStarts = ghosts.map(ghost => ({
             x: ghost.x,
             y: ghost.y,
             direction: { ...ghost.direction }
         }));
+        saveEditorMap();
     }
 
+    editorDraftMap = null;
     editorMode = false;
     editorGesture = null;
     document.body.classList.remove("map-editor-active");
@@ -3608,7 +3754,7 @@ function getEditorEntity(position) {
 }
 
 
-function rotateEditorEntity(entity) {
+function rotateEditorEntity(entity, type) {
     const currentIndex = EDITOR_DIRECTIONS.findIndex(direction =>
         direction.x === entity.direction.x &&
         direction.y === entity.direction.y
@@ -3618,7 +3764,7 @@ function rotateEditorEntity(entity) {
     entity.direction = { ...direction };
     entity.nextDirection = { ...direction };
 
-    if (gesture.type === "player") {
+    if (type === "player") {
         entity.facingDirection = { ...direction };
     }
 }
@@ -3763,7 +3909,7 @@ canvas.addEventListener("pointerup", event => {
     }
 
     if (!gesture.moved && position.x === gesture.start.x && position.y === gesture.start.y) {
-        rotateEditorEntity(gesture.entity);
+        rotateEditorEntity(gesture.entity, gesture.type);
     } else if (!gesture.moved) {
         moveEditorEntity(gesture, position);
     }
@@ -3776,8 +3922,13 @@ canvas.addEventListener("pointercancel", () => {
 
 
 document.getElementById("edit-map").addEventListener("click", enterMapEditor);
+newMapButton.addEventListener("click", createNewMap);
 editorBackButton.addEventListener("click", () => leaveMapEditor(false));
 editorSaveButton.addEventListener("click", () => leaveMapEditor(true));
+mapSelectElement.addEventListener("change", () => {
+    activeMapId = mapSelectElement.value;
+    resetGame();
+});
 
 
 function getControlledGhost() {
@@ -4059,6 +4210,7 @@ function gameLoop(time) {
 }
 
 
+updateMapSelector();
 resetGame();
 
 requestAnimationFrame(

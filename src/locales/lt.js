@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Redaguoti žemėlapį",
     "backToCharacters": "Atgal į simbolius",
     "useMap": "Naudokite šį žemėlapį",
-    "mapEditorInstructions": "Spustelėkite plytelę, kad perjungtumėte granules, galios granules, tuščią erdvę ir sieną. Spustelėkite šalia tinklelio linijos, kad pridėtumėte arba pašalintumėte sieną tarp atvirų plytelių. Spustelėkite simbolį, kad jį pasuktumėte; vilkite, kad perkeltumėte.",
+    "mapEditorInstructions": "Spustelėkite plytelę, kad perjungtumėte granulę, elektros granulę, tuščią ir sieną. Spustelėkite šalia tinklelio linijos, kad pridėtumėte arba pašalintumėte sieną tarp atvirų plytelių. Spustelėkite simbolį, kad jį pasuktumėte; vilkite, kad perkeltumėte. Pasirinkite Naujas žemėlapis, kad sukurtumėte kitą redaguojamą žemėlapį.",
+    "selectMap": "Žemėlapis",
+    "classicMap": "Klasikinis labirintas",
+    "boundaryMap": "Ribų-sienų labirintas",
+    "newMap": "Naujas žemėlapis",
+    "customMap": "Pasirinktinis žemėlapis",
     "directions":  {
                        "left":  "Pereiti į kairę",
                        "right":  "Judėti į dešinę",

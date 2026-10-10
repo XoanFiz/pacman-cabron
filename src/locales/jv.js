@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Owahi peta",
     "backToCharacters": "Bali menyang karakter",
     "useMap": "Gunakake peta iki",
-    "mapEditorInstructions": "Klik kothak kanggo muter pelet, pelet daya, ruang kosong, lan tembok. Klik ing cedhak garis kothak kanggo nambah utawa mbusak tembok ing antarane kothak sing mbukak. Klik karakter kanggo muter; seret kanggo mindhah.",
+    "mapEditorInstructions": "Klik kothak kanggo siklus pelet, daya pelet, kosong, lan tembok. Klik ing cedhak garis kothak kanggo nambah utawa mbusak tembok ing antarane kothak sing mbukak. Klik karakter kanggo muter; seret kanggo mindhah. Pilih Peta anyar kanggo nggawe peta liyane sing bisa diowahi.",
+    "selectMap": "peta",
+    "classicMap": "labirin klasik",
+    "boundaryMap": "Wates-tembok labirin",
+    "newMap": "Peta anyar",
+    "customMap": "Peta khusus",
     "directions":  {
                        "left":  "Pindhah ngiwa",
                        "right":  "Ngalih nengen",

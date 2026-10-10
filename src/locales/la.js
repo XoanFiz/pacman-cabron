@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Tabula recensionis",
     "backToCharacters": "Ad characteres",
     "useMap": "Hac tabula utere",
-    "mapEditorInstructions": "Tegula ad cyclum globulo, potentia globulo, spatio vacuo, et muro. Preme prope lineam euismod addere vel removere murum inter tegulas apertas. Tessera characteris, ut volvatur; trahunt movere.",
+    "mapEditorInstructions": "Tessera ad cyclum globulo, potentia globulo, vacua, et muro. Preme prope lineam euismod addere vel removere murum inter tegulas apertas. Tessera characteris, ut volvatur; trahunt movere. Novam tabulam elige ut aliam tabulam editabilem crearet.",
+    "selectMap": "Map",
+    "classicMap": "Classic error",
+    "boundaryMap": "Murus terminus error",
+    "newMap": "Nova tabula",
+    "customMap": "Custom map",
     "directions":  {
                        "left":  "Movere sinistram",
                        "right":  "Movere dextram",

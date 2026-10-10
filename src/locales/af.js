@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Wysig kaart",
     "backToCharacters": "Terug na karakters",
     "useMap": "Gebruik hierdie kaart",
-    "mapEditorInstructions": "Klik op \u0027n teël om korrel, kragkorrel, leë spasie en muur te ry. Klik naby \u0027n roosterlyn om \u0027n muur tussen oop teëls by te voeg of te verwyder. Klik \u0027n karakter om dit te draai; sleep om dit te skuif.",
+    "mapEditorInstructions": "Klik op \u0027n teël om korrel, kragkorrel, leeg en muur te ry. Klik naby \u0027n roosterlyn om \u0027n muur tussen oop teëls by te voeg of te verwyder. Klik \u0027n karakter om dit te draai; sleep om dit te skuif. Kies Nuwe kaart om nog \u0027n bewerkbare kaart te skep.",
+    "selectMap": "Kaart",
+    "classicMap": "Klassieke doolhof",
+    "boundaryMap": "Grens-muur doolhof",
+    "newMap": "Nuwe kaart",
+    "customMap": "Pasgemaakte kaart",
     "directions":  {
                        "left":  "Beweeg links",
                        "right":  "Beweeg regs",

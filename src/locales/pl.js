@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Edytuj mapę",
     "backToCharacters": "Powrót do postaci",
     "useMap": "Użyj tej mapy",
-    "mapEditorInstructions": "Kliknij kafelek, aby włączyć pellet, pellet energetyczny, pustą przestrzeń i ścianę. Kliknij w pobliżu linii siatki, aby dodać lub usunąć ścianę pomiędzy otwartymi płytkami. Kliknij znak, aby go obrócić; przeciągnij, aby go przesunąć.",
+    "mapEditorInstructions": "Kliknij kafelek, aby włączyć pellet, pellet energetyczny, pusty i ścianę. Kliknij w pobliżu linii siatki, aby dodać lub usunąć ścianę pomiędzy otwartymi płytkami. Kliknij znak, aby go obrócić; przeciągnij, aby go przesunąć. Wybierz opcję Nowa mapa, aby utworzyć kolejną edytowalną mapę.",
+    "selectMap": "Mapa",
+    "classicMap": "Klasyczny labirynt",
+    "boundaryMap": "Labirynt ze ścianami granicznymi",
+    "newMap": "Nowa mapa",
+    "customMap": "Niestandardowa mapa",
     "directions": {
         "up": "W górę",
         "left": "W lewo",

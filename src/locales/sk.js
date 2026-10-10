@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Upraviť mapu",
     "backToCharacters": "Späť na znaky",
     "useMap": "Použiť túto mapu",
-    "mapEditorInstructions": "Kliknutím na dlaždicu spustíte cyklus peliet, energetických peliet, prázdneho priestoru a steny. Kliknutím v blízkosti mriežky pridáte alebo odstránite stenu medzi otvorenými dlaždicami. Kliknutím na znak ho otočíte; potiahnutím ho presuniete.",
+    "mapEditorInstructions": "Kliknutím na dlaždicu spustíte cyklus peliet, energetických peliet, vyprázdnenie a steny. Kliknutím v blízkosti mriežky pridáte alebo odstránite stenu medzi otvorenými dlaždicami. Kliknutím na znak ho otočíte; potiahnutím ho presuniete. Ak chcete vytvoriť ďalšiu upraviteľnú mapu, vyberte položku Nová mapa.",
+    "selectMap": "Mapa",
+    "classicMap": "Klasické bludisko",
+    "boundaryMap": "Hraničné bludisko",
+    "newMap": "Nová mapa",
+    "customMap": "Vlastná mapa",
     "directions":  {
                        "left":  "Presuňte sa doľava",
                        "right":  "Presuňte sa doprava",

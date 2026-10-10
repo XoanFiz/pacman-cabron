@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Rediger kort",
     "backToCharacters": "Tilbage til tegn",
     "useMap": "Brug dette kort",
-    "mapEditorInstructions": "Klik på en flise for at skifte mellem pellet, power pellet, tomt rum og væg. Klik nær en gitterlinje for at tilføje eller fjerne en væg mellem åbne fliser. Klik på et tegn for at rotere det; træk for at flytte den.",
+    "mapEditorInstructions": "Klik på en flise for at skifte mellem pellet, power pellet, tom og væg. Klik nær en gitterlinje for at tilføje eller fjerne en væg mellem åbne fliser. Klik på et tegn for at rotere det; træk for at flytte den. Vælg Nyt kort for at oprette endnu et redigerbart kort.",
+    "selectMap": "Kort",
+    "classicMap": "Klassisk labyrint",
+    "boundaryMap": "Grænse-væg labyrint",
+    "newMap": "Nyt kort",
+    "customMap": "Brugerdefineret kort",
     "directions": {
         "up": "Flyt op",
         "left": "Flyt til venstre",

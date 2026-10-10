@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Editar mapa",
     "backToCharacters": "Voltar aos personagens",
     "useMap": "Use este mapa",
-    "mapEditorInstructions": "Clique em um ladrilho para alternar o pellet, o power pellet, o espaço vazio e a parede. Clique perto de uma linha de grade para adicionar ou remover uma parede entre blocos abertos. Clique em um personagem para girá-lo; arraste para movê-lo.",
+    "mapEditorInstructions": "Clique em um bloco para alternar o pellet, power pellet, esvaziar e parede. Clique perto de uma linha de grade para adicionar ou remover uma parede entre blocos abertos. Clique em um personagem para girá-lo; arraste para movê-lo. Escolha Novo mapa para criar outro mapa editável.",
+    "selectMap": "Mapa",
+    "classicMap": "Labirinto clássico",
+    "boundaryMap": "Labirinto de parede limite",
+    "newMap": "Novo mapa",
+    "customMap": "Mapa personalizado",
     "directions": {
         "up": "Mover para cima",
         "left": "Mover para a esquerda",

@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Deasaich am mapa",
     "backToCharacters": "Air ais gu na caractaran",
     "useMap": "Cleachd am mapa seo",
-    "mapEditorInstructions": "Cliog air leacag gus pellet rothaireachd, pellet cumhachd, àite falamh, agus balla. Cliog faisg air loidhne-clèithe gus balla a chur ris no a thoirt air falbh eadar leacan fosgailte. Cliog air caractar gus a thionndadh; tarraing airson a ghluasad.",
+    "mapEditorInstructions": "Cliog air leacag gus pellet, pellet cumhachd, falamh agus balla a rothaireachd. Cliog faisg air loidhne-clèithe gus balla a chur ris no a thoirt air falbh eadar leacan fosgailte. Cliog air caractar gus a thionndadh; tarraing airson a ghluasad. Tagh mapa ùr gus mapa eile a ghabhas deasachadh a chruthachadh.",
+    "selectMap": "Mapa",
+    "classicMap": "chuartan clasaigeach",
+    "boundaryMap": "Cuartan balla crìche",
+    "newMap": "Mapa ùr",
+    "customMap": "Mapa gnàthaichte",
     "directions":  {
                        "left":  "Gluais air chlì",
                        "right":  "Gluais gu deas",

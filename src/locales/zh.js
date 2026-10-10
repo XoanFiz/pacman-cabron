@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "编辑地图",
     "backToCharacters": "返回角色",
     "useMap": "使用此地图",
-    "mapEditorInstructions": "单击图块可循环颗粒、动力颗粒、空白区域和墙壁。单击网格线附近可添加或删除开放图块之间的墙。点击一个角色可以旋转它；拖动以移动它。",
+    "mapEditorInstructions": "单击图块可循环颗粒、动力颗粒、空颗粒和墙壁。单击网格线附近可添加或删除开放图块之间的墙。点击一个角色可以旋转它；拖动以移动它。选择“新建地图”以创建另一个可编辑地图。",
+    "selectMap": "地图",
+    "classicMap": "经典迷宫",
+    "boundaryMap": "边界墙迷宫",
+    "newMap": "新地图",
+    "customMap": "自定义地图",
     "directions": {
         "up": "向上移动",
         "left": "向左移动",

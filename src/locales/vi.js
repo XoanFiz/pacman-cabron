@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Chỉnh sửa bản đồ",
     "backToCharacters": "Quay lại ký tự",
     "useMap": "Sử dụng bản đồ này",
-    "mapEditorInstructions": "Nhấp vào một ô để xoay viên, viên năng lượng, không gian trống và tường. Nhấp vào gần đường lưới để thêm hoặc xóa bức tường giữa các ô đang mở. Bấm vào một ký tự để xoay nó; kéo để di chuyển nó.",
+    "mapEditorInstructions": "Nhấp vào một ô để xoay vòng viên, viên năng lượng, chỗ trống và bức tường. Nhấp vào gần đường lưới để thêm hoặc xóa bức tường giữa các ô đang mở. Bấm vào một ký tự để xoay nó; kéo để di chuyển nó. Chọn Bản đồ mới để tạo một bản đồ khác có thể chỉnh sửa.",
+    "selectMap": "Bản đồ",
+    "classicMap": "Mê cung cổ điển",
+    "boundaryMap": "Mê cung tường ranh giới",
+    "newMap": "Bản đồ mới",
+    "customMap": "Bản đồ tùy chỉnh",
     "directions": {
         "up": "Đi lên",
         "left": "Sang trái",

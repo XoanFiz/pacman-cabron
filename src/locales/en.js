@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Edit map",
     "backToCharacters": "Back to characters",
     "useMap": "Use this map",
-    "mapEditorInstructions": "Click a tile to cycle pellet → power pellet → empty → wall. Click near a grid line to add or remove a wall between open tiles. Click a character to rotate it; drag to move it.",
+    "selectMap": "Map",
+    "classicMap": "Classic maze",
+    "boundaryMap": "Boundary-wall maze",
+    "newMap": "New map",
+    "customMap": "Custom map",
+    "mapEditorInstructions": "Click a tile to cycle pellet → power pellet → empty → wall. Click near a grid line to add or remove a wall between open tiles. Click a character to rotate it; drag to move it. Choose New map to create another editable map.",
     "directions": {
         "up": "Move up",
         "left": "Move left",

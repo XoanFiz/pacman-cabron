@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Whakatikaina mapi",
     "backToCharacters": "Hoki ki nga tohu",
     "useMap": "Whakamahia tenei mapi",
-    "mapEditorInstructions": "Patohia he taera hei huri i te pire, te pereti hiko, te waahi kore, me te pakitara. Paatohia tata ki tetahi raina matiti hei taapiri, hei tango ranei i tetahi pakitara i waenga i nga taera tuwhera. Pāwhiria tētahi pūāhua hei huri; toia kia nekehia.",
+    "mapEditorInstructions": "Patohia he taera hei huri i te pire, te pereti hiko, te kau, me te pakitara. Paatohia tata ki te raina matiti hei taapiri, hei tango ranei i tetahi pakitara i waenga i nga taera tuwhera. Pāwhiria tētahi pūāhua hei huri; toia kia nekehia. Kōwhiria he Mapi Hōu hei hanga mapi ka taea te whakatika.",
+    "selectMap": "Mapi",
+    "classicMap": "Maze tauhira",
+    "boundaryMap": "Maze-taiepa",
+    "newMap": "Mapi hou",
+    "customMap": "Mapi ritenga",
     "directions":  {
                        "left":  "Nuku maui",
                        "right":  "Nuku matau",

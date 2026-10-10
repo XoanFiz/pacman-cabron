@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Muokkaa karttaa",
     "backToCharacters": "Takaisin merkkeihin",
     "useMap": "Käytä tätä karttaa",
-    "mapEditorInstructions": "Napsauta laatta, jos haluat selata pellettiä, tehopellettiä, tyhjää tilaa ja seinää. Napsauta lähellä ruudukkoviivaa lisätäksesi tai poistaaksesi seinän avoimien laattojen väliin. Napsauta merkkiä kiertääksesi sitä; vedä siirtääksesi sitä.",
+    "mapEditorInstructions": "Napsauta laatta vaihtaaksesi pellettiä, tehopellettiä, tyhjää ja seinää. Napsauta lähellä ruudukkoviivaa lisätäksesi tai poistaaksesi seinän avoimien laattojen väliin. Napsauta merkkiä kiertääksesi sitä; vedä siirtääksesi sitä. Valitse Uusi kartta luodaksesi toisen muokattavan kartan.",
+    "selectMap": "Kartta",
+    "classicMap": "Klassinen labyrintti",
+    "boundaryMap": "Raja-seinä labyrintti",
+    "newMap": "Uusi kartta",
+    "customMap": "Mukautettu kartta",
     "directions": {
         "up": "Ylös",
         "left": "Vasemmalle",

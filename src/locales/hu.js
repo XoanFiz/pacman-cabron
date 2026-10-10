@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Térkép szerkesztése",
     "backToCharacters": "Vissza a karakterekhez",
     "useMap": "Használja ezt a térképet",
-    "mapEditorInstructions": "Kattintson egy csempére a pellet, az energiapellet, az üres tér és a fal közötti ciklushoz. Kattintson egy rácsvonal közelében fal hozzáadásához vagy eltávolításához a nyitott csempe közé. Kattintson egy karakterre a forgatáshoz; húzással mozgathatja.",
+    "mapEditorInstructions": "Kattintson egy csempére a pellet, a power pellet, az üres és a fal közötti ciklushoz. Kattintson egy rácsvonal közelében fal hozzáadásához vagy eltávolításához a nyitott csempe közé. Kattintson egy karakterre a forgatáshoz; húzással mozgathatja. Válassza az Új térkép lehetőséget egy másik szerkeszthető térkép létrehozásához.",
+    "selectMap": "Térkép",
+    "classicMap": "Klasszikus labirintus",
+    "boundaryMap": "Határfal labirintus",
+    "newMap": "Új térkép",
+    "customMap": "Egyedi térkép",
     "directions":  {
                        "left":  "Mozgás balra",
                        "right":  "Mozgás jobbra",

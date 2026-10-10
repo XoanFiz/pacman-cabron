@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Editja l-mappa",
     "backToCharacters": "Lura għall-karattri",
     "useMap": "Uża din il-mappa",
-    "mapEditorInstructions": "Ikklikkja madum biex iċ-ċiklu tal-pellet, il-pellet tal-enerġija, l-ispazju vojt, u l-ħajt. Ikklikkja ħdejn linja tal-grilja biex iżżid jew tneħħi ħajt bejn il-madum miftuħ. Ikklikkja karattru biex iddawwarha; drag biex iċċaqlaqha.",
+    "mapEditorInstructions": "Ikklikkja maduma biex iċ-ċiklu tal-pellet, il-pellet tal-enerġija, il-vojt, u l-ħajt. Ikklikkja ħdejn linja tal-grilja biex iżżid jew tneħħi ħajt bejn il-madum miftuħ. Ikklikkja karattru biex iddawwarha; drag biex iċċaqlaqha. Agħżel Mappa ġdida biex toħloq mappa editjabbli oħra.",
+    "selectMap": "Mappa",
+    "classicMap": "Labirint klassiku",
+    "boundaryMap": "Labirint tal-ħajt tal-konfini",
+    "newMap": "Mappa ġdida",
+    "customMap": "Mappa tad-dwana",
     "directions":  {
                        "left":  "Nimxu lejn ix-xellug",
                        "right":  "Imxi lejn il-lemin",

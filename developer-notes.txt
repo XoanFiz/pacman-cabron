@@ -3,4 +3,3 @@ Improve strategy. Ghosts are not guarding successfully, oscillation or lack of d
 
 SUGGESTIONS
 Campaign mode?
-A full wall map

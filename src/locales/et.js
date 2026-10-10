@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Redigeeri kaarti",
     "backToCharacters": "Tagasi tähemärkide juurde",
     "useMap": "Kasutage seda kaarti",
-    "mapEditorInstructions": "Klõpsake plaadil, et tsüklistada pelleti, elektrigraanuli, tühja ruumi ja seina. Avatud plaatide vahele seina lisamiseks või eemaldamiseks klõpsake ruudustikujoone lähedal. Klõpsake tähemärki selle pööramiseks; lohistage selle liigutamiseks.",
+    "mapEditorInstructions": "Klõpsake paani, et tsüklistada pelleti, elektrigraanuli, tühjendamise ja seinaga. Avatud plaatide vahele seina lisamiseks või eemaldamiseks klõpsake ruudustikujoone lähedal. Klõpsake tähemärki selle pööramiseks; lohistage selle liigutamiseks. Uue redigeeritava kaardi loomiseks valige Uus kaart.",
+    "selectMap": "Kaart",
+    "classicMap": "Klassikaline labürint",
+    "boundaryMap": "Piirde-seina labürint",
+    "newMap": "Uus kaart",
+    "customMap": "Kohandatud kaart",
     "directions":  {
                        "left":  "Liigu vasakule",
                        "right":  "Liigu paremale",

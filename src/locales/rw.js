@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Hindura ikarita",
     "backToCharacters": "Subira ku nyuguti",
     "useMap": "Koresha iyi karita",
-    "mapEditorInstructions": "Kanda tile kugirango uzunguruke pellet, pellet power, umwanya wubusa, nurukuta. Kanda hafi ya gride umurongo kugirango wongere cyangwa ukure urukuta hagati ya tile ifunguye. Kanda inyuguti kugirango uzunguruke; kurura.",
+    "mapEditorInstructions": "Kanda tile kugirango uzunguruke pellet, pellet power, ubusa, nurukuta. Kanda hafi ya gride umurongo kugirango wongere cyangwa ukure urukuta hagati ya tile ifunguye. Kanda inyuguti kugirango uzunguruke; kurura. Hitamo ikarita nshya kugirango ukore indi karita ikosorwa.",
+    "selectMap": "Ikarita",
+    "classicMap": "Classic maze",
+    "boundaryMap": "Umupaka-urukuta maze",
+    "newMap": "Ikarita nshya",
+    "customMap": "Ikarita yihariye",
     "directions":  {
                        "left":  "Himura ibumoso",
                        "right":  "Himura iburyo",

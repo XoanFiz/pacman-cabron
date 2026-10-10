@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Edit peta",
     "backToCharacters": "Kembali ke karakter",
     "useMap": "Gunakan peta ini",
-    "mapEditorInstructions": "Klik ubin untuk memutar pelet, pelet daya, ruang kosong, dan dinding. Klik di dekat garis kisi untuk menambah atau menghapus dinding di antara ubin yang terbuka. Klik karakter untuk memutarnya; seret untuk memindahkannya.",
+    "mapEditorInstructions": "Klik ubin untuk memutar pelet, pelet daya, kosong, dan dinding. Klik di dekat garis kisi untuk menambah atau menghapus dinding di antara ubin yang terbuka. Klik karakter untuk memutarnya; seret untuk memindahkannya. Pilih Peta baru untuk membuat peta lain yang dapat diedit.",
+    "selectMap": "Peta",
+    "classicMap": "Labirin klasik",
+    "boundaryMap": "Labirin dinding batas",
+    "newMap": "Peta baru",
+    "customMap": "Peta khusus",
     "directions": {
         "up": "Ke atas",
         "left": "Ke kiri",

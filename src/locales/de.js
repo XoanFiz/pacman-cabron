@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Karte bearbeiten",
     "backToCharacters": "Zurück zu den Charakteren",
     "useMap": "Diese Karte verwenden",
-    "mapEditorInstructions": "Klicken Sie auf eine Kachel, um Pellet, Energiepellet, leeren Raum und Wand zu wechseln. Klicken Sie in die Nähe einer Rasterlinie, um eine Wand zwischen offenen Kacheln hinzuzufügen oder zu entfernen. Klicken Sie auf ein Zeichen, um es zu drehen. Ziehen Sie, um es zu verschieben.",
+    "mapEditorInstructions": "Klicken Sie auf eine Kachel, um zwischen Pellet, Energiepellet, Entleeren und Wand zu wechseln. Klicken Sie in die Nähe einer Rasterlinie, um eine Wand zwischen offenen Kacheln hinzuzufügen oder zu entfernen. Klicken Sie auf ein Zeichen, um es zu drehen. Ziehen Sie, um es zu verschieben. Wählen Sie „Neue Karte“, um eine weitere bearbeitbare Karte zu erstellen.",
+    "selectMap": "Karte",
+    "classicMap": "Klassisches Labyrinth",
+    "boundaryMap": "Grenzwandlabyrinth",
+    "newMap": "Neue Karte",
+    "customMap": "Benutzerdefinierte Karte",
     "directions": {
         "up": "Nach oben",
         "left": "Nach links",

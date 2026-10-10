@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Wax ka beddel khariidadda",
     "backToCharacters": "Ku noqo jilayaasha",
     "useMap": "Isticmaal khariidadan",
-    "mapEditorInstructions": "Guji tile si aad u wareegto pellet, pellet koronto, meel banaan, iyo gidaar. Guji xariiqda xariiqda u dhow si aad ugu darto ama uga saarto gidaarka u dhexeeya saqafka furan. Guji xarfaha si aad u beddesho; jiid si aad u dhaqaajiso.",
+    "mapEditorInstructions": "Guji tile si aad u wareegto pellet, pellet koronto, maran, iyo gidaar. Guji xariiqda xariiqda u dhow si aad ugu darto ama uga saarto gidaarka u dhexeeya saqafka furan. Guji xarfaha si aad u beddesho; jiid si aad u dhaqaajiso. Dooro khariidad cusub si aad u abuurto khariidad kale oo la tafatiran karo.",
+    "selectMap": "Maab",
+    "classicMap": "Maze Classic",
+    "boundaryMap": "Xudduudda-derbiga maze",
+    "newMap": "Khariidad cusub",
+    "customMap": "Khariidad gaar ah",
     "directions":  {
                        "left":  "Bidix u dhaqaaq",
                        "right":  "Midig u dhaqaaq",

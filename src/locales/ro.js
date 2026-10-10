@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Editați harta",
     "backToCharacters": "Înapoi la caractere",
     "useMap": "Utilizați această hartă",
-    "mapEditorInstructions": "Faceți clic pe o placă pentru a rula peletul, peletul de putere, spațiul gol și perete. Faceți clic lângă o linie de grilă pentru a adăuga sau elimina un perete între plăci deschise. Faceți clic pe un caracter pentru al roti; trageți pentru a o muta.",
+    "mapEditorInstructions": "Faceți clic pe o țiglă pentru a rula peleți, peleți de alimentare, gol și perete. Faceți clic lângă o linie de grilă pentru a adăuga sau elimina un perete între plăci deschise. Faceți clic pe un caracter pentru al roti; trageți pentru a o muta. Alegeți Hartă nouă pentru a crea o altă hartă editabilă.",
+    "selectMap": "Harta",
+    "classicMap": "Labirint clasic",
+    "boundaryMap": "Labirint de pereți de graniță",
+    "newMap": "Hartă nouă",
+    "customMap": "Hartă personalizată",
     "directions": {
         "up": "Sus",
         "left": "La stânga",

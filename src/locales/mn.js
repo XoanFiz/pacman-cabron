@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Газрын зургийг засах",
     "backToCharacters": "Тэмдэгтүүд рүү буцах",
     "useMap": "Энэ газрын зургийг ашиглана уу",
-    "mapEditorInstructions": "Click a tile to cycle pellet, power pellet, empty space, and wall. Click near a grid line to add or remove a wall between open tiles. Тэмдэгт дээр дарж эргүүлэх; зөөхийн тулд чирнэ үү.",
+    "mapEditorInstructions": "Хавтан дээр дарж үрэл, цахилгаан үрэл, хоосон, ханыг эргүүлнэ. Нээлттэй хавтангийн хооронд хана нэмж эсвэл арилгахын тулд сүлжээний шугамын ойролцоо товшино уу. Тэмдэгт дээр дарж эргүүлэх; зөөхийн тулд чирнэ үү. Өөр засварлах боломжтой газрын зураг үүсгэхийн тулд Шинэ газрын зургийг сонгоно уу.",
+    "selectMap": "Газрын зураг",
+    "classicMap": "Сонгодог төөрдөг байшин",
+    "boundaryMap": "Хилийн ханатай төөрдөг байшин",
+    "newMap": "Шинэ газрын зураг",
+    "customMap": "Тусгай газрын зураг",
     "directions":  {
                        "left":  "Зүүн тийш шилжих",
                        "right":  "Баруун тийш хөдөл",

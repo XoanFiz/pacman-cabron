@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Editatu mapa",
     "backToCharacters": "Itzuli karaktereetara",
     "useMap": "Erabili mapa hau",
-    "mapEditorInstructions": "Egin klik fitxa batean pellet, power pellet, hutsuneko espazio eta horma egiteko. Egin klik sare-lerro baten ondoan irekitako fitxaren artean horma bat gehitzeko edo kentzeko. Egin klik karaktere bat biratzeko; arrastatu mugitzeko.",
+    "mapEditorInstructions": "Egin klik fitxa batean pellet, power pellet, hutsik eta horma egiteko. Egin klik sare-lerro baten ondoan irekitako fitxaren artean horma bat gehitzeko edo kentzeko. Egin klik karaktere bat biratzeko; arrastatu mugitzeko. Aukeratu Mapa berria beste mapa editagarri bat sortzeko.",
+    "selectMap": "Mapa",
+    "classicMap": "Labirinto klasikoa",
+    "boundaryMap": "Muga-horma labirintoa",
+    "newMap": "Mapa berria",
+    "customMap": "Mapa pertsonalizatua",
     "directions":  {
                        "left":  "Mugitu ezkerrera",
                        "right":  "Mugitu eskuinera",

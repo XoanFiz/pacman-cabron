@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Sinthani mapu",
     "backToCharacters": "Bwererani ku zilembo",
     "useMap": "Gwiritsani ntchito mapuwa",
-    "mapEditorInstructions": "Dinani matailosi kuti muzungulire pellet, pellet yamagetsi, malo opanda kanthu, ndi khoma. Dinani pafupi ndi mzere wa gridi kuti muwonjezere kapena kuchotsa khoma pakati pa matailosi otseguka. Dinani chizindikiro kuti muzungulire; kokerani kuti musunthe.",
+    "mapEditorInstructions": "Dinani matailosi kuti muzungulire pellet, pellet yamagetsi, yopanda kanthu, ndi khoma. Dinani pafupi ndi mzere wa gridi kuti muwonjezere kapena kuchotsa khoma pakati pa matailosi otseguka. Dinani chizindikiro kuti muzungulire; kokerani kuti musunthe. Sankhani mapu atsopano kuti mupange mapu ena osinthika.",
+    "selectMap": "Mapu",
+    "classicMap": "Classic maze",
+    "boundaryMap": "Maze a khoma la malire",
+    "newMap": "Mapu atsopano",
+    "customMap": "Mapu mwamakonda",
     "directions":  {
                        "left":  "Pitani kumanzere",
                        "right":  "Yendani kumanja",

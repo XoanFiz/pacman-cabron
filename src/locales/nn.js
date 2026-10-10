@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Rediger kart",
     "backToCharacters": "Tilbake til tegn",
     "useMap": "Bruk dette kartet",
-    "mapEditorInstructions": "Klikk på en flis for å sykle pellet, kraftpellet, tomt rom og vegg. Klikk nær en rutenettlinje for å legge til eller fjerne en vegg mellom åpne fliser. Klikk på et tegn for å rotere det; dra for å flytte den.",
+    "mapEditorInstructions": "Klikk på en flis for å sykle pellet, kraftpellet, tom og vegg. Klikk nær en rutenettlinje for å legge til eller fjerne en vegg mellom åpne fliser. Klikk på et tegn for å rotere det; dra for å flytte den. Velg Nytt kart for å lage et annet redigerbart kart.",
+    "selectMap": "Kart",
+    "classicMap": "Klassisk labyrint",
+    "boundaryMap": "Grense-vegg labyrint",
+    "newMap": "Nytt kart",
+    "customMap": "Egendefinert kart",
     "directions": {
         "up": "Flytt opp",
         "left": "Flytt til venstre",

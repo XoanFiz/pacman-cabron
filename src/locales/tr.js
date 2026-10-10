@@ -17,7 +17,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Haritayı düzenle",
     "backToCharacters": "Karakterlere geri dön",
     "useMap": "Bu haritayı kullan",
-    "mapEditorInstructions": "Pelet, güç pelleti, boş alan ve duvar arasında geçiş yapmak için bir kareye tıklayın. Açık döşemeler arasına duvar eklemek veya kaldırmak için ızgara çizgisinin yakınına tıklayın. Döndürmek için bir karaktere tıklayın; taşımak için sürükleyin.",
+    "mapEditorInstructions": "Pelet, güç peleti, boş ve duvar arasında geçiş yapmak için bir kareye tıklayın. Açık döşemeler arasına duvar eklemek veya kaldırmak için ızgara çizgisinin yakınına tıklayın. Döndürmek için bir karaktere tıklayın; taşımak için sürükleyin. Başka bir düzenlenebilir harita oluşturmak için Yeni harita\u0027yı seçin.",
+    "selectMap": "Harita",
+    "classicMap": "Klasik labirent",
+    "boundaryMap": "Sınır duvarı labirenti",
+    "newMap": "Yeni harita",
+    "customMap": "Özel harita",
     "directions": {
         "up": "Yukarı",
         "left": "Sola",

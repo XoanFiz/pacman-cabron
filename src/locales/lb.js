@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Kaart änneren",
     "backToCharacters": "Zréck op Zeeche",
     "useMap": "Benotzt dës Kaart",
-    "mapEditorInstructions": "Klickt op eng Fliesen fir Pellet, Kraaftpellet, eidel Plaz a Mauer z\u0027erreechen. Klickt no bei enger Gitterlinn fir eng Mauer tëscht oppene Fliesen ze addéieren oder ze läschen. Klickt op e Charakter fir et ze rotéieren; zitt fir et ze réckelen.",
+    "mapEditorInstructions": "Klickt op eng Fliesen fir Pellet, Kraaftpellet, eidel a Mauer z\u0027entwéckelen. Klickt no bei enger Gitterlinn fir eng Mauer tëscht oppene Fliesen ze addéieren oder ze läschen. Klickt op e Charakter fir et ze rotéieren; zitt fir et ze réckelen. Wielt Nei Kaart fir eng aner editable Kaart ze kreéieren.",
+    "selectMap": "Kaart",
+    "classicMap": "Klassesch Labyrinth",
+    "boundaryMap": "Grenz-Mauer Labyrinth",
+    "newMap": "Nei Kaart",
+    "customMap": "Benotzerdefinéiert Kaart",
     "directions":  {
                        "left":  "Beweegt lénks",
                        "right":  "Géi riets",

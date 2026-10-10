@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Hlela imephu",
     "backToCharacters": "Emuva ezinhlamvu",
     "useMap": "Sebenzisa le mephu",
-    "mapEditorInstructions": "Chofoza ithayela ukuze ujikeleze i-pellet, i-pellet yamandla, isikhala esingenalutho, nodonga. Chofoza eduze komugqa wegridi ukuze wengeze noma ususe udonga phakathi kwamathayili avuliwe. Chofoza uhlamvu ukuze uzungezise; hudula ukuyihambisa.",
+    "mapEditorInstructions": "Chofoza ithayela ukuze ujikeleze i-pellet, i-pellet yamandla, ayinalutho, kanye nodonga. Chofoza eduze komugqa wegridi ukuze wengeze noma ususe udonga phakathi kwamathayili avuliwe. Chofoza uhlamvu ukuze uzungezise; hudula ukuyihambisa. Khetha imephu entsha ukuze udale enye imephu ehlelekayo.",
+    "selectMap": "Imephu",
+    "classicMap": "I-Maze yakudala",
+    "boundaryMap": "I-Bounder-wall Maze",
+    "newMap": "Imephu entsha",
+    "customMap": "Imephu yangokwezifiso",
     "directions":  {
                        "left":  "Hamba kwesokunxele",
                        "right":  "Hamba kwesokudla",

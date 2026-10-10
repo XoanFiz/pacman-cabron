@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "I-edit ang mapa",
     "backToCharacters": "Bumalik sa mga character",
     "useMap": "Gamitin ang mapa na ito",
-    "mapEditorInstructions": "Mag-click ng tile para umikot ng pellet, power pellet, bakanteng espasyo, at dingding. Mag-click malapit sa isang grid line upang magdagdag o mag-alis ng pader sa pagitan ng mga bukas na tile. I-click ang isang character upang paikutin ito; i-drag upang ilipat ito.",
+    "mapEditorInstructions": "Mag-click ng tile para umikot ang pellet, power pellet, walang laman, at pader. Mag-click malapit sa isang grid line upang magdagdag o mag-alis ng pader sa pagitan ng mga bukas na tile. I-click ang isang character upang paikutin ito; i-drag upang ilipat ito. Piliin ang Bagong mapa upang lumikha ng isa pang nae-edit na mapa.",
+    "selectMap": "Mapa",
+    "classicMap": "Klasikong maze",
+    "boundaryMap": "Boundary-wall maze",
+    "newMap": "Bagong mapa",
+    "customMap": "Custom na mapa",
     "directions":  {
                        "left":  "Lumipat pakaliwa",
                        "right":  "Lumipat pakanan",

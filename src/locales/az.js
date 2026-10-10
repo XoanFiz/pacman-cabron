@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Xəritəni redaktə edin",
     "backToCharacters": "Simvollara qayıdın",
     "useMap": "Bu xəritədən istifadə edin",
-    "mapEditorInstructions": "Qranullar, güc qranulları, boş yer və divarı dövrə vurmaq üçün plitə üzərinə klikləyin. Açıq plitələr arasında divar əlavə etmək və ya silmək üçün şəbəkə xəttinin yaxınlığında klikləyin. Döndürmək üçün simvolu basın; hərəkət etdirmək üçün sürükləyin.",
+    "mapEditorInstructions": "Pelet, güc qranulları, boş və divarı dövrə vurmaq üçün kafel üzərinə klikləyin. Açıq plitələr arasında divar əlavə etmək və ya silmək üçün şəbəkə xəttinin yaxınlığında klikləyin. Döndürmək üçün simvolu basın; hərəkət etdirmək üçün sürükləyin. Başqa redaktə edilə bilən xəritə yaratmaq üçün Yeni xəritə seçin.",
+    "selectMap": "Xəritə",
+    "classicMap": "Klassik labirint",
+    "boundaryMap": "Sərhəd divar labirenti",
+    "newMap": "Yeni xəritə",
+    "customMap": "Fərdi xəritə",
     "directions":  {
                        "left":  "Sola keçin",
                        "right":  "Sağa hərəkət edin",

@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Upravit mapu",
     "backToCharacters": "Zpět na znaky",
     "useMap": "Použít tuto mapu",
-    "mapEditorInstructions": "Kliknutím na dlaždici můžete zacyklit pelety, energetické pelety, prázdné místo a zeď. Kliknutím poblíž čáry mřížky přidáte nebo odstraníte zeď mezi otevřené dlaždice. Kliknutím na postavu ji otočíte; přetažením jej přesunete.",
+    "mapEditorInstructions": "Kliknutím na dlaždici spustíte cyklus pelety, energetické pelety, vyprázdnění a zdi. Kliknutím poblíž čáry mřížky přidáte nebo odstraníte zeď mezi otevřené dlaždice. Kliknutím na postavu ji otočíte; přetažením jej přesunete. Zvolte Nová mapa pro vytvoření další upravitelné mapy.",
+    "selectMap": "Mapa",
+    "classicMap": "Klasické bludiště",
+    "boundaryMap": "Hraniční bludiště",
+    "newMap": "Nová mapa",
+    "customMap": "Vlastní mapa",
     "directions":  {
                        "left":  "Přesuňte se doleva",
                        "right":  "Pohyb doprava",

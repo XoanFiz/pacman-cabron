@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Breyta korti",
     "backToCharacters": "Til baka í stafi",
     "useMap": "Notaðu þetta kort",
-    "mapEditorInstructions": "Smelltu á flís til að hjóla í pellet, power pellet, autt rými og vegg. Smelltu nálægt ristlínu til að bæta við eða fjarlægja vegg á milli opinna flísa. Smelltu á staf til að snúa honum; dragðu til að færa það.",
+    "mapEditorInstructions": "Smelltu á flís til að hjóla í pellet, power pellet, tóma og vegg. Smelltu nálægt ristlínu til að bæta við eða fjarlægja vegg á milli opinna flísa. Smelltu á staf til að snúa honum; dragðu til að færa það. Veldu Nýtt kort til að búa til annað breytanlegt kort.",
+    "selectMap": "Kort",
+    "classicMap": "Klassískt völundarhús",
+    "boundaryMap": "Mörk-vegg völundarhús",
+    "newMap": "Nýtt kort",
+    "customMap": "Sérsniðið kort",
     "directions":  {
                        "left":  "Færðu til vinstri",
                        "right":  "Færðu til hægri",

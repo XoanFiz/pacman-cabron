@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Rediģēt karti",
     "backToCharacters": "Atpakaļ pie rakstzīmēm",
     "useMap": "Izmantojiet šo karti",
-    "mapEditorInstructions": "Noklikšķiniet uz flīzes, lai pārvietotu granulu, enerģijas granulu, tukšu vietu un sienu. Noklikšķiniet netālu no režģa līnijas, lai pievienotu vai noņemtu sienu starp atvērtajām flīzēm. Noklikšķiniet uz rakstzīmes, lai to pagrieztu; velciet, lai to pārvietotu.",
+    "mapEditorInstructions": "Noklikšķiniet uz flīzes, lai pārvietotu granulu, jaudas granulu, tukšu un sienu. Noklikšķiniet netālu no režģa līnijas, lai pievienotu vai noņemtu sienu starp atvērtajām flīzēm. Noklikšķiniet uz rakstzīmes, lai to pagrieztu; velciet, lai to pārvietotu. Izvēlieties Jauna karte, lai izveidotu citu rediģējamu karti.",
+    "selectMap": "Karte",
+    "classicMap": "Klasisks labirints",
+    "boundaryMap": "Robežu-sienu labirints",
+    "newMap": "Jauna karte",
+    "customMap": "Pielāgota karte",
     "directions":  {
                        "left":  "Pārvietojieties pa kreisi",
                        "right":  "Pārvietojieties pa labi",

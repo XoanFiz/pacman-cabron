@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Ṣatunkọ maapu",
     "backToCharacters": "Pada si awọn kikọ",
     "useMap": "Lo maapu yii",
-    "mapEditorInstructions": "Tẹ tile kan lati yipo pellet, pellet agbara, aaye ofo, ati odi. Tẹ nitosi laini akoj lati ṣafikun tabi yọ odi kan kuro laarin awọn alẹmọ ṣiṣi. Tẹ ohun kikọ kan lati yi pada; fa lati gbe.",
+    "mapEditorInstructions": "Tẹ tile kan lati yi pellet, agbara pellet, ofo, ati odi. Tẹ nitosi laini akoj lati ṣafikun tabi yọ odi kan kuro laarin awọn alẹmọ ṣiṣi. Tẹ ohun kikọ kan lati yi pada; fa lati gbe. Yan maapu Tuntun lati ṣẹda maapu miiran ti a le ṣatunkọ.",
+    "selectMap": "Maapu",
+    "classicMap": "Classic iruniloju",
+    "boundaryMap": "Aala-odi iruniloju",
+    "newMap": "Maapu tuntun",
+    "customMap": "Aṣa maapu",
     "directions":  {
                        "left":  "Gbe si osi",
                        "right":  "Gbe ọtun",

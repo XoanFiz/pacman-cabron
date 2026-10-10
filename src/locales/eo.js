@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Redaktu mapon",
     "backToCharacters": "Reen al signoj",
     "useMap": "Uzu ĉi tiun mapon",
-    "mapEditorInstructions": "Alklaku kahelon por bicikli buleton, potencan buleton, malplenan spacon kaj muron. Alklaku proksime al kradlinio por aldoni aŭ forigi muron inter malfermitaj kaheloj. Alklaku signon por turni ĝin; trenu por movi ĝin.",
+    "mapEditorInstructions": "Alklaku kahelon por bicikli buleton, potencan buleton, malplenan kaj muron. Alklaku proksime al kradlinio por aldoni aŭ forigi muron inter malfermitaj kaheloj. Alklaku signon por turni ĝin; trenu por movi ĝin. Elektu Novan mapon por krei alian redakteblan mapon.",
+    "selectMap": "Mapo",
+    "classicMap": "Klasika labirinto",
+    "boundaryMap": "Limmura labirinto",
+    "newMap": "Nova mapo",
+    "customMap": "Propra mapo",
     "directions":  {
                        "left":  "Movu maldekstren",
                        "right":  "Movu dekstren",

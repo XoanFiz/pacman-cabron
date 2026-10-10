@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Nexşeyê biguherîne",
     "backToCharacters": "Vegere tîpan",
     "useMap": "Vê nexşeyê bi kar bîne",
-    "mapEditorInstructions": "Pîlekek bikirtînin da ku pellet, pelleta hêzê, cîhê vala, û dîwar bigerin. Li nêzî xêzek torê bikirtînin da ku dîwarek di navbera pêlên vekirî de zêde bikin an jê bikin. Ji bo zivirandina karakterekê bikirtînin; kaş bikin da ku wê biguhezînin.",
+    "mapEditorInstructions": "Pîlekek bikirtînin da ku pellet, pelleta hêzê, vala, û dîwar bigerin. Li nêzî xêzek torê bikirtînin da ku dîwarek di navbera pêlên vekirî de zêde bikin an jê bikin. Ji bo zivirandina karakterekê bikirtînin; kaş bikin da ku wê biguhezînin. Nexşeya Nû hilbijêrin da ku nexşeyek din a biguherîne biafirînin.",
+    "selectMap": "Map",
+    "classicMap": "Maze klasîk",
+    "boundaryMap": "Boundary-dîwar mazî",
+    "newMap": "Nexşeya nû",
+    "customMap": "Nexşeya Custom",
     "directions":  {
                        "left":  "Biçe çepê",
                        "right":  "Rast bigerin",

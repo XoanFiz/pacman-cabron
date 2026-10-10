@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Rætta kort",
     "backToCharacters": "Aftur til stavir",
     "useMap": "Brúka hetta kortið",
-    "mapEditorInstructions": "Trýst á eina flís fyri at súkkla pellet, kraftpellet, tómt pláss og vegg. Trýst nærhendis einari ristlinju fyri at leggja ella taka burtur ein vegg millum opnar flísar. Trýst á ein stav fyri at snúgva hann; draga fyri at flyta tað.",
+    "mapEditorInstructions": "Trýst á eina flís fyri at súkkla pellet, kraftpellet, tómt og vegg. Trýst nærhendis einari ristlinju fyri at leggja ella taka burtur ein vegg millum opnar flísar. Trýst á ein stav fyri at snúgva hann; draga fyri at flyta tað. Vel Nýtt kort fyri at gera eitt annað kort, sum kann rættast.",
+    "selectMap": "Kort",
+    "classicMap": "Klassisk labyrint",
+    "boundaryMap": "Markna-vegglabyrint",
+    "newMap": "Nýtt kort",
+    "customMap": "Sersniðgivið kort",
     "directions":  {
                        "left":  "Flyt til vinstru",
                        "right":  "Flyt til høgru",

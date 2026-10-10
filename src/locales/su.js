@@ -12,7 +12,12 @@ window.PACMAN_TRANSLATIONS = {
     "editMap": "Édit peta",
     "backToCharacters": "Balik deui ka karakter",
     "useMap": "Anggo peta ieu",
-    "mapEditorInstructions": "Pencét ubin pikeun ngurilingan pellet, pellet kakuatan, rohangan kosong, sareng témbok. Klik deukeut garis grid pikeun nambahkeun atawa miceun témbok antara ubin muka. Klik karakter pikeun muterkeunana; sered pikeun mindahkeun éta.",
+    "mapEditorInstructions": "Pencét ubin pikeun ngurilingan pellet, pellet kakuatan, kosong, sareng témbok. Klik deukeut garis grid pikeun nambahkeun atawa miceun témbok antara ubin muka. Klik karakter pikeun muterkeunana; sered pikeun mindahkeun éta. Pilih Peta anyar pikeun nyieun peta anu tiasa diédit.",
+    "selectMap": "Harita",
+    "classicMap": "Maze klasik",
+    "boundaryMap": "Maze wates-témbok",
+    "newMap": "peta anyar",
+    "customMap": "peta custom",
     "directions":  {
                        "left":  "Pindah ka kénca",
                        "right":  "Pindah ka katuhu",
