@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Liewen",
     "redGhost":  "Roude Geescht",
     "chooseCharacterDescription":  "Spillt als Pac-Man oder kontrolléiert ee vun de Geeschter.",
+    "editMap": "Kaart änneren",
+    "backToCharacters": "Zréck op Zeeche",
+    "useMap": "Benotzt dës Kaart",
+    "mapEditorInstructions": "Klickt op eng Fliesen fir Pellet, Kraaftpellet, eidel a Mauer z\u0027entwéckelen. Klickt op e Charakter fir et ze rotéieren; zitt et fir se ze réckelen.",
     "directions":  {
                        "left":  "Beweegt lénks",
                        "right":  "Géi riets",

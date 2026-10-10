@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Vivoj",
     "redGhost":  "Ruĝa fantomo",
     "chooseCharacterDescription":  "Ludu kiel Pac-Man aŭ regu unu el la fantomoj.",
+    "editMap": "Redaktu mapon",
+    "backToCharacters": "Reen al signoj",
+    "useMap": "Uzu ĉi tiun mapon",
+    "mapEditorInstructions": "Alklaku kahelon por bicikli buleton, elektran buleton, malplenan kaj muron. Alklaku signon por turni ĝin; trenu ĝin por movi ĝin.",
     "directions":  {
                        "left":  "Movu maldekstren",
                        "right":  "Movu dekstren",

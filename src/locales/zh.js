@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "吃豆人失去了一条命",
     "gameOver": "游戏结束",
     "won": "🎉 你赢了！",
+    "editMap": "编辑地图",
+    "backToCharacters": "返回角色",
+    "useMap": "使用此地图",
+    "mapEditorInstructions": "单击一个图块以循环颗粒、动力颗粒、空和墙。点击一个角色可以旋转它；拖动它来移动它。",
     "directions": {
         "up": "向上移动",
         "left": "向左移动",

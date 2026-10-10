@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "yaşayır",
     "redGhost":  "Qırmızı xəyal",
     "chooseCharacterDescription":  "Pac-Man kimi oynayın və ya xəyallardan birinə nəzarət edin.",
+    "editMap": "Xəritəni redaktə edin",
+    "backToCharacters": "Simvollara qayıdın",
+    "useMap": "Bu xəritədən istifadə edin",
+    "mapEditorInstructions": "Qranulları, elektrik qranullarını, boş və divarı dövrə vurmaq üçün kafel üzərinə klikləyin. Döndürmək üçün simvolu basın; hərəkət etdirmək üçün onu dartın.",
     "directions":  {
                        "left":  "Sola keçin",
                        "right":  "Sağa hərəkət edin",

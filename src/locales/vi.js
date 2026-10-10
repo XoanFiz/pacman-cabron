@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man đã mất một mạng",
     "gameOver": "Trò chơi kết thúc",
     "won": "🎉 Bạn đã thắng!",
+    "editMap": "Chỉnh sửa bản đồ",
+    "backToCharacters": "Quay lại ký tự",
+    "useMap": "Sử dụng bản đồ này",
+    "mapEditorInstructions": "Nhấp vào ô để xoay vòng viên, viên năng lượng, chỗ trống và bức tường. Bấm vào một ký tự để xoay nó; kéo nó để di chuyển nó.",
     "directions": {
         "up": "Đi lên",
         "left": "Sang trái",

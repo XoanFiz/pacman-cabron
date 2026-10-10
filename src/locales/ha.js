@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Rayuwa",
     "redGhost":  "Jan fatalwa",
     "chooseCharacterDescription":  "Yi wasa azaman Pac-Man ko sarrafa ɗaya daga cikin fatalwa.",
+    "editMap": "Gyara taswira",
+    "backToCharacters": "Komawa haruffa",
+    "useMap": "Yi amfani da wannan taswirar",
+    "mapEditorInstructions": "Danna tayal don zagayowar pellet, pellet mai ƙarfi, komai, da bango. Danna harafi don juya shi; ja shi don motsa shi.",
     "directions":  {
                        "left":  "Matsa hagu",
                        "right":  "Matsa dama",

@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man bir can kaybetti",
     "gameOver": "Oyun bitti",
     "won": "🎉 Kazandın!",
+    "editMap": "Haritayı düzenle",
+    "backToCharacters": "Karakterlere geri dön",
+    "useMap": "Bu haritayı kullan",
+    "mapEditorInstructions": "Pellet, güç pelleti, boş ve duvar arasında geçiş yapmak için bir kareye tıklayın. Döndürmek için bir karaktere tıklayın; taşımak için sürükleyin.",
     "directions": {
         "up": "Yukarı",
         "left": "Sola",

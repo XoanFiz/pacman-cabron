@@ -134,6 +134,34 @@
         height: 48px;
     }
 
+    #map-editor-toolbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 8px 0;
+    }
+
+    #map-editor-toolbar[hidden] {
+        display: none;
+    }
+
+    #map-editor-toolbar button,
+    #edit-map {
+        padding: 6px 12px;
+        font: inherit;
+        cursor: pointer;
+    }
+
+    #edit-map {
+        width: 100%;
+        margin-top: 12px;
+    }
+
+    .map-editor-active canvas {
+        cursor: crosshair;
+        touch-action: none;
+    }
+
     @media (max-height: 620px) {
         #start-screen {
             position: fixed;
@@ -153,6 +181,11 @@
     </div>
 
     <div id="status" aria-live="polite">Press an arrow key to start</div>
+
+    <div id="map-editor-toolbar" hidden>
+        <button id="editor-back" data-i18n="backToCharacters">Back to characters</button>
+        <button id="editor-save" data-i18n="useMap">Use this map</button>
+    </div>
 
     <canvas id="canvas"></canvas>
 
@@ -204,6 +237,7 @@
                     <span data-i18n="pinkGhost">Pink Ghost</span>
                 </button>
             </div>
+            <button id="edit-map" data-i18n="editMap">Edit map</button>
         </div>
     </section>
 

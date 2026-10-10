@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man a perdu une vie",
     "gameOver": "Fin de partie",
     "won": "🎉 Vous avez gagné !",
+    "editMap": "Modifier la carte",
+    "backToCharacters": "Retour aux personnages",
+    "useMap": "Utilisez cette carte",
+    "mapEditorInstructions": "Cliquez sur une tuile pour faire défiler les pellets, les pellets électriques, les vides et les murs. Cliquez sur un personnage pour le faire pivoter ; faites-le glisser pour le déplacer.",
     "directions": {
         "up": "Aller en haut",
         "left": "Aller à gauche",

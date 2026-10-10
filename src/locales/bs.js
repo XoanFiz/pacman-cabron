@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Živi",
     "redGhost":  "Crveni duh",
     "chooseCharacterDescription":  "Igrajte kao Pac-Man ili kontrolirajte jednog od duhova.",
+    "editMap": "Uredi mapu",
+    "backToCharacters": "Povratak na znakove",
+    "useMap": "Koristite ovu mapu",
+    "mapEditorInstructions": "Kliknite na pločicu za ciklus peleta, peleta, praznog i zida. Kliknite na znak da ga rotirate; prevucite ga da ga pomerite.",
     "directions":  {
                        "left":  "Pomakni lijevo",
                        "right":  "Kreni desno",

@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man stracił życie",
     "gameOver": "Koniec gry",
     "won": "🎉 Wygrana!",
+    "editMap": "Edytuj mapę",
+    "backToCharacters": "Powrót do postaci",
+    "useMap": "Użyj tej mapy",
+    "mapEditorInstructions": "Kliknij kafelek, aby przełączyć się na pellet, pellet energetyczny, pusty i ścianę. Kliknij znak, aby go obrócić; przeciągnij, aby go przesunąć.",
     "directions": {
         "up": "W górę",
         "left": "W lewo",

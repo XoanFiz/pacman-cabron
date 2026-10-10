@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Jeton",
     "redGhost":  "Fantazmë e kuqe",
     "chooseCharacterDescription":  "Luaj si Pac-Man ose kontrollo një nga fantazmat.",
+    "editMap": "Redakto hartën",
+    "backToCharacters": "Kthehu te karakteret",
+    "useMap": "Përdorni këtë hartë",
+    "mapEditorInstructions": "Klikoni një pllakë për të cikluar peletin, peletin fuqizues, bosh dhe mur. Klikoni një karakter për ta rrotulluar; zvarriteni për ta lëvizur.",
     "directions":  {
                        "left":  "Lëviz majtas",
                        "right":  "Lëviz djathtas",

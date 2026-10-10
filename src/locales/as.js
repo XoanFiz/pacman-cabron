@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "জীয়াই থাকে",
     "redGhost":  "ৰঙা ভূত",
     "chooseCharacterDescription":  "Pac-Man হিচাপে খেলক বা ভূতৰ এটা নিয়ন্ত্ৰণ কৰক।",
+    "editMap": "মেপ সম্পাদনা কৰক",
+    "backToCharacters": "আখৰসমূহলৈ উভতি যাওক",
+    "useMap": "এই মেপ ব্যৱহাৰ কৰক",
+    "mapEditorInstructions": "পেলেট, শক্তি পেলেট, খালী, আৰু দেৱাল চক্ৰ কৰিবলে এটা টাইল ক্লিক কৰক। এটা আখৰ ঘূৰাবলৈ ক্লিক কৰক; ইয়াক লৰচৰ কৰিবলৈ টানি নিয়ক।",
     "directions":  {
                        "left":  "বাওঁফালে যাওক",
                        "right":  "সোঁফালে আগবাঢ়ক",

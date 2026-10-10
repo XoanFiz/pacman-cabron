@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man heeft een leven verloren",
     "gameOver": "Spel afgelopen",
     "won": "🎉 Je hebt gewonnen!",
+    "editMap": "Kaart bewerken",
+    "backToCharacters": "Terug naar personages",
+    "useMap": "Gebruik deze kaart",
+    "mapEditorInstructions": "Klik op een tegel om pellet, powerpellet, leeg en muur te doorlopen. Klik op een personage om het te draaien; sleep het om het te verplaatsen.",
     "directions": {
         "up": "Omhoog",
         "left": "Naar links",

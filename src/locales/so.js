@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "nool",
     "redGhost":  "Ruuxa cas",
     "chooseCharacterDescription":  "U ciyaar sidii Pac-Man ama maamul mid ka mid ah rooxaanta.",
+    "editMap": "Wax ka beddel khariidadda",
+    "backToCharacters": "Ku noqo jilayaasha",
+    "useMap": "Isticmaal khariidadan",
+    "mapEditorInstructions": "Guji tile si aad u wareegto pellet, pellet koronto, maran, iyo gidaar. Guji xarfaha si aad u beddesho; u jiid si aad u dhaqaajiso.",
     "directions":  {
                        "left":  "Bidix u dhaqaaq",
                        "right":  "Midig u dhaqaaq",

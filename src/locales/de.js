@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man hat ein Leben verloren",
     "gameOver": "Spiel vorbei",
     "won": "🎉 Du hast gewonnen!",
+    "editMap": "Karte bearbeiten",
+    "backToCharacters": "Zurück zu den Charakteren",
+    "useMap": "Diese Karte verwenden",
+    "mapEditorInstructions": "Klicken Sie auf eine Kachel, um zwischen Pellet, Power-Pellet, Entleeren und Wand zu wechseln. Klicken Sie auf ein Zeichen, um es zu drehen. Ziehen Sie es, um es zu verschieben.",
     "directions": {
         "up": "Nach oben",
         "left": "Nach links",

@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "ይኖራሉ",
     "redGhost":  "ቀይ መንፈስ",
     "chooseCharacterDescription":  "እንደ Pac-Man ይጫወቱ ወይም አንዱን መናፍስት ይቆጣጠሩ።",
+    "editMap": "ካርታውን አርትዕ",
+    "backToCharacters": "ወደ ቁምፊዎች ተመለስ",
+    "useMap": "ይህንን ካርታ ተጠቀም",
+    "mapEditorInstructions": "ፔሌት፣ ፓወር ፔሌት፣ ባዶ እና ግድግዳ ለማሽከርከር ንጣፍ ጠቅ ያድርጉ። ለማሽከርከር ቁምፊን ጠቅ ያድርጉ; ለማንቀሳቀስ ይጎትቱት።",
     "directions":  {
                        "left":  "ወደ ግራ ውሰድ",
                        "right":  "ወደ ቀኝ አንቀሳቅስ",

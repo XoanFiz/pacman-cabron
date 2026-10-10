@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Lavi",
     "redGhost":  "Fantom wouj",
     "chooseCharacterDescription":  "Jwe kòm Pac-Man oswa kontwole youn nan fantom yo.",
+    "editMap": "Edit kat la",
+    "backToCharacters": "Retounen nan karaktè",
+    "useMap": "Sèvi ak kat sa a",
+    "mapEditorInstructions": "Klike sou yon mozayik pou sikile granules, granules pouvwa, vid, ak miray. Klike sou yon karaktè pou vire l; trennen li pou deplase li.",
     "directions":  {
                        "left":  "Deplase agoch",
                        "right":  "Deplase dwat",

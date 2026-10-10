@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Ndụ",
     "redGhost":  "Mmụọ uhie",
     "chooseCharacterDescription":  "Gwuo dị ka Pac-Man ma ọ bụ jikwaa otu mmụọ.",
+    "editMap": "Dezie maapụ",
+    "backToCharacters": "Laghachi na mkpụrụedemede",
+    "useMap": "Jiri maapụ a",
+    "mapEditorInstructions": "Pịa taịlị ka pellet okirikiri, pellet ike, ihe efu na mgbidi. Pịa mkpụrụedemede iji tụgharịa ya; dọkpụrụ ya ka ọ bugharịa ya.",
     "directions":  {
                        "left":  "Gaa n\u0027aka ekpe",
                        "right":  "Gaa aka nri",

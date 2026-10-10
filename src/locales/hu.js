@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Életek",
     "redGhost":  "Vörös szellem",
     "chooseCharacterDescription":  "Játssz Pac-Manként, vagy irányítsd az egyik szellemet.",
+    "editMap": "Térkép szerkesztése",
+    "backToCharacters": "Vissza a karakterekhez",
+    "useMap": "Használja ezt a térképet",
+    "mapEditorInstructions": "Kattintson egy csempére a pellet, power pellet, üres és fal közötti ciklushoz. Kattintson egy karakterre a forgatáshoz; mozgatásához húzza.",
     "directions":  {
                        "left":  "Mozgás balra",
                        "right":  "Mozgás jobbra",

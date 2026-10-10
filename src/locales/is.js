@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Lifir",
     "redGhost":  "Rauður draugur",
     "chooseCharacterDescription":  "Spilaðu sem Pac-Man eða stjórnaðu einum af draugunum.",
+    "editMap": "Breyta korti",
+    "backToCharacters": "Til baka í stafi",
+    "useMap": "Notaðu þetta kort",
+    "mapEditorInstructions": "Smelltu á flís til að hjóla í köggla, kraftköggla, tæma og vegg. Smelltu á staf til að snúa honum; dragðu það til að færa það.",
     "directions":  {
                        "left":  "Færðu til vinstri",
                        "right":  "Færðu til hægri",

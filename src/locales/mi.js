@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Ka ora",
     "redGhost":  "Wairua whero",
     "chooseCharacterDescription":  "Whakaarihia hei Pac-Man, hei whakahaere ranei i tetahi o nga wairua.",
+    "editMap": "Whakatikaina mapi",
+    "backToCharacters": "Hoki ki nga tohu",
+    "useMap": "Whakamahia tenei mapi",
+    "mapEditorInstructions": "Paatohia he taera hei huri i te pire, te pereti hiko, te kau, me te pakitara. Pāwhiria tētahi pūāhua hei huri; toia kia nekehia.",
     "directions":  {
                        "left":  "Nuku maui",
                        "right":  "Nuku matau",

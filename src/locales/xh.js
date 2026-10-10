@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Ubomi",
     "redGhost":  "Isiporho esibomvu",
     "chooseCharacterDescription":  "Dlala njengePac-Man okanye ulawule esinye seziporho.",
+    "editMap": "Hlela imephu",
+    "backToCharacters": "Buyela kubalinganiswa",
+    "useMap": "Sebenzisa le mephu",
+    "mapEditorInstructions": "Cofa ithayile ukujikelezisa ipellet, ipellet yamandla, engenanto, kunye nodonga. Cofa umbhalo ukuze uyijikelezise; yirhuqe ukuyisusa.",
     "directions":  {
                        "left":  "Shenxela ngasekhohlo",
                        "right":  "Shenxela ngasekunene",

@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "פקמן איבד פסילה",
     "gameOver": "המשחק הסתיים",
     "won": "🎉 ניצחתם!",
+    "editMap": "ערוך מפה",
+    "backToCharacters": "חזרה לתווים",
+    "useMap": "השתמש במפה זו",
+    "mapEditorInstructions": "לחץ על אריח כדי לבצע מחזוריות של גלולה, פלט חשמלי, ריק וקיר. לחץ על תו כדי לסובב אותו; גרור אותו כדי להזיז אותו.",
     "directions": {
         "up": "למעלה",
         "left": "שמאלה",

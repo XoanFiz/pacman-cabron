@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "ජීවත් වෙනවා",
     "redGhost":  "රතු අවතාරය",
     "chooseCharacterDescription":  "Pac-Man ලෙස ක්‍රීඩා කරන්න හෝ අවතාරවලින් එකක් පාලනය කරන්න.",
+    "editMap": "සිතියම සංස්කරණය කරන්න",
+    "backToCharacters": "ආපසු අක්ෂර වෙත",
+    "useMap": "මෙම සිතියම භාවිතා කරන්න",
+    "mapEditorInstructions": "චක්‍රීය පෙති, බල පෙති, හිස් සහ බිත්ති කිරීමට ටයිල් එකක් ක්ලික් කරන්න. එය කරකැවීමට අක්ෂරයක් ක්ලික් කරන්න; එය ගෙන යාමට එය ඇදගෙන යන්න.",
     "directions":  {
                        "left":  "වමට යන්න",
                        "right":  "දකුණට යන්න",

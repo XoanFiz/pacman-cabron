@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "urip",
     "redGhost":  "Memedi abang",
     "chooseCharacterDescription":  "Muter minangka Pac-Man utawa ngontrol salah sawijining memedi.",
+    "editMap": "Owahi peta",
+    "backToCharacters": "Bali menyang karakter",
+    "useMap": "Gunakake peta iki",
+    "mapEditorInstructions": "Klik kothak kanggo siklus pelet, pelet daya, kosong, lan tembok. Klik karakter kanggo muter; seret kanggo mindhah.",
     "directions":  {
                        "left":  "Pindhah ngiwa",
                        "right":  "Ngalih nengen",

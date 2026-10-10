@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "ژوند کوي",
     "redGhost":  "سور غره",
     "chooseCharacterDescription":  "د Pac-Man په توګه لوبه وکړئ یا یو له شیطان څخه کنټرول کړئ.",
+    "editMap": "نقشه تدوین کړئ",
+    "backToCharacters": "بیرته کرکټرونو ته",
+    "useMap": "دا نقشه وکاروئ",
+    "mapEditorInstructions": "د سایکل پیلټ ، بریښنا پیلټ ، خالي او دیوال لپاره ټایل کلیک وکړئ. په یو کرکټر باندې کلیک وکړئ ترڅو یې وګرځوئ؛ د حرکت کولو لپاره یې کش کړئ.",
     "directions":  {
                        "left":  "کیڼ لور ته حرکت وکړئ",
                        "right":  "ښي خوا ته حرکت وکړئ",

@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Ubuzima",
     "redGhost":  "Umuzimu utukura",
     "chooseCharacterDescription":  "Kina nka Pac-Umuntu cyangwa ugenzure umwe mubazimu.",
+    "editMap": "Hindura ikarita",
+    "backToCharacters": "Subira ku nyuguti",
+    "useMap": "Koresha iyi karita",
+    "mapEditorInstructions": "Kanda tile kugirango uzunguruke pellet, pellet power, ubusa, nurukuta. Kanda inyuguti kugirango uzunguruke; kurura kugirango wimure.",
     "directions":  {
                        "left":  "Himura ibumoso",
                        "right":  "Himura iburyo",

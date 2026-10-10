@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Beathaichean",
     "redGhost":  "Taibhse dearg",
     "chooseCharacterDescription":  "Cluich mar Pac-Man no smachd a chumail air fear de na taibhsean.",
+    "editMap": "Deasaich am mapa",
+    "backToCharacters": "Air ais gu na caractaran",
+    "useMap": "Cleachd am mapa seo",
+    "mapEditorInstructions": "Cliog air leacag gus peileag, pellet cumhachd, falamh agus balla a rothaireachd. Cliog air caractar gus a thionndadh; slaod e gus a ghluasad.",
     "directions":  {
                        "left":  "Gluais air chlì",
                        "right":  "Gluais gu deas",

@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Elab",
     "redGhost":  "Punane kummitus",
     "chooseCharacterDescription":  "Mängige Pac-Manina või juhtige ühte kummitustest.",
+    "editMap": "Redigeeri kaarti",
+    "backToCharacters": "Tagasi tähemärkide juurde",
+    "useMap": "Kasutage seda kaarti",
+    "mapEditorInstructions": "Klikkige paanil, et tsüklistada graanulit, elektrigraanulit, tühjendada ja seina. Klõpsake tähemärki selle pööramiseks; liigutamiseks lohistage seda.",
     "directions":  {
                        "left":  "Liigu vasakule",
                        "right":  "Liigu paremale",

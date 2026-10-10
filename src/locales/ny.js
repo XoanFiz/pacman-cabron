@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Moyo",
     "redGhost":  "Mzukwa wofiira",
     "chooseCharacterDescription":  "Sewerani ngati Pac-Man kapena wongolerani imodzi mwamizimu.",
+    "editMap": "Sinthani mapu",
+    "backToCharacters": "Bwererani ku zilembo",
+    "useMap": "Gwiritsani ntchito mapuwa",
+    "mapEditorInstructions": "Dinani matailosi kuti muzungulire pellet, pellet yamagetsi, opanda kanthu, ndi khoma. Dinani chizindikiro kuti muzungulire; likokereni kuti musunthe.",
     "directions":  {
                        "left":  "Pitani kumanzere",
                        "right":  "Yendani kumanja",

@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Libbet",
     "redGhost":  "Reade geast",
     "chooseCharacterDescription":  "Spielje as Pac-Man of kontrolearje ien fan \u0027e spoeken.",
+    "editMap": "Kaart bewurkje",
+    "backToCharacters": "Werom nei tekens",
+    "useMap": "Brûk dizze kaart",
+    "mapEditorInstructions": "Klikje op in tegel om pellet, machtpellet, leech en muorre te fytsjen. Klikje op in karakter om it te draaien; sleep it om it te ferpleatsen.",
     "directions":  {
                        "left":  "Gean nei links",
                        "right":  "Gean nei rjochts",

@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man a pierdut o viață",
     "gameOver": "Joc încheiat",
     "won": "🎉 Ai câștigat!",
+    "editMap": "Editați harta",
+    "backToCharacters": "Înapoi la caractere",
+    "useMap": "Utilizați această hartă",
+    "mapEditorInstructions": "Faceți clic pe o placă pentru a rula peleți, peleți de putere, gol și perete. Faceți clic pe un caracter pentru al roti; trageți-l pentru a o muta.",
     "directions": {
         "up": "Sus",
         "left": "La stânga",

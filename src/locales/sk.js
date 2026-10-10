@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "žije",
     "redGhost":  "Červený duch",
     "chooseCharacterDescription":  "Hrajte ako Pac-Man alebo ovládajte jedného z duchov.",
+    "editMap": "Upraviť mapu",
+    "backToCharacters": "Späť na znaky",
+    "useMap": "Použiť túto mapu",
+    "mapEditorInstructions": "Kliknite na dlaždicu, ak chcete cyklovať pelety, elektrické pelety, vyprázdniť a ohradiť sa. Kliknutím na znak ho otočíte; presuňte ho presunutím.",
     "directions":  {
                        "left":  "Presuňte sa doľava",
                        "right":  "Presuňte sa doprava",

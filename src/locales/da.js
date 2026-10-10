@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man mistede et liv",
     "gameOver": "Spillet er slut",
     "won": "🎉 Du vandt!",
+    "editMap": "Rediger kort",
+    "backToCharacters": "Tilbage til tegn",
+    "useMap": "Brug dette kort",
+    "mapEditorInstructions": "Klik på en flise for at skifte mellem pellet, power pellet, tomme og væg. Klik på et tegn for at rotere det; træk den for at flytte den.",
     "directions": {
         "up": "Flyt op",
         "left": "Flyt til venstre",

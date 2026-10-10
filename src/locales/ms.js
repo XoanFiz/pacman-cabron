@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man kehilangan satu nyawa",
     "gameOver": "Permainan tamat",
     "won": "🎉 Anda menang!",
+    "editMap": "Edit peta",
+    "backToCharacters": "Kembali ke aksara",
+    "useMap": "Gunakan peta ini",
+    "mapEditorInstructions": "Klik jubin untuk mengitar pelet, pelet kuasa, kosong dan dinding. Klik aksara untuk memutarkannya; seret untuk mengalihkannya.",
     "directions": {
         "up": "Gerak ke atas",
         "left": "Gerak ke kiri",

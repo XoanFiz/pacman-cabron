@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man menetti elämän",
     "gameOver": "Peli päättyi",
     "won": "🎉 Voitit!",
+    "editMap": "Muokkaa karttaa",
+    "backToCharacters": "Takaisin merkkeihin",
+    "useMap": "Käytä tätä karttaa",
+    "mapEditorInstructions": "Napsauta laatta selataksesi pellettiä, tehopellettiä, tyhjää ja seinää. Napsauta merkkiä kiertääksesi sitä; vetämällä sitä siirtääksesi sitä.",
     "directions": {
         "up": "Ylös",
         "left": "Vasemmalle",

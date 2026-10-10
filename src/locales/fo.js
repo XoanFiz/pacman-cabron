@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Livir",
     "redGhost":  "Reytt spøkilsi",
     "chooseCharacterDescription":  "Spæl sum Pac-Man ella stýr einum av spøkjunum.",
+    "editMap": "Rætta kort",
+    "backToCharacters": "Aftur til stavir",
+    "useMap": "Brúka hetta kortið",
+    "mapEditorInstructions": "Trýst á eina flís fyri at súkkla pellet, kraftpellet, tómt og vegg. Trýst á ein stav fyri at snúgva hann; draga tað fyri at flyta tað.",
     "directions":  {
                        "left":  "Flyt til vinstru",
                        "right":  "Flyt til høgru",

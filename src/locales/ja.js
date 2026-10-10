@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "パックマンの残機が減りました",
     "gameOver": "ゲームオーバー",
     "won": "🎉 クリア！",
+    "editMap": "マップを編集",
+    "backToCharacters": "キャラクターに戻る",
+    "useMap": "このマップを使用する",
+    "mapEditorInstructions": "タイルをクリックして、ペレット、パワーペレット、空、壁を循環させます。文字をクリックして回転します。ドラッグして移動します。",
     "directions": {
         "up": "上へ移動",
         "left": "左へ移動",

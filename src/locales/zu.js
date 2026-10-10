@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Uyaphila",
     "redGhost":  "Isipoki esibomvu",
     "chooseCharacterDescription":  "Dlala njengo-Pac-Man noma ulawule esinye sezipoki.",
+    "editMap": "Hlela imephu",
+    "backToCharacters": "Emuva ezinhlamvu",
+    "useMap": "Sebenzisa le mephu",
+    "mapEditorInstructions": "Chofoza ithayela ukuze ujikeleze i-pellet, i-power pellet, ayinalutho, nodonga. Chofoza uhlamvu ukuze uzungezise; idonse ukuyihambisa.",
     "directions":  {
                        "left":  "Hamba kwesokunxele",
                        "right":  "Hamba kwesokudla",

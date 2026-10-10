@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "Pac-Man perdeu unha vida",
     "gameOver": "Fin da partida",
     "won": "🎉 Gañaches!",
+    "editMap": "Editar mapa",
+    "backToCharacters": "Volver aos personaxes",
+    "useMap": "Usa este mapa",
+    "mapEditorInstructions": "Fai clic nun mosaico para facer un ciclo de pellet, power pellet, baleiro e parede. Fai clic nun carácter para rotalo; arrástrao para movelo.",
     "directions": {
         "up": "Mover cara arriba",
         "left": "Mover á esquerda",

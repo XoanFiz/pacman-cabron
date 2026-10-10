@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "ຊີວິດ",
     "redGhost":  "ຜີແດງ",
     "chooseCharacterDescription":  "ຫຼິ້ນເປັນ Pac-Man ຫຼືຄວບຄຸມຫນຶ່ງຂອງ ghosts.",
+    "editMap": "ແກ້ໄຂແຜນທີ່",
+    "backToCharacters": "ກັບໄປຫາຕົວອັກສອນ",
+    "useMap": "ໃຊ້ແຜນທີ່ນີ້",
+    "mapEditorInstructions": "ຄລິກແຜ່ນເພື່ອຖີບເມັດ, ເມັດພະລັງງານ, ຫວ່າງເປົ່າ, ແລະຝາ. ຄລິກຕົວອັກສອນເພື່ອຫມຸນມັນ; ລາກມັນເພື່ອຍ້າຍມັນ.",
     "directions":  {
                        "left":  "ຍ້າຍຊ້າຍ",
                        "right":  "ຍ້າຍໄປຂວາ",

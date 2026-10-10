@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Lewe",
     "redGhost":  "Rooi spook",
     "chooseCharacterDescription":  "Speel as Pac-Man of beheer een van die spoke.",
+    "editMap": "Wysig kaart",
+    "backToCharacters": "Terug na karakters",
+    "useMap": "Gebruik hierdie kaart",
+    "mapEditorInstructions": "Klik op \u0027n teël om korrel, kragkorrel, leeg en muur te siklus. Klik \u0027n karakter om dit te draai; sleep dit om dit te skuif.",
     "directions":  {
                        "left":  "Beweeg links",
                        "right":  "Beweeg regs",

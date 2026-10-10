@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "រស់នៅ",
     "redGhost":  "ខ្មោចក្រហម",
     "chooseCharacterDescription":  "លេងជា Pac-Man ឬគ្រប់គ្រងខ្មោចមួយ។",
+    "editMap": "កែសម្រួលផែនទី",
+    "backToCharacters": "ត្រឡប់ទៅតួអក្សរ",
+    "useMap": "ប្រើផែនទីនេះ",
+    "mapEditorInstructions": "ចុចក្រឡាមួយដើម្បីបង្វិលគ្រាប់ បន្ទះថាមពល ទទេ និងជញ្ជាំង។ ចុចតួអក្សរដើម្បីបង្វិលវា; អូសដើម្បីផ្លាស់ទីវា។",
     "directions":  {
                        "left":  "ផ្លាស់ទីទៅឆ្វេង",
                        "right":  "ផ្លាស់ទីទៅស្តាំ",

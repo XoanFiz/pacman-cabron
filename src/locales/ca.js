@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Vides",
     "redGhost":  "Fantasma vermell",
     "chooseCharacterDescription":  "Juga com a Pac-Man o controla un dels fantasmes.",
+    "editMap": "Edita el mapa",
+    "backToCharacters": "Torna als caràcters",
+    "useMap": "Fes servir aquest mapa",
+    "mapEditorInstructions": "Fes clic a una fitxa per ciclar el pellet, el pellet elèctric, el buit i la paret. Feu clic a un caràcter per girar-lo; arrossegueu-lo per moure\u0027l.",
     "directions":  {
                        "left":  "Mou a l\u0027esquerra",
                        "right":  "Mou a la dreta",

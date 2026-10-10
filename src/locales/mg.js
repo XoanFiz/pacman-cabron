@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Velona",
     "redGhost":  "matoatoa mena",
     "chooseCharacterDescription":  "Milalao ho Pac-Man na fehezo ny iray amin\u0027ireo matoatoa.",
+    "editMap": "Amboary ny sari-tany",
+    "backToCharacters": "Miverena amin\u0027ny tarehintsoratra",
+    "useMap": "Ampiasao ity sari-tany ity",
+    "mapEditorInstructions": "Kitiho ny taila iray mba hanodinana pellet, pellet herinaratra, foana ary rindrina. Kitiho ny endri-tsoratra iray hanodina azy; hisintona azy hamindra azy.",
     "directions":  {
                        "left":  "Mifindra miankavia",
                        "right":  "Mandrosoa miankavanana",

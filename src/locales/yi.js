@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "לעבט",
     "redGhost":  "רויט גייַסט",
     "chooseCharacterDescription":  "שפּיל ווי Pac-Man אָדער קאָנטראָל איינער פון די גאָוס.",
+    "editMap": "רעדאַגירן מאַפּע",
+    "backToCharacters": "צוריק צו אותיות",
+    "useMap": "ניצן דעם מאַפּע",
+    "mapEditorInstructions": "דריקט אויף אַ קאַכל צו ציקל פּעללעט, מאַכט שרייטל, ליידיק און וואַנט. דריקט אויף אַ כאַראַקטער צו דרייען עס; שלעפּן עס צו רירן עס.",
     "directions":  {
                        "left":  "מאַך לינקס",
                        "right":  "מאַך רעכט",

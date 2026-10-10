@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Kinabuhi",
     "redGhost":  "Pula nga multo",
     "chooseCharacterDescription":  "Pagdula isip Pac-Man o kontrola ang usa sa mga multo.",
+    "editMap": "I-edit ang mapa",
+    "backToCharacters": "Balik sa mga karakter",
+    "useMap": "Gamita kini nga mapa",
+    "mapEditorInstructions": "Pag-klik sa tile aron mag-cycle ang pellet, power pellet, walay sulod, ug dingding. Pag-klik sa usa ka karakter aron i-rotate kini; i-drag kini aron mapalihok kini.",
     "directions":  {
                        "left":  "Lihok sa wala",
                        "right":  "Lihok sa tuo",

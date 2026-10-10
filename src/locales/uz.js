@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Yashaydi",
     "redGhost":  "Qizil sharpa",
     "chooseCharacterDescription":  "Pac-Man sifatida o\u0027ynang yoki arvohlardan birini boshqaring.",
+    "editMap": "Xaritani tahrirlash",
+    "backToCharacters": "Belgilarga qaytish",
+    "useMap": "Ushbu xaritadan foydalaning",
+    "mapEditorInstructions": "Pellet, quvvat pelleti, bo\u0027sh va devorni aylantirish uchun plitka ustiga bosing. Belgini aylantirish uchun uni bosing; uni siljitish uchun torting.",
     "directions":  {
                        "left":  "Chapga siljiting",
                        "right":  "O\u0027ngga siljiting",

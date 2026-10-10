@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Buhay",
     "redGhost":  "Pulang multo",
     "chooseCharacterDescription":  "Maglaro bilang Pac-Man o kontrolin ang isa sa mga multo.",
+    "editMap": "I-edit ang mapa",
+    "backToCharacters": "Bumalik sa mga character",
+    "useMap": "Gamitin ang mapa na ito",
+    "mapEditorInstructions": "Mag-click ng tile upang iikot ang pellet, power pellet, walang laman, at pader. I-click ang isang character upang paikutin ito; i-drag ito upang ilipat ito.",
     "directions":  {
                        "left":  "Lumipat pakaliwa",
                        "right":  "Lumipat pakanan",

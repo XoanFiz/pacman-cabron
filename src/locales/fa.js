@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "زندگی می کند",
     "redGhost":  "روح قرمز",
     "chooseCharacterDescription":  "به عنوان Pac-Man بازی کنید یا یکی از ارواح را کنترل کنید.",
+    "editMap": "ویرایش نقشه",
+    "backToCharacters": "بازگشت به کاراکترها",
+    "useMap": "از این نقشه استفاده کنید",
+    "mapEditorInstructions": "روی یک کاشی کلیک کنید تا پلت، گلوله قدرت، خالی و دیوار را چرخه کنید. روی یک کاراکتر کلیک کنید تا بچرخد. آن را بکشید تا جابجا شود.",
     "directions":  {
                        "left":  "به سمت چپ حرکت کنید",
                        "right":  "به سمت راست حرکت کنید",

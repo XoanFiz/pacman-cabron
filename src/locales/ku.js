@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Dijî",
     "redGhost":  "Ruhê sor",
     "chooseCharacterDescription":  "Wekî Pac-Man bilîzin an yek ji cinan kontrol bikin.",
+    "editMap": "Nexşeyê biguherîne",
+    "backToCharacters": "Vegere tîpan",
+    "useMap": "Vê nexşeyê bi kar bîne",
+    "mapEditorInstructions": "Ji bo pellet, pelleta hêzdar, vala û dîwarê pêlekek bikirtînin. Ji bo zivirandina karakterekê bikirtînin; kaş bikin da ku wê biguhezînin.",
     "directions":  {
                        "left":  "Biçe çepê",
                        "right":  "Rast bigerin",

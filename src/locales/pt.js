@@ -14,6 +14,10 @@ window.PACMAN_TRANSLATIONS = {
     "lifeLost": "O Pac-Man perdeu uma vida",
     "gameOver": "Fim do jogo",
     "won": "🎉 Ganhaste!",
+    "editMap": "Editar mapa",
+    "backToCharacters": "Voltar aos personagens",
+    "useMap": "Use este mapa",
+    "mapEditorInstructions": "Clique em um bloco para alternar pellet, power pellet, vazio e parede. Clique em um personagem para girá-lo; arraste-o para movê-lo.",
     "directions": {
         "up": "Mover para cima",
         "left": "Mover para a esquerda",

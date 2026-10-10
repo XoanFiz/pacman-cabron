@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Vitas",
     "redGhost":  "Red exspiravit",
     "chooseCharacterDescription":  "Ludite ut PAC Hominem vel unum manes regere.",
+    "editMap": "Tabula recensionis",
+    "backToCharacters": "Ad characteres",
+    "useMap": "Hac tabula utere",
+    "mapEditorInstructions": "Tegula ad cyclum globulo, potentia globulo, vacua, et muro. Tessera characteris, ut volvatur; trahere, movere.",
     "directions":  {
                        "left":  "Movere sinistram",
                        "right":  "Movere dextram",

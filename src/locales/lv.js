@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Dzīvo",
     "redGhost":  "Sarkanais spoks",
     "chooseCharacterDescription":  "Spēlējiet kā Pac-Man vai kontrolējiet kādu no spokiem.",
+    "editMap": "Rediģēt karti",
+    "backToCharacters": "Atpakaļ pie rakstzīmēm",
+    "useMap": "Izmantojiet šo karti",
+    "mapEditorInstructions": "Noklikšķiniet uz flīzes, lai pārvietotu granulu, enerģijas granulu, tukšu un sienu. Noklikšķiniet uz rakstzīmes, lai to pagrieztu; velciet to, lai to pārvietotu.",
     "directions":  {
                        "left":  "Pārvietojieties pa kreisi",
                        "right":  "Pārvietojieties pa labi",

@@ -9,6 +9,10 @@ window.PACMAN_TRANSLATIONS = {
     "lives":  "Ħajja",
     "redGhost":  "Fatat aħmar",
     "chooseCharacterDescription":  "Ilgħab bħala Pac-Man jew tikkontrolla wieħed mill-fatat.",
+    "editMap": "Editja l-mappa",
+    "backToCharacters": "Lura għall-karattri",
+    "useMap": "Uża din il-mappa",
+    "mapEditorInstructions": "Ikklikkja maduma biex tiċċikla pellet, power pellet, vojta, u ħajt. Ikklikkja karattru biex iddawwarha; dragha biex iċċaqlaqha.",
     "directions":  {
                        "left":  "Nimxu lejn ix-xellug",
                        "right":  "Imxi lejn il-lemin",

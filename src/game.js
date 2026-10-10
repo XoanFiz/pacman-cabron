@@ -5,6 +5,9 @@ const scoreElement = document.getElementById("score");
 const livesElement = document.getElementById("lives");
 const statusElement = document.getElementById("status");
 const startScreenElement = document.getElementById("start-screen");
+const editorToolbarElement = document.getElementById("map-editor-toolbar");
+const editorBackButton = document.getElementById("editor-back");
+const editorSaveButton = document.getElementById("editor-save");
 
 const messages = window.PACMAN_TRANSLATIONS;
 const contentLanguage = window.PACMAN_LOCALE;
@@ -132,6 +135,18 @@ const COLS = 20;
 canvas.width = COLS * CELL;
 canvas.height = ROWS * CELL;
 
+const DEFAULT_PLAYER_START = {
+    x: 10,
+    y: 10,
+    direction: { x: 0, y: 0 }
+};
+
+const DEFAULT_GHOST_STARTS = [
+    { x: 9, y: 8, direction: { x: 1, y: 0 } },
+    { x: 10, y: 8, direction: { x: -1, y: 0 } },
+    { x: 11, y: 10, direction: { x: -1, y: 0 } }
+];
+
 
 // ============================================================
 // STATE
@@ -144,6 +159,11 @@ let pellets;
 let player;
 let ghosts;
 let selectedCharacter = "pacman";
+let customMap = null;
+let customPlayerStart = null;
+let customGhostStarts = null;
+let editorMode = false;
+let editorGesture = null;
 
 let running = false;
 let gameWon = false;
@@ -2233,7 +2253,7 @@ function resetLevel() {
      * Normalize each row to COLS.
      */
     MAP =
-        LEVEL_MAP.map(
+        (customMap || LEVEL_MAP).map(
             row =>
                 row.slice(0, COLS)
         );
@@ -2253,18 +2273,14 @@ function resetLevel() {
     }
 
 
+    const playerStart = customPlayerStart || DEFAULT_PLAYER_START;
+
     player = {
-
-        x: 10,
-        y: 10,
-
-        px: 10,
-        py: 10,
-
-        direction: {
-            x: 0,
-            y: 0
-        },
+        x: playerStart.x,
+        y: playerStart.y,
+        px: playerStart.x,
+        py: playerStart.y,
+        direction: { ...playerStart.direction },
 
         nextDirection: {
             x: 0,
@@ -2275,73 +2291,19 @@ function resetLevel() {
     };
 
 
-    ghosts = [
+    const ghostStarts = customGhostStarts || DEFAULT_GHOST_STARTS;
 
-        {
-            x: 9,
-            y: 8,
-
-            px: 9,
-            py: 8,
-
-            direction: {
-                x: 1,
-                y: 0
-            },
-            nextDirection: {
-                x: 1,
-                y: 0
-            },
-
-            frightened: false,
-            eaten: false,
-            progress: 0
-        },
-
-
-        {
-            x: 10,
-            y: 8,
-
-            px: 10,
-            py: 8,
-
-            direction: {
-                x: -1,
-                y: 0
-            },
-            nextDirection: {
-                x: -1,
-                y: 0
-            },
-
-            frightened: false,
-            eaten: false,
-            progress: 0
-        },
-
-
-        {
-            x: 11,
-            y: 10,
-
-            px: 11,
-            py: 10,
-
-            direction: {
-                x: -1,
-                y: 0
-            },
-            nextDirection: {
-                x: -1,
-                y: 0
-            },
-
-            frightened: false,
-            eaten: false,
-            progress: 0
-        }
-    ];
+    ghosts = ghostStarts.map(start => ({
+        x: start.x,
+        y: start.y,
+        px: start.x,
+        py: start.y,
+        direction: { ...start.direction },
+        nextDirection: { ...start.direction },
+        frightened: false,
+        eaten: false,
+        progress: 0
+    }));
 
 
     running = false;
@@ -3027,11 +2989,13 @@ function update(dt) {
 
 function resetPositions() {
 
-    player.x = 10;
-    player.y = 10;
+    const playerStart = customPlayerStart || DEFAULT_PLAYER_START;
 
-    player.px = 10;
-    player.py = 10;
+    player.x = playerStart.x;
+    player.y = playerStart.y;
+
+    player.px = playerStart.x;
+    player.py = playerStart.y;
 
     player.progress = 0;
 
@@ -3048,34 +3012,22 @@ function resetPositions() {
     };
 
 
-    ghosts[0].x = 9;
-    ghosts[0].y = 8;
+    const ghostStarts = customGhostStarts || DEFAULT_GHOST_STARTS;
 
-    ghosts[0].px = 9;
-    ghosts[0].py = 8;
+    ghosts.forEach((ghost, index) => {
+        const start = ghostStarts[index];
 
-    ghosts[0].progress = 0;
-    ghosts[0].needsDirection = false;
-
-
-    ghosts[1].x = 10;
-    ghosts[1].y = 8;
-
-    ghosts[1].px = 10;
-    ghosts[1].py = 8;
-
-    ghosts[1].progress = 0;
-    ghosts[1].needsDirection = false;
-
-
-    ghosts[2].x = 11;
-    ghosts[2].y = 10;
-
-    ghosts[2].px = 11;
-    ghosts[2].py = 10;
-
-    ghosts[2].progress = 0;
-    ghosts[2].needsDirection = false;
+        ghost.x = start.x;
+        ghost.y = start.y;
+        ghost.px = start.x;
+        ghost.py = start.y;
+        ghost.direction = { ...start.direction };
+        ghost.nextDirection = { ...start.direction };
+        ghost.progress = 0;
+        ghost.needsDirection = false;
+        ghost.eaten = false;
+        ghost.frightened = false;
+    });
 }
 
 
@@ -3166,8 +3118,11 @@ function draw() {
     }
 
 
-    drawPlayer();
+    if (editorMode) {
+        drawMapEditorGrid();
+    }
 
+    drawPlayer();
 
     for (
         let i = 0;
@@ -3179,6 +3134,26 @@ function draw() {
             ghosts[i],
             i
         );
+    }
+}
+
+
+function drawMapEditorGrid() {
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+    ctx.lineWidth = 1;
+
+    for (let x = 0; x <= COLS; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * CELL + 0.5, 0);
+        ctx.lineTo(x * CELL + 0.5, ROWS * CELL);
+        ctx.stroke();
+    }
+
+    for (let y = 0; y <= ROWS; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * CELL + 0.5);
+        ctx.lineTo(COLS * CELL, y * CELL + 0.5);
+        ctx.stroke();
     }
 }
 
@@ -3440,6 +3415,220 @@ function drawGhostEyes(
 // CONTROLS
 // ============================================================
 
+const EDITOR_DIRECTIONS = [
+    DIRECTIONS.right,
+    DIRECTIONS.down,
+    DIRECTIONS.left,
+    DIRECTIONS.up
+];
+
+
+function enterMapEditor() {
+    resetGame();
+    editorMode = true;
+    editorGesture = null;
+    document.body.classList.add("map-editor-active");
+    editorToolbarElement.hidden = false;
+    startScreenElement.hidden = true;
+    setStatus("mapEditorInstructions");
+}
+
+
+function leaveMapEditor(saveChanges) {
+    if (saveChanges) {
+        customMap = MAP.map(row => row.slice());
+        customPlayerStart = {
+            x: player.x,
+            y: player.y,
+            direction: { ...player.direction }
+        };
+        customGhostStarts = ghosts.map(ghost => ({
+            x: ghost.x,
+            y: ghost.y,
+            direction: { ...ghost.direction }
+        }));
+    }
+
+    editorMode = false;
+    editorGesture = null;
+    document.body.classList.remove("map-editor-active");
+    editorToolbarElement.hidden = true;
+    resetGame();
+    startScreenElement.hidden = false;
+}
+
+
+function getEditorPosition(event) {
+    const bounds = canvas.getBoundingClientRect();
+    const x = Math.floor((event.clientX - bounds.left) * COLS / bounds.width);
+    const y = Math.floor((event.clientY - bounds.top) * ROWS / bounds.height);
+
+    if (x < 0 || x >= COLS || y < 0 || y >= ROWS) {
+        return null;
+    }
+
+    return { x, y };
+}
+
+
+function getEditorEntity(position) {
+    if (player.x === position.x && player.y === position.y) {
+        return { type: "player", entity: player };
+    }
+
+    const ghostIndex = ghosts.findIndex(ghost =>
+        ghost.x === position.x && ghost.y === position.y
+    );
+
+    return ghostIndex < 0
+        ? null
+        : { type: "ghost", index: ghostIndex, entity: ghosts[ghostIndex] };
+}
+
+
+function rotateEditorEntity(entity) {
+    const currentIndex = EDITOR_DIRECTIONS.findIndex(direction =>
+        direction.x === entity.direction.x &&
+        direction.y === entity.direction.y
+    );
+    const direction = EDITOR_DIRECTIONS[(currentIndex + 1) % EDITOR_DIRECTIONS.length];
+
+    entity.direction = { ...direction };
+    entity.nextDirection = { ...direction };
+}
+
+
+function moveEditorEntity(gesture, position) {
+    const { x, y } = position;
+
+    if (MAP[y][x] === "#") {
+        return false;
+    }
+
+    if (
+        gesture.type !== "player" &&
+        player.x === x && player.y === y
+    ) {
+        return false;
+    }
+
+    if (ghosts.some((ghost, index) =>
+        ghost.x === x &&
+        ghost.y === y &&
+        !(gesture.type === "ghost" && index === gesture.index)
+    )) {
+        return false;
+    }
+
+    const entity = gesture.entity;
+    entity.x = x;
+    entity.y = y;
+    entity.px = x;
+    entity.py = y;
+    entity.progress = 0;
+
+    if (gesture.type === "player") {
+        entity.nextDirection = { ...entity.direction };
+    } else {
+        entity.needsDirection = false;
+    }
+
+    return true;
+}
+
+
+function cycleEditorTile(position) {
+    const cycle = [".", "o", " ", "#"];
+    const currentIndex = cycle.indexOf(MAP[position.y][position.x]);
+    const nextTile = cycle[(currentIndex + 1) % cycle.length];
+    const row = MAP[position.y];
+
+    MAP[position.y] =
+        row.slice(0, position.x) +
+        nextTile +
+        row.slice(position.x + 1);
+
+    pellets = MAP.reduce((total, row) =>
+        total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
+    0);
+    buildGraph();
+}
+
+
+canvas.addEventListener("pointerdown", event => {
+    if (!editorMode) {
+        return;
+    }
+
+    const position = getEditorPosition(event);
+    if (!position) {
+        return;
+    }
+
+    event.preventDefault();
+    canvas.setPointerCapture(event.pointerId);
+    const selected = getEditorEntity(position);
+
+    editorGesture = selected
+        ? { ...selected, start: position, moved: false }
+        : { type: "tile", start: position, moved: false };
+});
+
+
+canvas.addEventListener("pointermove", event => {
+    if (!editorMode || !editorGesture || editorGesture.type === "tile") {
+        return;
+    }
+
+    const position = getEditorPosition(event);
+    if (!position) {
+        return;
+    }
+
+    if (position.x !== editorGesture.start.x || position.y !== editorGesture.start.y) {
+        editorGesture.moved = moveEditorEntity(editorGesture, position) || editorGesture.moved;
+    }
+});
+
+
+canvas.addEventListener("pointerup", event => {
+    if (!editorMode || !editorGesture) {
+        return;
+    }
+
+    const position = getEditorPosition(event);
+    const gesture = editorGesture;
+    editorGesture = null;
+
+    if (!position) {
+        return;
+    }
+
+    if (gesture.type === "tile") {
+        if (position.x === gesture.start.x && position.y === gesture.start.y) {
+            cycleEditorTile(position);
+        }
+        return;
+    }
+
+    if (!gesture.moved && position.x === gesture.start.x && position.y === gesture.start.y) {
+        rotateEditorEntity(gesture.entity);
+    } else if (!gesture.moved) {
+        moveEditorEntity(gesture, position);
+    }
+});
+
+
+canvas.addEventListener("pointercancel", () => {
+    editorGesture = null;
+});
+
+
+document.getElementById("edit-map").addEventListener("click", enterMapEditor);
+editorBackButton.addEventListener("click", () => leaveMapEditor(false));
+editorSaveButton.addEventListener("click", () => leaveMapEditor(true));
+
+
 function getControlledGhost() {
     if (!selectedCharacter.startsWith("ghost-")) {
         return null;
@@ -3452,6 +3641,10 @@ function getControlledGhost() {
 function setDirection(
     direction
 ) {
+
+    if (editorMode) {
+        return;
+    }
 
     const controlledGhost = getControlledGhost();
 
@@ -3500,6 +3693,13 @@ document
 document.addEventListener(
     "keydown",
     event => {
+        if (editorMode) {
+            if (event.key === "Escape") {
+                leaveMapEditor(false);
+            }
+            return;
+        }
+
         if (gameWon) {
             return;
         }
@@ -3590,8 +3790,12 @@ document
     .addEventListener(
         "click",
         () => {
-            resetGame();
-            startScreenElement.hidden = false;
+            if (editorMode) {
+                leaveMapEditor(false);
+            } else {
+                resetGame();
+                startScreenElement.hidden = false;
+            }
         }
     );
 
