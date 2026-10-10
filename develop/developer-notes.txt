@@ -8,6 +8,7 @@ Campaign mode?
 When a map is edited add the modified map as fixed selectable one. Add also a way to remove them. They are stored in localStorage.
 Allow manipulating number of lifes in the map editor.
 Do not use ghost + a number as the ghost name for the unknown colors. Try to recover the color name from a library to do so. If there is a second ghost with the same color name then you can add a number. This requirement needs a library for colors in multiple languages ​​or a mapping in the language file.
+More than one Pac-man
 
 AGENT NOTES:
 Copilot, please take the following points into account when working:
