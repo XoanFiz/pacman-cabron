@@ -22,6 +22,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "ଏକ ଭୂତ ଘର ଯୋଡିବାକୁ ଏକ ଖୋଲା ଟାଇଲ୍ କ୍ଲିକ୍ କରନ୍ତୁ | ଏହାକୁ ହଟାଇବା ପାଇଁ ଏକ ଘର କ୍ଲିକ୍ କରନ୍ତୁ; ପ୍ରତ୍ୟେକ ମାନଚିତ୍ରରେ ଅତି କମରେ ଗୋଟିଏ ଘର ରଖନ୍ତୁ |",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions":  {
                        "left":  "ବାମକୁ ଘୁଞ୍ଚନ୍ତୁ |",
                        "right":  "ଡାହାଣକୁ ଯାଆନ୍ତୁ |",

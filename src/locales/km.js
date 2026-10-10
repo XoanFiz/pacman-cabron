@@ -22,6 +22,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "ចុចផ្ទាំងបើកដើម្បីបន្ថែមផ្ទះខ្មោច។ ចុចផ្ទះដើម្បីយកវាចេញ; រក្សាផ្ទះយ៉ាងហោចណាស់មួយនៅលើផែនទីនីមួយៗ។",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions":  {
                        "left":  "ផ្លាស់ទីទៅឆ្វេង",
                        "right":  "ផ្លាស់ទីទៅស្តាំ",

@@ -27,6 +27,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "לחץ על אריח פתוח כדי להוסיף בית רפאים. לחץ על בית כדי להסיר אותו; לשמור על בית אחד לפחות בכל מפה.",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions": {
         "up": "למעלה",
         "left": "שמאלה",

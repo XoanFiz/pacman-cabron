@@ -11,6 +11,8 @@ const editorBackButton = document.getElementById("editor-back");
 const editorSaveButton = document.getElementById("editor-save");
 const mapSelectElement = document.getElementById("map-select");
 const newMapButton = document.getElementById("editor-new-map");
+const addGhostButton = document.getElementById("editor-add-ghost");
+const ghostCharacterChoicesElement = document.getElementById("ghost-character-choices");
 const pressedDirectionKeys = new Set();
 
 const messages = window.PACMAN_TRANSLATIONS;
@@ -63,7 +65,7 @@ function showEditorToast(messageKey) {
 
 function setMapEditorInstructions() {
     statusElement.textContent =
-        `${messages.mapEditorInstructions} ${messages.mapEditorHouseInstructions}`;
+        `${messages.mapEditorInstructions} ${messages.mapEditorHouseInstructions} ${messages.addGhostInstructions}`;
 }
 
 localizeContent();
@@ -74,11 +76,92 @@ localizeContent();
 let showVoronoi = false;
 
 const DOMAIN_COLORS = {
-    pacman: [255, 212, 59],
-    ghost0: [224, 82, 82],
-    ghost1: [233, 155, 53],
-    ghost2: [214, 106, 217]
+    pacman: [255, 212, 59]
 };
+
+const BASE_GHOST_COLORS = ["#e05252", "#e99b35", "#d66ad9"];
+const ghostColorPalette = BASE_GHOST_COLORS.slice();
+
+function hexToRgb(hex) {
+    return [
+        Number.parseInt(hex.slice(1, 3), 16),
+        Number.parseInt(hex.slice(3, 5), 16),
+        Number.parseInt(hex.slice(5, 7), 16)
+    ];
+}
+
+function hueToRgb(hue) {
+    const chroma = 1;
+    const h = hue / 60;
+    const x = chroma * (1 - Math.abs((h % 2) - 1));
+    const segments = [
+        [chroma, x, 0],
+        [x, chroma, 0],
+        [0, chroma, x],
+        [0, x, chroma],
+        [x, 0, chroma],
+        [chroma, 0, x]
+    ];
+    const [r, g, b] = segments[Math.floor(h) % segments.length];
+    const lightnessOffset = 0.18;
+    const scale = 0.72;
+
+    return [
+        r * scale + lightnessOffset,
+        g * scale + lightnessOffset,
+        b * scale + lightnessOffset
+    ].map(channel => Math.round(channel * 255));
+}
+
+function rgbToHex([red, green, blue]) {
+    return `#${[red, green, blue]
+        .map(channel => channel.toString(16).padStart(2, "0"))
+        .join("")}`;
+}
+
+function getMostDistinctGhostColor(existingColors) {
+    const existing = existingColors.map(hexToRgb);
+    if (existing.length === 0) {
+        return BASE_GHOST_COLORS[0];
+    }
+
+    let bestColor = null;
+    let bestDistance = -Infinity;
+
+    for (let hue = 0; hue < 360; hue += 2) {
+        const candidate = hueToRgb(hue);
+        const closestDistance = Math.min(
+            ...existing.map(color =>
+                Math.sqrt(
+                    (candidate[0] - color[0]) ** 2 +
+                    (candidate[1] - color[1]) ** 2 +
+                    (candidate[2] - color[2]) ** 2
+                )
+            )
+        );
+
+        if (closestDistance > bestDistance) {
+            bestDistance = closestDistance;
+            bestColor = candidate;
+        }
+    }
+
+    return rgbToHex(bestColor);
+}
+
+function getGhostColor(index) {
+    while (ghostColorPalette.length <= index) {
+        ghostColorPalette.push(
+            getMostDistinctGhostColor(ghostColorPalette)
+        );
+    }
+
+    return ghostColorPalette[index];
+}
+
+function getGhostColorRgb(index) {
+    return hexToRgb(getGhostColor(index));
+}
 
 const DOMAIN_ALPHA = 0.35;
 
@@ -184,6 +267,7 @@ let nextCustomMapNumber = 1;
 let editorMode = false;
 let editorGesture = null;
 let editorToastTimer = 0;
+let addingGhost = false;
 
 let running = false;
 let gameWon = false;
@@ -406,6 +490,7 @@ function cloneMapPosition(position) {
     return {
         x: position.x,
         y: position.y,
+        color: position.color,
         direction: position.direction
             ? { ...position.direction }
             : undefined
@@ -481,6 +566,105 @@ function updateMapSelector() {
     }
 
     mapSelectElement.value = activeMapId;
+}
+
+function createGhostIcon(color, className) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 48 48");
+    svg.setAttribute("aria-hidden", "true");
+    svg.classList.add(className);
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M5 43V23a19 19 0 0 1 38 0v20l-7-5-7 5-7-5-7 5-5-5Z");
+    path.setAttribute("fill", color);
+    svg.append(path);
+
+    for (const x of [18, 31]) {
+        const eye = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+        eye.setAttribute("cx", String(x));
+        eye.setAttribute("cy", "23");
+        eye.setAttribute("rx", "5");
+        eye.setAttribute("ry", "7");
+        eye.setAttribute("fill", "white");
+        svg.append(eye);
+    }
+
+    for (const x of [20, 33]) {
+        const pupil = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        pupil.setAttribute("cx", String(x));
+        pupil.setAttribute("cy", "24");
+        pupil.setAttribute("r", "2.5");
+        pupil.setAttribute("fill", "#111827");
+        svg.append(pupil);
+    }
+
+    return svg;
+}
+
+
+function getGhostName(index, ghostStarts) {
+    const standardNames = ["redGhost", "orangeGhost", "pinkGhost"];
+
+    if (index < standardNames.length) {
+        return messages[standardNames[index]];
+    }
+
+    return messages.ghostNumber.replace("{number}", String(index + 1));
+}
+
+
+function selectCharacter(button) {
+    selectedCharacter = button.dataset.character;
+    resetGame();
+    startScreenElement.hidden = true;
+}
+
+
+function updateCharacterChoices() {
+    const ghostStarts = getCurrentMapDefinition().ghostStarts;
+    ghostCharacterChoicesElement.replaceChildren();
+
+    for (let index = 0; index < ghostStarts.length; index++) {
+        const name = getGhostName(index, ghostStarts);
+        const button = document.createElement("button");
+        button.className = "character-choice";
+        button.dataset.character = `ghost-${index}`;
+        button.setAttribute("aria-label", name);
+
+        const icon = createGhostIcon(
+            ghostStarts[index].color || getGhostColor(index),
+            "character-figure"
+        );
+        const label = document.createElement("span");
+        label.textContent = name;
+        button.append(icon, label);
+        button.addEventListener("click", () => selectCharacter(button));
+        ghostCharacterChoicesElement.append(button);
+    }
+}
+
+
+function updateAddGhostButton() {
+    const existingColors = ghosts.map((ghost, index) =>
+        ghost.color || getGhostColor(index)
+    );
+    const color = existingColors.length < BASE_GHOST_COLORS.length
+        ? BASE_GHOST_COLORS[existingColors.length]
+        : getMostDistinctGhostColor(existingColors);
+    const label = document.createElement("span");
+    label.textContent = messages.addGhost;
+    addGhostButton.replaceChildren(
+        createGhostIcon(color, "ghost-choice-icon"),
+        label
+    );
+    addGhostButton.setAttribute("aria-pressed", String(addingGhost));
+    addGhostButton.setAttribute(
+        "aria-label",
+        addingGhost
+            ? messages.cancelAddGhost
+            : messages.addGhost
+    );
+    addGhostButton.title = messages.addGhostInstructions;
 }
 
 
@@ -1076,7 +1260,20 @@ function drawVoronoiDomains() {
             ];
 
             const colors = normalizedOwners
-                .map(owner => DOMAIN_COLORS[owner])
+                .map(owner => {
+                    if (owner === "pacman") {
+                        return DOMAIN_COLORS.pacman;
+                    }
+
+                    if (owner.startsWith("ghost")) {
+                        const index = getGhostIndex(owner);
+                        return ghosts[index]?.color
+                            ? hexToRgb(ghosts[index].color)
+                            : getGhostColorRgb(index);
+                    }
+
+                    return null;
+                })
                 .filter(Boolean);
 
             if (colors.length === 0) {
@@ -2490,6 +2687,7 @@ function resetLevel() {
         y: start.y,
         px: start.x,
         py: start.y,
+        color: start.color,
         direction: { ...start.direction },
         nextDirection: { ...start.direction },
         frightened: false,
@@ -3435,13 +3633,6 @@ function drawGhost(
         CELL / 2;
 
 
-    const colors = [
-        "#e05252",
-        "#e99b35",
-        "#d66ad9"
-    ];
-
-
     if (ghost.eaten) {
 
         drawGhostEyes(
@@ -3461,18 +3652,14 @@ function drawGhost(
             Math.floor(gameTime * FRIGHTENED_BLINK_FREQUENCY) % 2 === 0;
 
         ctx.fillStyle = blinking
-            ? colors[index % colors.length]
+            ? getGhostColor(index)
             : "#3159d6";
 
     }
 
     else {
 
-        ctx.fillStyle =
-            colors[
-            index %
-            colors.length
-            ];
+        ctx.fillStyle = getGhostColor(index);
     }
 
 
@@ -3616,9 +3803,11 @@ function enterMapEditor() {
     );
     editorMode = true;
     editorGesture = null;
+    addingGhost = false;
     window.clearTimeout(editorToastTimer);
     editorToastElement.hidden = true;
     resetGame();
+    updateAddGhostButton();
     document.body.classList.add("map-editor-active");
     editorToolbarElement.hidden = false;
     startScreenElement.hidden = true;
@@ -3627,43 +3816,130 @@ function enterMapEditor() {
 
 
 function createNewMap() {
+    syncEditorDraftMap();
     const sourceMap = editorDraftMap || getCurrentMapDefinition();
 
     editorDraftMap = cloneMapDefinition(sourceMap);
     editorDraftMap.id = `custom-${nextCustomMapNumber}`;
     editorDraftMap.nameKey = null;
     editorDraftMap.customNumber = nextCustomMapNumber++;
+    addingGhost = false;
     resetGame();
+    updateAddGhostButton();
     setMapEditorInstructions();
+}
+
+
+function toggleGhostPlacement() {
+    addingGhost = !addingGhost;
+    updateAddGhostButton();
+}
+
+
+function addGhostAt(position) {
+    if (
+        !position ||
+        MAP[position.y][position.x] === "#" ||
+        getEditorGhostHouse(position) >= 0 ||
+        (player.x === position.x && player.y === position.y) ||
+        ghosts.some(ghost => ghost.x === position.x && ghost.y === position.y)
+    ) {
+        showEditorToast("ghostPlacementError");
+        return false;
+    }
+
+    const existingColors = ghosts.map((ghost, index) =>
+        ghost.color || getGhostColor(index)
+    );
+    const color = existingColors.length < BASE_GHOST_COLORS.length
+        ? BASE_GHOST_COLORS[existingColors.length]
+        : getMostDistinctGhostColor(existingColors);
+    const newGhost = {
+        x: position.x,
+        y: position.y,
+        px: position.x,
+        py: position.y,
+        progress: 0,
+        frightened: false,
+        eaten: false,
+        color,
+        direction: { ...DIRECTIONS.left },
+        nextDirection: { ...DIRECTIONS.left }
+    };
+    ghosts.push(newGhost);
+
+    const previousTile = MAP[position.y][position.x];
+    if (MAP[position.y][position.x] === "." || MAP[position.y][position.x] === "o") {
+        MAP[position.y] =
+            MAP[position.y].slice(0, position.x) +
+            " " +
+            MAP[position.y].slice(position.x + 1);
+        pellets--;
+    }
+
+    if (!isEditorMapConnected()) {
+        ghosts.pop();
+        if (previousTile !== MAP[position.y][position.x]) {
+            MAP[position.y] =
+                MAP[position.y].slice(0, position.x) +
+                previousTile +
+                MAP[position.y].slice(position.x + 1);
+            pellets++;
+        }
+        showEditorToast("mapConnectivityError");
+        return false;
+    }
+
+    strategicSearch.nodes.clear();
+    strategicSearch.frontier = [];
+    strategicSearch.root = null;
+    syncEditorDraftMap();
+    updateAddGhostButton();
+    setMapEditorInstructions();
+
+    return true;
+}
+
+
+function syncEditorDraftMap() {
+    if (!editorDraftMap) {
+        return;
+    }
+
+    editorDraftMap.tiles = MAP.map(row => row.slice());
+    editorDraftMap.edges = Array.from(MAP_EDGES);
+    editorDraftMap.playerStart = {
+        x: player.x,
+        y: player.y,
+        direction: { ...player.facingDirection }
+    };
+    editorDraftMap.ghostStarts = ghosts.map(ghost => ({
+        x: ghost.x,
+        y: ghost.y,
+        color: ghost.color,
+        direction: { ...ghost.direction }
+    }));
+    editorDraftMap.ghostHouses = GHOST_HOUSES.map(cloneMapPosition);
 }
 
 
 function leaveMapEditor(saveChanges) {
     if (saveChanges) {
-        editorDraftMap.tiles = MAP.map(row => row.slice());
-        editorDraftMap.edges = Array.from(MAP_EDGES);
-        editorDraftMap.playerStart = {
-            x: player.x,
-            y: player.y,
-            direction: { ...player.facingDirection }
-        };
-        editorDraftMap.ghostStarts = ghosts.map(ghost => ({
-            x: ghost.x,
-            y: ghost.y,
-            direction: { ...ghost.direction }
-        }));
-        editorDraftMap.ghostHouses = GHOST_HOUSES.map(cloneMapPosition);
+        syncEditorDraftMap();
         saveEditorMap();
     }
 
     editorDraftMap = null;
     editorMode = false;
     editorGesture = null;
+    addingGhost = false;
+    updateCharacterChoices();
     window.clearTimeout(editorToastTimer);
     editorToastElement.hidden = true;
     document.body.classList.remove("map-editor-active");
     editorToolbarElement.hidden = true;
     resetGame();
+    updateCharacterChoices();
     startScreenElement.hidden = false;
 }
 
@@ -3968,7 +4244,9 @@ canvas.addEventListener("pointerdown", event => {
     const boundary = getEditorBoundary(event);
     const selected = getEditorEntity(position);
 
-    editorGesture = boundary
+    editorGesture = addingGhost
+        ? { type: "add-ghost", start: position, moved: false }
+        : boundary
         ? { type: "boundary", edge: boundary, start: position, moved: false }
         : selected
             ? { ...selected, start: position, moved: false }
@@ -4019,6 +4297,13 @@ canvas.addEventListener("pointerup", event => {
         return;
     }
 
+    if (gesture.type === "add-ghost") {
+        if (position.x === gesture.start.x && position.y === gesture.start.y) {
+            addGhostAt(position);
+        }
+        return;
+    }
+
     if (gesture.type === "tile") {
         if (position.x === gesture.start.x && position.y === gesture.start.y) {
             cycleEditorTile(position);
@@ -4041,11 +4326,20 @@ canvas.addEventListener("pointercancel", () => {
 
 document.getElementById("edit-map").addEventListener("click", enterMapEditor);
 newMapButton.addEventListener("click", createNewMap);
+addGhostButton.addEventListener("click", toggleGhostPlacement);
 editorBackButton.addEventListener("click", () => leaveMapEditor(false));
 editorSaveButton.addEventListener("click", () => leaveMapEditor(true));
 mapSelectElement.addEventListener("change", () => {
     activeMapId = mapSelectElement.value;
+    if (
+        selectedCharacter.startsWith("ghost-") &&
+        Number(selectedCharacter.slice("ghost-".length)) >=
+            getCurrentMapDefinition().ghostStarts.length
+    ) {
+        selectedCharacter = "pacman";
+    }
     resetGame();
+    updateCharacterChoices();
 });
 
 
@@ -4124,14 +4418,10 @@ function setDirection(
 
 
 document
-    .querySelectorAll("[data-character]")
-    .forEach(button => {
-        button.addEventListener("click", () => {
-            selectedCharacter = button.dataset.character;
-            resetGame();
-            startScreenElement.hidden = true;
-        });
-    });
+    .querySelector('[data-character="pacman"]')
+    .addEventListener("click", event =>
+        selectCharacter(event.currentTarget)
+    );
 
 
 document.addEventListener(
@@ -4330,6 +4620,7 @@ function gameLoop(time) {
 
 updateMapSelector();
 resetGame();
+updateCharacterChoices();
 
 requestAnimationFrame(
     gameLoop

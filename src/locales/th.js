@@ -27,6 +27,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "คลิกไทล์ที่เปิดเพื่อเพิ่มบ้านผี คลิกที่บ้านเพื่อลบออก เก็บบ้านไว้อย่างน้อยหนึ่งหลังในแต่ละแผนที่",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions": {
         "up": "ขึ้น",
         "left": "ซ้าย",

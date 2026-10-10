@@ -27,6 +27,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "Klik på en åben flise for at tilføje et spøgelseshus. Klik på et hus for at fjerne det; holde mindst ét ​​hus på hvert kort.",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions": {
         "up": "Flyt op",
         "left": "Flyt til venstre",

@@ -125,6 +125,8 @@
 
     .start-panel {
         width: min(100%, 420px);
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
         text-align: center;
     }
 
@@ -142,6 +144,10 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
+    }
+
+    #ghost-character-choices {
+        display: contents;
     }
 
     .map-picker {
@@ -209,6 +215,17 @@
         cursor: pointer;
     }
 
+    #editor-add-ghost[aria-pressed="true"] {
+        background: #1b2740;
+        border-color: #ffd43b;
+        box-shadow: 0 0 12px rgba(255, 212, 59, 0.55);
+    }
+
+    .ghost-choice-icon {
+        width: 48px;
+        height: 48px;
+    }
+
     #edit-map {
         width: 100%;
         margin-top: 12px;
@@ -243,6 +260,7 @@
     <div id="map-editor-toolbar" hidden>
         <button id="editor-back" data-i18n="backToCharacters">Back to characters</button>
         <button id="editor-new-map" data-i18n="newMap">New map</button>
+        <button id="editor-add-ghost" aria-pressed="false"></button>
         <button id="editor-save" data-i18n="useMap">Use this map</button>
     </div>
 
@@ -275,30 +293,7 @@
                     </svg>
                     <span data-i18n="pacman">Pac-Man</span>
                 </button>
-                <button class="character-choice" data-character="ghost-0" data-i18n-aria-label="redGhost">
-                    <svg class="character-figure" viewBox="0 0 48 48" aria-hidden="true">
-                        <path d="M5 43V23a19 19 0 0 1 38 0v20l-7-5-7 5-7-5-7 5-5-5Z" fill="#e05252"/>
-                        <ellipse cx="18" cy="23" rx="5" ry="7" fill="white"/><ellipse cx="31" cy="23" rx="5" ry="7" fill="white"/>
-                        <circle cx="20" cy="24" r="2.5" fill="#111827"/><circle cx="33" cy="24" r="2.5" fill="#111827"/>
-                    </svg>
-                    <span data-i18n="redGhost">Red Ghost</span>
-                </button>
-                <button class="character-choice" data-character="ghost-1" data-i18n-aria-label="orangeGhost">
-                    <svg class="character-figure" viewBox="0 0 48 48" aria-hidden="true">
-                        <path d="M5 43V23a19 19 0 0 1 38 0v20l-7-5-7 5-7-5-7 5-5-5Z" fill="#e99b35"/>
-                        <ellipse cx="18" cy="23" rx="5" ry="7" fill="white"/><ellipse cx="31" cy="23" rx="5" ry="7" fill="white"/>
-                        <circle cx="20" cy="24" r="2.5" fill="#111827"/><circle cx="33" cy="24" r="2.5" fill="#111827"/>
-                    </svg>
-                    <span data-i18n="orangeGhost">Orange Ghost</span>
-                </button>
-                <button class="character-choice" data-character="ghost-2" data-i18n-aria-label="pinkGhost">
-                    <svg class="character-figure" viewBox="0 0 48 48" aria-hidden="true">
-                        <path d="M5 43V23a19 19 0 0 1 38 0v20l-7-5-7 5-7-5-7 5-5-5Z" fill="#d66ad9"/>
-                        <ellipse cx="18" cy="23" rx="5" ry="7" fill="white"/><ellipse cx="31" cy="23" rx="5" ry="7" fill="white"/>
-                        <circle cx="20" cy="24" r="2.5" fill="#111827"/><circle cx="33" cy="24" r="2.5" fill="#111827"/>
-                    </svg>
-                    <span data-i18n="pinkGhost">Pink Ghost</span>
-                </button>
+                <div id="ghost-character-choices" class="character-choices"></div>
             </div>
             <button id="edit-map" data-i18n="editMap">Edit map</button>
         </div>

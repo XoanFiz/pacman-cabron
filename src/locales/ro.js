@@ -27,6 +27,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "Faceți clic pe o țiglă deschisă pentru a adăuga o casă fantomă. Faceți clic pe o casă pentru a o elimina; păstrați cel puțin o casă pe fiecare hartă.",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions": {
         "up": "Sus",
         "left": "La stânga",

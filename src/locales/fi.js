@@ -27,6 +27,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "Lisää haamutalo napsauttamalla avointa ruutua. Napsauta taloa poistaaksesi sen; pidä jokaisella kartalla vähintään yksi talo.",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions": {
         "up": "Ylös",
         "left": "Vasemmalle",

@@ -22,6 +22,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "Cliciwch ar deilsen agored i ychwanegu tŷ ysbrydion. Cliciwch tŷ i gael gwared arno; cadw o leiaf un tŷ ar bob map.",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions":  {
                        "left":  "Symud i\u0027r chwith",
                        "right":  "Symud i\u0027r dde",

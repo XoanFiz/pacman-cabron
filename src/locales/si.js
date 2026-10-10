@@ -22,6 +22,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "අවතාර නිවසක් එක් කිරීමට විවෘත ටයිල් එකක් ක්ලික් කරන්න. එය ඉවත් කිරීමට නිවසක් ක්ලික් කරන්න; සෑම සිතියමකම අවම වශයෙන් එක් නිවසක් තබා ගන්න.",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions":  {
                        "left":  "වමට යන්න",
                        "right":  "දකුණට යන්න",

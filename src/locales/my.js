@@ -22,6 +22,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "သစ္ဆေအိမ်ထည့်ရန် အဖွင့်အကွက်ကို နှိပ်ပါ။ ၎င်းကိုဖယ်ရှားရန် အိမ်တစ်ခုကို နှိပ်ပါ။ မြေပုံတစ်ခုစီတွင် အနည်းဆုံး အိမ်တစ်လုံးထားပါ။",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions":  {
                        "left":  "ဘယ်ဘက်သို့ ရွှေ့ပါ။",
                        "right":  "ညာဘက်ကို ရွှေ့ပါ။",

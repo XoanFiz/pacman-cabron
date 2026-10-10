@@ -1,0 +1,19 @@
+TODO
+Improve strategy. Ghosts are not guarding successfully, oscillation or lack of determination when keeping a position doesn't make them sharp enough.
+Make front screen more coherent
+Make walls map better: still too difficult because it is too narrow.
+
+SUGGESTIONS
+Campaign mode?
+When a map is edited add the modified map as fixed selectable one. Add also a way to remove them. They are stored in localStorage.
+Allow manipulating number of lifes in the map editor.
+Do not use ghost + a number as the ghost name for the unknown colors. Try to recover the color name from a library to do so. If there is a second ghost with the same color name then you can add a number. This requirement needs a library for colors in multiple languages ​​or a mapping in the language file.
+
+AGENT NOTES:
+Copilot, please take the following points into account when working:
+- Do not waste time checking every possible language. Test only English and one else and ensure that all languages have the same structure. To test this use automatic tools and include them in this project for the developers to use. Include them in the develop directory.
+- After doing changes check if the request is here and ask to delete it and include it in the commit and the commit message.
+- After doing any changes check if this file was changed by the human developer and include the change in the commit message.
+- Limit Playwright tests to save tokens. Ask developer to either perform the tests by themself or let Copilot do them. If the developer chooses the first option, give them a list of the tests to do.
+- All the useful tools used to make tests and propagate changes, like those to the language files, should be progressively added and updated in the develop directory for any developer to work, with comments detailing what are they used for.
+- Do not automatically pick a TODO or SUGGESTIONS task and engage it. Do it just when a developer asks it to.

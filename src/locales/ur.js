@@ -22,6 +22,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "گھوسٹ ہاؤس شامل کرنے کے لیے کھلی ٹائل پر کلک کریں۔ اسے ہٹانے کے لیے گھر پر کلک کریں؛ ہر نقشے پر کم از کم ایک گھر رکھیں۔",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions":  {
                        "left":  "بائیں منتقل کریں۔",
                        "right":  "دائیں طرف بڑھیں۔",

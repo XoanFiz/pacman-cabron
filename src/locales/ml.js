@@ -22,6 +22,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "ഒരു ഗോസ്റ്റ് ഹൗസ് ചേർക്കാൻ തുറന്ന ടൈലിൽ ക്ലിക്ക് ചെയ്യുക. അത് നീക്കം ചെയ്യാൻ ഒരു വീട് ക്ലിക്ക് ചെയ്യുക; ഓരോ ഭൂപടത്തിലും കുറഞ്ഞത് ഒരു വീടെങ്കിലും സൂക്ഷിക്കുക.",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions":  {
                        "left":  "ഇടത്തേക്ക് നീങ്ങുക",
                        "right":  "വലത്തേക്ക് നീങ്ങുക",

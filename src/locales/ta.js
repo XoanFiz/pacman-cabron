@@ -22,6 +22,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "பேய் வீட்டைச் சேர்க்க, திறந்த ஓடு மீது கிளிக் செய்யவும். அதை அகற்ற ஒரு வீட்டைக் கிளிக் செய்யவும்; ஒவ்வொரு வரைபடத்திலும் குறைந்தது ஒரு வீட்டையாவது வைத்திருக்க வேண்டும்.",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions":  {
                        "left":  "இடதுபுறம் நகர்த்தவும்",
                        "right":  "வலதுபுறம் நகர்த்தவும்",

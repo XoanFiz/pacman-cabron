@@ -22,6 +22,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "ఘోస్ట్ హౌస్‌ని జోడించడానికి ఓపెన్ టైల్‌ను క్లిక్ చేయండి. ఇంటిని తీసివేయడానికి దాన్ని క్లిక్ చేయండి; ప్రతి మ్యాప్‌లో కనీసం ఒక ఇంటిని ఉంచండి.",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions":  {
                        "left":  "ఎడమకు తరలించు",
                        "right":  "కుడివైపు తరలించు",

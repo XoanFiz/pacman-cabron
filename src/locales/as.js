@@ -22,6 +22,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "এটা ভূতৰ ঘৰ যোগ কৰিবলৈ এটা মুকলি টাইল ক্লিক কৰক। এটা ঘৰ আঁতৰাবলৈ ক্লিক কৰক; প্ৰতিখন মানচিত্ৰত অন্ততঃ এটাকৈ ঘৰ ৰাখক।",
     "mapConnectivityError": "This change would disconnect a house, character, or pellet from the map.",
     "mapHouseRequiredError": "At least one ghost house must remain on the map.",
+    "addGhost": "Add ghost",
+    "cancelAddGhost": "Cancel adding ghosts",
+    "addGhostInstructions": "Click the new ghost icon outside the map to add ghosts. Click it again to stop; then click an open tile to place each ghost.",
+    "ghostPlacementError": "Choose an open tile that is not occupied by a character or ghost house.",
+    "ghostNumber": "Ghost {number}",
     "directions":  {
                        "left":  "বাওঁফালে যাওক",
                        "right":  "সোঁফালে আগবাঢ়ক",

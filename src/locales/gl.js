@@ -27,6 +27,11 @@ window.PACMAN_TRANSLATIONS = {
     "mapEditorHouseInstructions": "Fai clic nunha tella aberta para engadir unha casa pantasma. Fai clic nunha casa para eliminala; mantén polo menos unha casa en cada mapa.",
     "mapConnectivityError": "Este cambio desconectaría do mapa unha casa, un personaxe ou un pellet.",
     "mapHouseRequiredError": "Debe quedar polo menos unha casa pantasma no mapa.",
+    "addGhost": "Engadir pantasma",
+    "cancelAddGhost": "Cancelar a creaci?n de pantasmas",
+    "addGhostInstructions": "Fai clic na icona da nova pantasma f?ra do mapa para engadir pantasmas. Fai clic de novo para rematar; despois, fai clic nunha casi?a libre para colocar cada pantasma.",
+    "ghostPlacementError": "Escolle unha casi?a libre que non estea ocupada por un personaxe nin por unha casa de pantasmas.",
+    "ghostNumber": "Pantasma {number}",
     "directions": {
         "up": "Mover cara arriba",
         "left": "Mover á esquerda",
