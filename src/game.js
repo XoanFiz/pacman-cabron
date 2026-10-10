@@ -105,7 +105,8 @@ let ghosts;
 let running = false;
 let gameWon = false;
 let deathTimer = 0;
-let lastTime = 0;
+let currentTime = 0;
+let gameTime = 0;
 
 let frightenedTimer = 0;
 
@@ -128,22 +129,29 @@ const HOUSE = {
 };
 
 
-// Pesos estratéxicos.
-// De momento iguais; poderemos axustalos despois.
+// Strategic weights.
+// Equal for now; we can adjust them later.
 const WEIGHT_NORMAL = 1;
 const WEIGHT_PELLET = 1;
 const WEIGHT_BLUE = 1;
 
 
-// Valor total reservado para todos os pellets restantes.
-// O valor individual é TOTAL / pellets restantes.
+// Total value reserved for all remaining pellets.
+// The individual value is TOTAL / remaining pellets.
 const TOTAL_PELLET_VALUE = 1000;
 
 const EPSILON = 1e-9;
+const SEARCH_EPSILON = 1e-7;
 
 
-// Grafo estático do mapa.
+// Static graph of the map.
 let graph = null;
+
+const strategicSearch = {
+    nodes: new Map(),
+    frontier: [],
+    root: null
+};
 
 
 // ============================================================
@@ -232,7 +240,8 @@ function buildGraph() {
 
                     graph[y][x].push({
                         x: next.x,
-                        y: next.y
+                        y: next.y,
+                        direction
                     });
                 }
             }
@@ -520,9 +529,12 @@ function calculateDomain() {
     queue.push({
         x: player.x,
         y: player.y,
-        time: 0,
+        time: gameTime,
         owner: "pacman",
-        speed: PACMAN_SPEED
+        speed: PACMAN_SPEED,
+        initialProgress: player.progress,
+        initialDirection: player.direction,
+        initialMove: player.progress > 0
     });
 
 
@@ -533,30 +545,40 @@ function calculateDomain() {
     for (let i = 0; i < ghosts.length; i++) {
 
         const ghost = ghosts[i];
-
-        let x = ghost.x;
-        let y = ghost.y;
-        let speed = GHOST_SPEED;
-        let owner = `ghost${i}`;
+        const owner = `ghost${i}`;
 
         if (ghost.eaten) {
+            // Eaten ghosts only begin claiming territory after reaching the house.
+            const distanceToHouse = shortestDistance(
+                ghost.x,
+                ghost.y,
+                HOUSE.x,
+                HOUSE.y
+            );
 
-            speed = EATEN_GHOST_SPEED;
-            owner = `eatenGhost${i}`;
-
-            if (ghost.x !== HOUSE.x && ghost.y !== HOUSE.y) {
-                speed = GHOST_SPEED;
-                owner = `ghost${i}`
+            if (distanceToHouse === Infinity) {
+                continue;
             }
+
+            queue.push({
+                x: HOUSE.x,
+                y: HOUSE.y,
+                time: gameTime + distanceToHouse / EATEN_GHOST_SPEED,
+                owner,
+                speed: GHOST_SPEED
+            });
+            continue;
         }
 
-
         queue.push({
-            x,
-            y,
-            time: 0,
+            x: ghost.x,
+            y: ghost.y,
+            time: gameTime,
             owner,
-            speed
+            speed: GHOST_SPEED,
+            initialProgress: ghost.progress,
+            initialDirection: ghost.direction,
+            initialMove: ghost.progress > 0
         });
     }
 
@@ -578,72 +600,34 @@ function calculateDomain() {
             assessedDomainCell.x
             ];
 
-
-        // Check if power determines a successful domain even if it is later 
-        if (!checkAndUpdateImprovedDomain(assessedDomainCell,
-            currentDomainCell)
-        ) {
-            // No power difference 
-            if (
-                assessedDomainCell.time >
-                currentDomainCell.arrival + EPSILON
-            ) {
-                // This arrival is worse by any meaning. No meaningful power difference and later time. Don't propagate
-                continue;
-            } else if (
-                assessedDomainCell.time <
-                currentDomainCell.arrival - EPSILON
-            ) /* First arrival */ {
-
-                currentDomainCell.arrival =
-                    assessedDomainCell.time;
-
-                currentDomainCell.owners = [
-                    assessedDomainCell.owner
-                ];
-            } else if (
-                Math.abs(
-                    assessedDomainCell.time -
-                    currentDomainCell.arrival
-                ) <= EPSILON
-            ) /* Draw */ {
-                if (
-                    !currentDomainCell.owners.includes(
-                        assessedDomainCell.owner
-                    )
-                ) {
-
-                    currentDomainCell.owners.push(
-                        assessedDomainCell.owner
-                    );
-                }
-            }
+        if (assessedDomainCell.time > currentDomainCell.arrival) {
+            // A slower arrival cannot claim or propagate through this cell.
+            continue;
         }
 
-        // A pill can set a prioritary domain for Pacman
-        if (MAP[assessedDomainCell.y][assessedDomainCell.x] == "o" && !currentDomainCell.eatenPillTime) {
-            if (assessedDomainCell.owner == "pacman") {
+        if (assessedDomainCell.time < currentDomainCell.arrival) {
+            currentDomainCell.arrival = assessedDomainCell.time;
+            currentDomainCell.owners = [assessedDomainCell.owner];
+            currentDomainCell.direction = assessedDomainCell.direction;
+        } else if (currentDomainCell.owners.includes(assessedDomainCell.owner)) {
+            // Ignore duplicate equal-time paths from the same character.
+            continue;
+        } else {
+            currentDomainCell.owners.push(assessedDomainCell.owner);
+        }
 
-                assessedDomainCell.eatenPillTime = assessedDomainCell.time;
-                currentDomainCell.arrival =
-                    assessedDomainCell.time;
+        // Stop at a meeting point: a character must not propagate into
+        // territory already reached by another character at the same time.
+        if (currentDomainCell.owners.length > 1) {
+            continue;
+        }
 
-                const newQueue = new MinHeap();
-
-                for (const domainCell of queue.items) {
-                    if (domainCell.owner.startsWith("ghost")) {
-                        newQueue.items.push({
-                            ...domainCell,
-                            owner: domainCell.owner = `blue${String(domainCell.owner).charAt(0).toUpperCase() + String(domainCell.owner).slice(1)}`,
-                            time: assessedDomainCell.time,
-                        });
-                    } else {
-                        newQueue.items.push(domainCell);
-                    }
-                }
-
-                queue = newQueue;
-            }
+        // Pacman stops expanding as soon as he reaches a power pill.
+        if (
+            assessedDomainCell.owner === "pacman" &&
+            MAP[assessedDomainCell.y][assessedDomainCell.x] === "o"
+        ) {
+            continue;
         }
 
 
@@ -655,9 +639,24 @@ function calculateDomain() {
             graph[assessedDomainCell.y][assessedDomainCell.x]
         ) {
 
+            if (
+                assessedDomainCell.initialMove &&
+                (
+                    next.direction.x !== assessedDomainCell.initialDirection.x ||
+                    next.direction.y !== assessedDomainCell.initialDirection.y
+                )
+            ) {
+                continue;
+            }
+
             const nextTime =
                 assessedDomainCell.time +
-                1 / assessedDomainCell.speed;
+                (
+                    assessedDomainCell.initialMove
+                        ? 1 - assessedDomainCell.initialProgress
+                        : 1
+                ) /
+                assessedDomainCell.speed;
 
 
             const nextCell =
@@ -670,27 +669,22 @@ function calculateDomain() {
 
             /*
              * We only want to propagate if we can
-             * improve the domain.
+             * improve the time.
              */
-            if (!checkAndUpdateImprovedDomain({
-                ...assessedDomainCell,
-                time: nextTime
-            }, nextCell)) {
-                // No power difference 
-
-                if (nextTime >
-                    nextCell.arrival +
-                    EPSILON) {
-                    continue;
-                }
+            if (nextTime >
+                nextCell.arrival) {
+                continue;
             }
+
 
             queue.push({
                 x: next.x,
                 y: next.y,
                 time: nextTime,
                 owner: assessedDomainCell.owner,
-                speed: assessedDomainCell.speed
+                speed: assessedDomainCell.speed,
+                direction: next.direction,
+                initialMove: false
             });
         }
     }
@@ -698,6 +692,7 @@ function calculateDomain() {
 
     return domain;
 }
+
 
 function drawVoronoiDomains() {
     if (!showVoronoi) {
@@ -1110,12 +1105,738 @@ function evaluateDomain(
 }
 
 
+function cloneSearchCharacter(character) {
+    return {
+        ...character,
+        direction: { ...character.direction },
+        nextDirection: character.nextDirection
+            ? { ...character.nextDirection }
+            : undefined
+    };
+}
+
+
+function createSearchState(readyGhostIndices) {
+    const readyGhostSet = new Set(readyGhostIndices);
+
+    return {
+        map: MAP.slice(),
+        pellets,
+        time: gameTime,
+        frightenedTimer,
+        player: cloneSearchCharacter(player),
+        ghosts: ghosts.map(cloneSearchCharacter),
+        readyPlayer: false,
+        readyGhosts: ghosts.map((_, index) => readyGhostSet.has(index))
+    };
+}
+
+
+function searchStateKey(state) {
+    const characterKey = character => [
+        character.x,
+        character.y,
+        character.direction.x,
+        character.direction.y,
+        Number(character.progress.toFixed(5)),
+        Boolean(character.frightened),
+        Boolean(character.eaten)
+    ].join(",");
+
+    return JSON.stringify([
+        state.map,
+        state.pellets,
+        Number(state.frightenedTimer.toFixed(5)),
+        characterKey(state.player),
+        state.player.nextDirection.x,
+        state.player.nextDirection.y,
+        state.ghosts.map(characterKey),
+        state.readyPlayer,
+        state.readyGhosts
+    ]);
+}
+
+
+function evaluateSearchState(state) {
+    const previousState = {
+        MAP,
+        pellets,
+        gameTime,
+        frightenedTimer,
+        player,
+        ghosts
+    };
+
+    try {
+        MAP = state.map.slice();
+        pellets = state.pellets;
+        gameTime = state.time;
+        frightenedTimer = state.frightenedTimer;
+        player = cloneSearchCharacter(state.player);
+        ghosts = state.ghosts.map(cloneSearchCharacter);
+
+        return evaluateDomain(calculateDomain()).total;
+    } finally {
+        MAP = previousState.MAP;
+        pellets = previousState.pellets;
+        gameTime = previousState.gameTime;
+        frightenedTimer = previousState.frightenedTimer;
+        player = previousState.player;
+        ghosts = previousState.ghosts;
+    }
+}
+
+
+function canMoveInSearchState(state, character, direction) {
+    const x = wrap(character.x + direction.x, COLS);
+    const y = wrap(character.y + direction.y, ROWS);
+
+    return state.map[y][x] !== "#";
+}
+
+
+function getSearchDirections(state, character, isGhost) {
+    const possible = Object.values(DIRECTIONS)
+        .filter(direction =>
+            canMoveInSearchState(state, character, direction)
+        );
+
+    if (possible.length > 0) {
+        return possible;
+    }
+
+    return isGhost && character.eaten
+        ? [{ ...character.direction }]
+        : [{ x: 0, y: 0 }];
+}
+
+
+function getSearchGhostDirections(state, index) {
+    const ghost = state.ghosts[index];
+
+    if (ghost.eaten) {
+        return [
+            getShortestPathDirection(
+                ghost.x,
+                ghost.y,
+                HOUSE.x,
+                HOUSE.y
+            ) || { ...ghost.direction }
+        ];
+    }
+
+    return getSearchDirections(state, ghost, true);
+}
+
+
+function reverseSearchGhost(ghost) {
+    if (ghost.progress > 0) {
+        ghost.x = wrap(ghost.x + ghost.direction.x, COLS);
+        ghost.y = wrap(ghost.y + ghost.direction.y, ROWS);
+        ghost.progress = 1 - ghost.progress;
+    }
+
+    ghost.direction.x *= -1;
+    ghost.direction.y *= -1;
+}
+
+
+function advanceSearchState(state, ghostDirections, playerDirection) {
+    const next = {
+        ...state,
+        map: state.map.slice(),
+        player: cloneSearchCharacter(state.player),
+        ghosts: state.ghosts.map(cloneSearchCharacter),
+        readyPlayer: false,
+        readyGhosts: state.readyGhosts.map(() => false)
+    };
+
+    if (playerDirection) {
+        next.player.direction = { ...playerDirection };
+    }
+
+    for (const [index, direction] of ghostDirections) {
+        next.ghosts[index].direction = { ...direction };
+    }
+
+    let nextEventTime = Infinity;
+
+    const findNextEvent = (character, speed) => {
+        if (character.direction.x === 0 && character.direction.y === 0) {
+            return;
+        }
+
+        const timeToCenter =
+            Math.max(0, 1 - character.progress) / speed;
+
+        nextEventTime = Math.min(nextEventTime, timeToCenter);
+    };
+
+    findNextEvent(next.player, PACMAN_SPEED);
+
+    for (const ghost of next.ghosts) {
+        findNextEvent(
+            ghost,
+            ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED
+        );
+    }
+
+    if (!Number.isFinite(nextEventTime)) {
+        return next;
+    }
+
+    next.time += nextEventTime;
+
+    if (next.frightenedTimer > 0) {
+        next.frightenedTimer -= nextEventTime;
+
+        if (next.frightenedTimer <= 0) {
+            next.frightenedTimer = 0;
+
+            for (const ghost of next.ghosts) {
+                if (!ghost.eaten) {
+                    ghost.frightened = false;
+                }
+            }
+        }
+    }
+
+    const moveToEvent = (character, speed) => {
+        if (character.direction.x === 0 && character.direction.y === 0) {
+            return false;
+        }
+
+        character.progress += speed * nextEventTime;
+
+        if (character.progress < 1 - SEARCH_EPSILON) {
+            return false;
+        }
+
+        character.progress = Math.max(0, character.progress - 1);
+        character.x = wrap(character.x + character.direction.x, COLS);
+        character.y = wrap(character.y + character.direction.y, ROWS);
+
+        return true;
+    };
+
+    next.readyPlayer = moveToEvent(next.player, PACMAN_SPEED);
+
+    for (let i = 0; i < next.ghosts.length; i++) {
+        const ghost = next.ghosts[i];
+        const arrived = moveToEvent(
+            ghost,
+            ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED
+        );
+
+        next.readyGhosts[i] = arrived;
+
+        if (
+            arrived &&
+            ghost.eaten &&
+            ghost.x === HOUSE.x &&
+            ghost.y === HOUSE.y
+        ) {
+            ghost.eaten = false;
+            ghost.frightened = false;
+            ghost.direction = { x: -1, y: 0 };
+            next.readyGhosts[i] = false;
+        }
+    }
+
+    if (next.readyPlayer) {
+        const cell = next.map[next.player.y][next.player.x];
+
+        if (cell === "." || cell === "o") {
+            const row = next.map[next.player.y].split("");
+            row[next.player.x] = " ";
+            next.map[next.player.y] = row.join("");
+            next.pellets--;
+
+            if (cell === "o") {
+                next.frightenedTimer = FRIGHTENED_DURATION;
+
+                for (const ghost of next.ghosts) {
+                    if (ghost.eaten) {
+                        continue;
+                    }
+
+                    ghost.frightened = true;
+                    reverseSearchGhost(ghost);
+                }
+            }
+        }
+    }
+
+    return next;
+}
+
+
+function getSearchActionProfiles(state) {
+    const readyGhosts = state.readyGhosts
+        .map((ready, index) => ready ? index : -1)
+        .filter(index => index >= 0);
+
+    const ghostProfiles = [];
+
+    const addGhostProfiles = (position, directions) => {
+        if (position === readyGhosts.length) {
+            ghostProfiles.push(directions.slice());
+            return;
+        }
+
+        const index = readyGhosts[position];
+
+        for (const direction of getSearchGhostDirections(state, index)) {
+            directions.push([index, { ...direction }]);
+            addGhostProfiles(position + 1, directions);
+            directions.pop();
+        }
+    };
+
+    addGhostProfiles(0, []);
+
+    const playerDirections = state.readyPlayer
+        ? getSearchDirections(state, state.player, false)
+        : [null];
+
+    const profiles = [];
+
+    for (const ghostDirections of ghostProfiles) {
+        for (const playerDirection of playerDirections) {
+            profiles.push({
+                ghostDirections,
+                playerDirection,
+                nextState: advanceSearchState(
+                    state,
+                    ghostDirections,
+                    playerDirection
+                )
+            });
+        }
+    }
+
+    return profiles;
+}
+
+
+function createStrategicSearchNode(state, parent, parentEdge, depth, value) {
+    const key = searchStateKey(state);
+    const node = {
+        key,
+        state,
+        parent,
+        parentEdge,
+        depth,
+        staticValue: value,
+        value,
+        candidates: null,
+        nextCandidate: 0,
+        expanded: false,
+        heapIndex: -1,
+        readyGhosts: state.readyGhosts.some(Boolean),
+        readyPlayer: state.readyPlayer
+    };
+
+    strategicSearch.nodes.set(key, node);
+    pushStrategicSearchFrontier(node);
+
+    return node;
+}
+
+
+function prepareStrategicSearchNode(node) {
+    if (node.candidates !== null) {
+        return;
+    }
+
+    node.candidates = getSearchActionProfiles(node.state).map(profile => ({
+        ...profile,
+        processed: false,
+        value: node.staticValue,
+        child: null
+    }));
+
+    if (node.candidates.length === 0) {
+        node.expanded = true;
+    }
+}
+
+
+function getStrategicSearchNodeValue(node) {
+    if (!node.candidates || node.candidates.length === 0) {
+        return node.staticValue;
+    }
+
+    const hasGhostMove = node.readyGhosts;
+    const hasPlayerMove = node.readyPlayer;
+    const ghostGroups = new Map();
+
+    for (const candidate of node.candidates) {
+        const ghostKey = candidate.ghostDirections
+            .map(([index, direction]) =>
+                `${index}:${direction.x},${direction.y}`
+            )
+            .join("|");
+        const value = candidate.processed
+            ? candidate.value
+            : node.staticValue;
+
+        if (!ghostGroups.has(ghostKey)) {
+            ghostGroups.set(ghostKey, []);
+        }
+
+        ghostGroups.get(ghostKey).push(value);
+    }
+
+    if (hasGhostMove && hasPlayerMove) {
+        const worstResponses = Array.from(ghostGroups.values())
+            .map(values => Math.min(...values));
+
+        return Math.max(...worstResponses);
+    }
+
+    const values = Array.from(ghostGroups.values()).flat();
+
+    if (hasGhostMove) {
+        return Math.max(...values);
+    }
+
+    if (hasPlayerMove) {
+        return Math.min(...values);
+    }
+
+    return node.staticValue;
+}
+
+
+function refreshStrategicSearchValues(node) {
+    let current = node;
+
+    while (current) {
+        const nextValue = getStrategicSearchNodeValue(current);
+
+        if (Math.abs(nextValue - current.value) <= EPSILON) {
+            break;
+        }
+
+        current.value = nextValue;
+        updateStrategicSearchFrontier(current);
+
+        if (current.parent && current.parentEdge) {
+            current.parentEdge.value = nextValue;
+        }
+
+        current = current.parent;
+    }
+}
+
+
+function processStrategicSearchCandidate(node, candidate) {
+    const childState = candidate.nextState;
+    const childKey = searchStateKey(childState);
+    const childValue = evaluateSearchState(childState);
+
+    candidate.processed = true;
+    candidate.value = childValue;
+
+    const isAncestor = (() => {
+        let ancestor = node;
+
+        while (ancestor) {
+            if (ancestor.key === childKey) {
+                return true;
+            }
+
+            ancestor = ancestor.parent;
+        }
+
+        return false;
+    })();
+
+    if (!isAncestor && !strategicSearch.nodes.has(childKey)) {
+        candidate.child = createStrategicSearchNode(
+            childState,
+            node,
+            candidate,
+            node.depth + 1,
+            childValue
+        );
+    }
+
+    refreshStrategicSearchValues(node);
+}
+
+
+function compareStrategicSearchNodes(a, b) {
+    const aSign = a.readyGhosts ? 1 : -1;
+    const bSign = b.readyGhosts ? 1 : -1;
+    const aValue = a.value * aSign;
+    const bValue = b.value * bSign;
+
+    if (Math.abs(aValue - bValue) > EPSILON) {
+        return bValue - aValue;
+    }
+
+    if (a.depth !== b.depth) {
+        return a.depth - b.depth;
+    }
+
+    const aImprovement = a.parent
+        ? (a.value - a.parent.staticValue) * (a.parent.readyGhosts ? 1 : -1)
+        : 0;
+    const bImprovement = b.parent
+        ? (b.value - b.parent.staticValue) * (b.parent.readyGhosts ? 1 : -1)
+        : 0;
+
+    return bImprovement - aImprovement;
+}
+
+
+function swapStrategicSearchFrontier(a, b) {
+    const frontier = strategicSearch.frontier;
+
+    [frontier[a], frontier[b]] = [frontier[b], frontier[a]];
+    frontier[a].heapIndex = a;
+    frontier[b].heapIndex = b;
+}
+
+
+function pushStrategicSearchFrontier(node) {
+    const frontier = strategicSearch.frontier;
+    let index = frontier.length;
+
+    frontier.push(node);
+    node.heapIndex = index;
+
+    while (index > 0) {
+        const parent = Math.floor((index - 1) / 2);
+
+        if (compareStrategicSearchNodes(frontier[index], frontier[parent]) >= 0) {
+            break;
+        }
+
+        swapStrategicSearchFrontier(index, parent);
+        index = parent;
+    }
+}
+
+
+function updateStrategicSearchFrontier(node) {
+    let index = node.heapIndex;
+
+    if (index < 0) {
+        return;
+    }
+
+    const frontier = strategicSearch.frontier;
+
+    while (index > 0) {
+        const parent = Math.floor((index - 1) / 2);
+
+        if (compareStrategicSearchNodes(frontier[index], frontier[parent]) >= 0) {
+            break;
+        }
+
+        swapStrategicSearchFrontier(index, parent);
+        index = parent;
+    }
+
+    while (true) {
+        const left = index * 2 + 1;
+        const right = left + 1;
+        let best = index;
+
+        if (
+            left < frontier.length &&
+            compareStrategicSearchNodes(frontier[left], frontier[best]) < 0
+        ) {
+            best = left;
+        }
+
+        if (
+            right < frontier.length &&
+            compareStrategicSearchNodes(frontier[right], frontier[best]) < 0
+        ) {
+            best = right;
+        }
+
+        if (best === index) {
+            break;
+        }
+
+        swapStrategicSearchFrontier(index, best);
+        index = best;
+    }
+}
+
+
+function popStrategicSearchFrontier() {
+    const frontier = strategicSearch.frontier;
+
+    if (frontier.length === 0) {
+        return null;
+    }
+
+    const first = frontier[0];
+    const last = frontier.pop();
+    first.heapIndex = -1;
+
+    if (frontier.length > 0) {
+        frontier[0] = last;
+        last.heapIndex = 0;
+        updateStrategicSearchFrontier(last);
+    }
+
+    return first;
+}
+
+
+function removeStrategicSearchFrontier(node) {
+    const index = node.heapIndex;
+
+    if (index < 0) {
+        return;
+    }
+
+    const frontier = strategicSearch.frontier;
+    const last = frontier.pop();
+    node.heapIndex = -1;
+
+    if (index < frontier.length) {
+        frontier[index] = last;
+        last.heapIndex = index;
+        updateStrategicSearchFrontier(last);
+    }
+}
+
+
+function advanceStrategicSearch() {
+    const node = popStrategicSearchFrontier();
+
+    if (!node || node.expanded) {
+        return;
+    }
+
+    prepareStrategicSearchNode(node);
+
+    if (!node.expanded) {
+        const candidate = node.candidates[node.nextCandidate++];
+        processStrategicSearchCandidate(node, candidate);
+
+        if (node.nextCandidate >= node.candidates.length) {
+            node.expanded = true;
+        } else {
+            pushStrategicSearchFrontier(node);
+        }
+    }
+}
+
+
+function getStrategicGhostDirection(node, ghostIndex, fallback) {
+    prepareStrategicSearchNode(node);
+
+    if (!node.candidates || node.candidates.length === 0) {
+        return { ...fallback };
+    }
+
+    const groups = new Map();
+
+    for (const candidate of node.candidates) {
+        const ghostKey = candidate.ghostDirections
+            .map(([index, direction]) =>
+                `${index}:${direction.x},${direction.y}`
+            )
+            .join("|");
+
+        if (!groups.has(ghostKey)) {
+            groups.set(ghostKey, {
+                value: Infinity,
+                directions: candidate.ghostDirections
+            });
+        }
+
+        const group = groups.get(ghostKey);
+        const candidateValue = candidate.processed
+            ? candidate.value
+            : node.staticValue;
+
+        group.value = Math.min(group.value, candidateValue);
+    }
+
+    let best = null;
+
+    for (const group of groups.values()) {
+        if (
+            !best ||
+            group.value > best.value
+        ) {
+            best = group;
+        }
+    }
+
+    const selected = best &&
+        best.directions.find(([index]) => index === ghostIndex);
+
+    return selected
+        ? { ...selected[1] }
+        : { ...fallback };
+}
+
+
+function chooseStrategicGhostDirections(readyGhosts) {
+    const readyGhostIndices = readyGhosts.map(ghost => ghosts.indexOf(ghost));
+    const state = createSearchState(readyGhostIndices);
+    const key = searchStateKey(state);
+    let root = strategicSearch.nodes.get(key);
+
+    if (!root) {
+        root = createStrategicSearchNode(
+            state,
+            null,
+            null,
+            0,
+            evaluateSearchState(state)
+        );
+        prepareStrategicSearchNode(root);
+
+        for (const candidate of root.candidates) {
+            processStrategicSearchCandidate(root, candidate);
+        }
+
+        root.expanded = true;
+        removeStrategicSearchFrontier(root);
+    }
+
+    strategicSearch.root = root;
+
+    return new Map(
+        readyGhosts.map(ghost => {
+            const index = ghosts.indexOf(ghost);
+
+            return [
+                ghost,
+                getStrategicGhostDirection(
+                    root,
+                    index,
+                    ghost.direction
+                )
+            ];
+        })
+    );
+}
+
+
+function chooseStrategicGhostDirection(ghost) {
+    return chooseStrategicGhostDirections([ghost]).get(ghost);
+}
+
+
 // ============================================================
 // GHOST MOVE EVALUATION
 // ============================================================
 
-function getPossibleGhostDirections(
-    ghost
+function getPossibleDirections(
+    character
 ) {
 
     return [
@@ -1125,8 +1846,8 @@ function getPossibleGhostDirections(
         DIRECTIONS.right
     ].filter(direction =>
         canMove(
-            ghost.x,
-            ghost.y,
+            character.x,
+            character.y,
             direction
         )
     );
@@ -1200,106 +1921,7 @@ function getShortestPathDirection(startX, startY, targetX, targetY) {
 }
 
 function chooseNormalGhostDirection(ghost) {
-    const possible =
-        getPossibleGhostDirections(
-            ghost
-        );
-
-
-    if (possible.length === 0) {
-
-        return {
-            x: 0,
-            y: 0
-        };
-    }
-
-
-    let bestDirection =
-        possible[0];
-
-    let bestScore =
-        -Infinity;
-
-
-    for (
-        const direction of possible
-    ) {
-
-        /*
-         * Facemos unha copia da fantasma
-         * na seguinte casilla.
-         */
-        const testGhost = {
-            ...ghost,
-
-            x: wrap(
-                ghost.x +
-                direction.x,
-                COLS
-            ),
-
-            y: wrap(
-                ghost.y +
-                direction.y,
-                ROWS
-            ),
-
-            direction: {
-                ...direction
-            },
-
-            progress: 0
-        };
-
-
-        /* 
-        * We have temporarily replace the ghost. 
-        */
-        const oldGhosts =
-            ghosts;
-
-
-        ghosts =
-            ghosts.map(
-                current =>
-                    current === ghost
-                        ? testGhost
-                        : current
-            );
-
-
-        const domain =
-            calculateDomain();
-
-
-        const evaluation =
-            evaluateDomain(
-                domain
-            );
-
-
-        ghosts =
-            oldGhosts;
-
-
-        if (
-            evaluation.total >
-            bestScore
-        ) {
-
-            bestScore =
-                evaluation.total;
-
-            bestDirection =
-                direction;
-        }
-    }
-
-
-    return {
-        ...bestDirection
-    };
+    return chooseStrategicGhostDirection(ghost);
 }
 
 
@@ -1349,6 +1971,10 @@ function resetGame() {
 function resetLevel() {
 
     pellets = 0;
+    gameTime = 0;
+    strategicSearch.nodes.clear();
+    strategicSearch.frontier = [];
+    strategicSearch.root = null;
 
 
     /*
@@ -1768,7 +2394,7 @@ function updateGhost(
 
 
         const possibleDirections =
-            getPossibleGhostDirections(
+            getPossibleDirections(
                 ghost
             );
 
@@ -1874,10 +2500,11 @@ function updateGhost(
         // NORMAL / BLUE
         // ====================================================
 
-        ghost.direction =
-            chooseGhostDirection(
-                ghost
-            );
+        ghost.needsDirection = true;
+        ghost.pendingDecisionTime =
+            gameTime -
+            ghost.progress / GHOST_SPEED;
+        break;
     }
 
 
@@ -2014,6 +2641,8 @@ function update(dt) {
     if (!running)
         return;
 
+    gameTime += dt;
+
 
     if (frightenedTimer > 0) {
 
@@ -2049,6 +2678,50 @@ function update(dt) {
             ghost,
             dt
         );
+    }
+
+    const pendingGhosts = ghosts
+        .filter(ghost => ghost.needsDirection && !ghost.eaten)
+        .sort((a, b) =>
+            a.pendingDecisionTime - b.pendingDecisionTime
+        );
+    const decisionGroups = [];
+
+    for (const ghost of pendingGhosts) {
+        const lastGroup = decisionGroups[decisionGroups.length - 1];
+
+        if (
+            lastGroup &&
+            Math.abs(
+                ghost.pendingDecisionTime -
+                lastGroup.time
+            ) <= SEARCH_EPSILON
+        ) {
+            lastGroup.ghosts.push(ghost);
+        } else {
+            decisionGroups.push({
+                time: ghost.pendingDecisionTime,
+                ghosts: [ghost]
+            });
+        }
+    }
+
+    for (const group of decisionGroups) {
+        const directions =
+            chooseStrategicGhostDirections(group.ghosts);
+
+        for (const ghost of group.ghosts) {
+            ghost.direction = directions.get(ghost);
+            ghost.needsDirection = false;
+            ghost.px =
+                ghost.x +
+                ghost.direction.x *
+                ghost.progress;
+            ghost.py =
+                ghost.y +
+                ghost.direction.y *
+                ghost.progress;
+        }
     }
 
 
@@ -2090,6 +2763,7 @@ function resetPositions() {
     ghosts[0].py = 8;
 
     ghosts[0].progress = 0;
+    ghosts[0].needsDirection = false;
 
 
     ghosts[1].x = 10;
@@ -2099,6 +2773,7 @@ function resetPositions() {
     ghosts[1].py = 8;
 
     ghosts[1].progress = 0;
+    ghosts[1].needsDirection = false;
 
 
     ghosts[2].x = 11;
@@ -2108,6 +2783,7 @@ function resetPositions() {
     ghosts[2].py = 10;
 
     ghosts[2].progress = 0;
+    ghosts[2].needsDirection = false;
 }
 
 
@@ -2608,15 +3284,19 @@ function gameLoop(time) {
 
     const dt =
         Math.min(
-            (time - lastTime) / 1000,
+            (time - currentTime) / 1000,
             0.05
         );
 
 
-    lastTime = time;
+    currentTime = time;
 
 
     update(dt);
+
+    if (running) {
+        advanceStrategicSearch();
+    }
 
     draw();
 
