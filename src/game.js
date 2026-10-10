@@ -296,11 +296,11 @@ const EATEN_GHOST_SPEED = 4;
 // GHOST AI
 // ============================================================
 
-// Strategic weights.
-// Equal for now; we can adjust them later.
+// Keep pellet coverage as a small secondary signal to Pac-Man's territory.
 const WEIGHT_NORMAL = 1;
-const WEIGHT_PELLET = 1;
+const WEIGHT_PELLET = 0.01;
 const WEIGHT_BLUE = 0;
+const MAX_PELLET_SCORE_FRACTION = 0.25;
 
 
 // Total value reserved for all remaining pellets.
@@ -315,6 +315,7 @@ const SEARCH_LIFE_PRIORITY =
 
 const EPSILON = 1e-9;
 const SEARCH_EPSILON = 1e-7;
+const SEARCH_EXPANSIONS_PER_FRAME = 8;
 
 
 // Static graph of the map.
@@ -1055,7 +1056,8 @@ function checkAndUpdateImprovedDomain(assessedDomainCell, currentDomainCell) {
 
 
 function calculateDomain({
-    respectCurrentMovement = true
+    respectCurrentMovement = true,
+    includePacman = true
 } = {}) {
 
     const domain =
@@ -1076,22 +1078,24 @@ function calculateDomain({
     // PAC-MAN
     // --------------------------------------------------------
 
-    queue.push({
-        x: player.x,
-        y: player.y,
-        time: gameTime,
-        owner: "pacman",
-        originX: player.x,
-        originY: player.y,
-        speed: PACMAN_SPEED,
-        initialProgress: player.progress,
-        initialDirection: player.direction,
-        initialMove:
-            respectCurrentMovement &&
-            player.progress > 0 &&
-            (player.direction.x !== 0 || player.direction.y !== 0) &&
-            canMove(player.x, player.y, player.direction)
-    });
+    if (includePacman) {
+        queue.push({
+            x: player.x,
+            y: player.y,
+            time: gameTime,
+            owner: "pacman",
+            originX: player.x,
+            originY: player.y,
+            speed: PACMAN_SPEED,
+            initialProgress: player.progress,
+            initialDirection: player.direction,
+            initialMove:
+                respectCurrentMovement &&
+                player.progress > 0 &&
+                (player.direction.x !== 0 || player.direction.y !== 0) &&
+                canMove(player.x, player.y, player.direction)
+        });
+    }
 
 
     // --------------------------------------------------------
@@ -1414,6 +1418,70 @@ function getGhostIndex(owner) {
     );
 }
 
+function getRemainingDistanceToPosition(
+    character,
+    targetX,
+    targetY
+) {
+    const isMoving =
+        character.progress > 0 &&
+        (character.direction.x !== 0 || character.direction.y !== 0) &&
+        canMove(character.x, character.y, character.direction);
+
+    if (!isMoving) {
+        return shortestDistance(
+            character.x,
+            character.y,
+            targetX,
+            targetY
+        );
+    }
+
+    const nextX =
+        wrap(character.x + character.direction.x, COLS);
+    const nextY =
+        wrap(character.y + character.direction.y, ROWS);
+
+    return 1 - character.progress +
+        shortestDistance(nextX, nextY, targetX, targetY);
+}
+
+function getGhostArrivalTimeToPlayer(ghost) {
+    if (!ghost.eaten) {
+        return getRemainingDistanceToPosition(
+            ghost,
+            player.x,
+            player.y
+        ) / GHOST_SPEED;
+    }
+
+    let minimumArrivalTime = Infinity;
+
+    for (const house of GHOST_HOUSES) {
+        const returnDistance =
+            getRemainingDistanceToPosition(
+                ghost,
+                house.x,
+                house.y
+            );
+        const distanceFromHouse =
+            shortestDistance(
+                house.x,
+                house.y,
+                player.x,
+                player.y
+            );
+        const arrivalTime =
+            returnDistance / EATEN_GHOST_SPEED +
+            distanceFromHouse / GHOST_SPEED;
+
+        minimumArrivalTime =
+            Math.min(minimumArrivalTime, arrivalTime);
+    }
+
+    return minimumArrivalTime;
+}
+
 
 // ============================================================
 // NORMAL + PELLET SCORE
@@ -1440,6 +1508,16 @@ function calculateNormalAndPelletScore(
     const normalScore =
         TOTAL_NORMAL_VALUE /
         Math.max(1, pacmanControlledSquares);
+    const nearestGhostArrivalTime =
+        Math.min(
+            ...ghosts.map(getGhostArrivalTimeToPlayer)
+        );
+    const normalArrivalMultiplier =
+        Number.isFinite(nearestGhostArrivalTime)
+            ? 1 + 1 / (1 + Math.max(0, nearestGhostArrivalTime))
+            : 1;
+    const proximityAdjustedNormalScore =
+        normalScore * normalArrivalMultiplier;
     const pelletValue =
         pellets > 0
             ? TOTAL_PELLET_VALUE / pellets
@@ -1471,15 +1549,24 @@ function calculateNormalAndPelletScore(
             if (ghostOwners.length === 0)
                 continue;
 
+            const travelTime =
+                Math.max(
+                    0,
+                    domain[y][x].arrival - gameTime
+                );
+            const distanceWeight =
+                1 / (1 + travelTime);
+
             pelletScore +=
-                pelletValue /
+                pelletValue *
+                distanceWeight /
                 ghostOwners.length;
         }
     }
 
 
     return {
-        normalScore,
+        normalScore: proximityAdjustedNormalScore,
         pelletScore
     };
 }
@@ -1687,13 +1774,20 @@ function evaluateDomain(
             domain
         );
 
+    const weightedPelletScore =
+        Math.min(
+            WEIGHT_PELLET *
+                normal.pelletScore,
+            WEIGHT_NORMAL *
+                normal.normalScore *
+                MAX_PELLET_SCORE_FRACTION
+        );
 
     const total =
         WEIGHT_NORMAL *
         normal.normalScore +
 
-        WEIGHT_PELLET *
-        normal.pelletScore +
+        weightedPelletScore +
 
         WEIGHT_BLUE *
         blue;
@@ -1799,7 +1893,11 @@ function evaluateSearchState(state) {
         ghosts = state.ghosts.map(cloneSearchCharacter);
 
         const domainValue =
-            evaluateDomain(calculateDomain()).total;
+            evaluateDomain(
+                calculateDomain({
+                    includePacman: !state.terminal
+                })
+            ).total;
 
         return (
             (INITIAL_LIVES - state.lives) *
@@ -2203,11 +2301,19 @@ function createStrategicSearchNode(state, parent, parentEdge, depth, value) {
         value,
         candidates: null,
         nextCandidate: 0,
+        incomingEdges: [],
         expanded: state.terminal,
         heapIndex: -1,
         readyGhosts: state.readyGhosts.some(Boolean),
         readyPlayer: state.readyPlayer
     };
+
+    if (parent && parentEdge) {
+        node.incomingEdges.push({
+            parent,
+            candidate: parentEdge
+        });
+    }
 
     strategicSearch.nodes.set(key, node);
 
@@ -2252,9 +2358,11 @@ function getStrategicSearchNodeValue(node) {
                 `${index}:${direction.x},${direction.y}`
             )
             .join("|");
-        const value = candidate.processed
-            ? candidate.value
-            : node.staticValue;
+        const value = candidate.child
+            ? candidate.child.value
+            : candidate.processed
+                ? candidate.value
+                : node.staticValue;
 
         if (!ghostGroups.has(ghostKey)) {
             ghostGroups.set(ghostKey, []);
@@ -2285,24 +2393,57 @@ function getStrategicSearchNodeValue(node) {
 
 
 function refreshStrategicSearchValues(node) {
-    let current = node;
+    const pending = [node];
+    const queued = new Set(pending);
 
-    while (current) {
+    while (pending.length > 0) {
+        const current = pending.pop();
+        queued.delete(current);
         const nextValue = getStrategicSearchNodeValue(current);
 
         if (Math.abs(nextValue - current.value) <= EPSILON) {
-            break;
+            continue;
         }
 
         current.value = nextValue;
         updateStrategicSearchFrontier(current);
 
-        if (current.parent && current.parentEdge) {
-            current.parentEdge.value = nextValue;
+        for (const edge of current.incomingEdges) {
+            edge.candidate.value = nextValue;
+
+            if (!queued.has(edge.parent)) {
+                pending.push(edge.parent);
+                queued.add(edge.parent);
+            }
+        }
+    }
+}
+
+function hasStrategicSearchPath(start, target) {
+    const pending = [start];
+    const visited = new Set();
+
+    while (pending.length > 0) {
+        const node = pending.pop();
+
+        if (node === target) {
+            return true;
         }
 
-        current = current.parent;
+        if (visited.has(node)) {
+            continue;
+        }
+
+        visited.add(node);
+
+        for (const candidate of node.candidates || []) {
+            if (candidate.child) {
+                pending.push(candidate.child);
+            }
+        }
     }
+
+    return false;
 }
 
 
@@ -2328,14 +2469,26 @@ function processStrategicSearchCandidate(node, candidate) {
         return false;
     })();
 
-    if (!isAncestor && !strategicSearch.nodes.has(childKey)) {
-        candidate.child = createStrategicSearchNode(
-            childState,
-            node,
-            candidate,
-            node.depth + 1,
-            childValue
-        );
+    if (!isAncestor) {
+        let child = strategicSearch.nodes.get(childKey);
+
+        if (!child) {
+            child = createStrategicSearchNode(
+                childState,
+                node,
+                candidate,
+                node.depth + 1,
+                childValue
+            );
+            candidate.child = child;
+        } else if (child !== node && !hasStrategicSearchPath(child, node)) {
+            candidate.child = child;
+            child.incomingEdges.push({
+                parent: node,
+                candidate
+            });
+            candidate.value = child.value;
+        }
     }
 
     refreshStrategicSearchValues(node);
@@ -2486,22 +2639,32 @@ function removeStrategicSearchFrontier(node) {
 
 
 function advanceStrategicSearch() {
-    const node = popStrategicSearchFrontier();
+    for (
+        let expansion = 0;
+        expansion < SEARCH_EXPANSIONS_PER_FRAME;
+        expansion++
+    ) {
+        const node = popStrategicSearchFrontier();
 
-    if (!node || node.expanded) {
-        return;
-    }
+        if (!node) {
+            return;
+        }
 
-    prepareStrategicSearchNode(node);
+        if (node.expanded) {
+            continue;
+        }
 
-    if (!node.expanded) {
-        const candidate = node.candidates[node.nextCandidate++];
-        processStrategicSearchCandidate(node, candidate);
+        prepareStrategicSearchNode(node);
 
-        if (node.nextCandidate >= node.candidates.length) {
-            node.expanded = true;
-        } else {
-            pushStrategicSearchFrontier(node);
+        if (!node.expanded) {
+            const candidate = node.candidates[node.nextCandidate++];
+            processStrategicSearchCandidate(node, candidate);
+
+            if (node.nextCandidate >= node.candidates.length) {
+                node.expanded = true;
+            } else {
+                pushStrategicSearchFrontier(node);
+            }
         }
     }
 }
@@ -2531,9 +2694,11 @@ function getStrategicGhostDirection(node, ghostIndex, fallback) {
         }
 
         const group = groups.get(ghostKey);
-        const candidateValue = candidate.processed
-            ? candidate.value
-            : node.staticValue;
+        const candidateValue = candidate.child
+            ? candidate.child.value
+            : candidate.processed
+                ? candidate.value
+                : node.staticValue;
 
         group.value = Math.min(group.value, candidateValue);
     }
@@ -2572,17 +2737,18 @@ function getStrategicSearchRoot(readyGhosts, readyPlayer = false) {
             0,
             evaluateSearchState(state)
         );
-        prepareStrategicSearchNode(root);
-
-        for (const candidate of root.candidates) {
-            processStrategicSearchCandidate(root, candidate);
-        }
-
-        root.expanded = true;
-        removeStrategicSearchFrontier(root);
     }
 
     prepareStrategicSearchNode(root);
+
+    while (root.nextCandidate < root.candidates.length) {
+        const candidate = root.candidates[root.nextCandidate++];
+        processStrategicSearchCandidate(root, candidate);
+    }
+
+    root.expanded = true;
+    removeStrategicSearchFrontier(root);
+
     strategicSearch.root = root;
 
     return root;
