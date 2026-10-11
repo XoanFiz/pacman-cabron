@@ -1,4 +1,5 @@
 TODO
+Move strategic state-tree exploration into a Web Worker so it runs concurrently without blocking the game loop. Refactor search to use explicit serializable state, add worker messaging and lifecycle/error handling, and integrate asynchronous results with the game loop.
 Improve strategy. Ghosts are not guarding successfully, oscillation or lack of determination when keeping a position doesn't make them sharp enough. Eaten ghosts are too reluctant to return home. Normal ghosts are too reluctant to close Pac-man domain further when it is cornered. Pac-man is too reluctant to explore in depth and jump out of local optimums. 
 Make front screen more coherent
 Make walls map better: still too difficult because it is too narrow.
