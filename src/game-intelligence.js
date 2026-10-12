@@ -1,6 +1,9 @@
 // PRIORITY QUEUE
 // ============================================================
 
+// Maintains a min-priority queue ordered by arrival time.
+// Used by the temporal domain expansion to process the earliest
+// reachable states first.
 class MinHeap {
 
     constructor() {
@@ -131,6 +134,8 @@ class MinHeap {
 // SHORTEST PATH
 // ============================================================
 
+// Returns the minimum travel distance between two cells using
+// the map's movement graph. Unreachable targets return Infinity.
 function shortestDistance(
     startX,
     startY,
@@ -224,6 +229,8 @@ function shortestDistance(
 // DOMAIN
 // ============================================================
 
+// Creates the initial representation of a cell before any
+// character's arrival time or ownership has been established.
 function createDomainCell() {
 
     return {
@@ -232,28 +239,13 @@ function createDomainCell() {
     };
 }
 
-function checkAndUpdateImprovedDomain(assessedDomainCell, currentDomainCell) {
-    // Check if power determines a successful domain even if it is later
-    if (assessedDomainCell.owner == "pacman" && !currentDomainCell.owners.filter((owner) => owner.startsWith("ghost")).length
-        && (currentDomainCell.owners.length !== 1 || currentDomainCell.owners[0] !== "pacman")) {
-        // Pacman overlaps earlier arrivals
-        currentDomainCell.arrival =
-            assessedDomainCell.time;
 
-        currentDomainCell.owners = ["pacman"];
-    } else if (assessedDomainCell.owner.startsWith("ghost") && currentDomainCell.owners.includes("pacman")
-        && currentDomainCell.owners.includes("pacman")) {
-        currentDomainCell.arrival =
-            assessedDomainCell.time;
-
-        currentDomainCell.owners = [assessedDomainCell.owner];
-    } else {
-        return false;
-    }
-    return true;
-}
-
-
+// Computes a multi-source, time-dependent Voronoi partition of the
+// map. Each character propagates its reachable territory according
+// to movement speed, current movement progress, and collision rules.
+// Equal-time arrivals preserve shared ownership, while contested
+// cells stop further propagation. Eaten ghosts re-enter the search
+// from their possible return-to-house positions.
 function calculateDomain({
     respectCurrentMovement = true,
     includePacman = true
@@ -320,7 +312,7 @@ function calculateDomain({
                 const distance =
                     isMoving
                         ? 1 - ghost.progress +
-                            shortestDistance(nextX, nextY, house.x, house.y)
+                        shortestDistance(nextX, nextY, house.x, house.y)
                         : shortestDistance(ghost.x, ghost.y, house.x, house.y);
 
                 if (!Number.isFinite(distance)) {
@@ -500,7 +492,8 @@ function calculateDomain({
     return domain;
 }
 
-
+// Extracts ghost ownership identifiers from a cell's complete
+// ownership set, including ghosts represented by recovered states.
 function getGhostOwners(owners) {
 
     return owners.filter(
@@ -509,7 +502,8 @@ function getGhostOwners(owners) {
     );
 }
 
-
+// Resolves a ghost ownership identifier to the corresponding index
+// in the global ghosts array.
 function getGhostIndex(owner) {
 
     return Number(
@@ -517,6 +511,9 @@ function getGhostIndex(owner) {
     );
 }
 
+// Calculates the remaining grid distance while accounting for an
+// already-started movement segment, so arrival estimates remain
+// continuous across cell boundaries.
 function getRemainingDistanceToPosition(
     character,
     targetX,
@@ -545,6 +542,8 @@ function getRemainingDistanceToPosition(
         shortestDistance(nextX, nextY, targetX, targetY);
 }
 
+// Estimates when a ghost could reach Pac-Man. Eaten ghosts must
+// first return to a house and then resume normal-speed movement.
 function getGhostArrivalTimeToPlayer(ghost) {
     if (!ghost.eaten) {
         return getRemainingDistanceToPosition(
@@ -586,6 +585,10 @@ function getGhostArrivalTimeToPlayer(ghost) {
 // NORMAL + PELLET SCORE
 // ============================================================
 
+// Evaluates ordinary territory and remaining pellets from a domain
+// partition. Territory value is normalized by Pac-Man's controlled
+// area, while pellet value is discounted by travel time and shared
+// among ghosts that reach a pellet at the same earliest time.
 function calculateNormalAndPelletScore(
     domain
 ) {
@@ -675,6 +678,9 @@ function calculateNormalAndPelletScore(
 // BLUE PELLET DOMAIN
 // ============================================================
 
+// Distributes remaining pellet value among frightened ghosts that
+// own each pellet's cell, preserving shared ownership when arrivals
+// are tied.
 function calculateBluePelletValues(
     domain
 ) {
@@ -786,6 +792,10 @@ function calculateBluePelletValues(
 // BLUE BALANCED SCORE
 // ============================================================
 
+// Evaluates the strategic value of frightened-ghost territory by
+// combining its total pellet value with the Jain Fairness Index.
+// This rewards both territory acquisition and balanced distribution
+// among the active frightened ghosts.
 function calculateBlueScore(
     domain
 ) {
@@ -798,8 +808,8 @@ function calculateBlueScore(
 
     const activeValues =
         values.filter(
-        (value, index) =>
-            ghosts[index].frightened
+            (value, index) =>
+                ghosts[index].frightened
         );
 
 
@@ -858,6 +868,10 @@ function calculateBlueScore(
 // TOTAL DOMAIN EVALUATION
 // ============================================================
 
+
+// Combines the territory, ordinary-pellet, and frightened-ghost
+// evaluations into a single objective, with a cap on the contribution
+// of ordinary pellets relative to normal territory.
 function evaluateDomain(
     domain
 ) {
@@ -876,10 +890,10 @@ function evaluateDomain(
     const weightedPelletScore =
         Math.min(
             WEIGHT_PELLET *
-                normal.pelletScore,
+            normal.pelletScore,
             WEIGHT_NORMAL *
-                normal.normalScore *
-                MAX_PELLET_SCORE_FRACTION
+            normal.normalScore *
+            MAX_PELLET_SCORE_FRACTION
         );
 
     const total =
@@ -906,7 +920,8 @@ function evaluateDomain(
     };
 }
 
-
+// Creates an isolated character snapshot for hypothetical search
+// branches, preventing simulated movement from mutating live state.
 function cloneSearchCharacter(character) {
     return {
         ...character,
@@ -917,7 +932,9 @@ function cloneSearchCharacter(character) {
     };
 }
 
-
+// Captures the game configuration needed to simulate future events.
+// Readiness flags identify which characters must choose a new direction
+// at the current decision point.
 function createSearchState(readyGhostIndices, readyPlayer = false) {
     const readyGhostSet = new Set(readyGhostIndices);
 
@@ -939,6 +956,9 @@ function createSearchState(readyGhostIndices, readyPlayer = false) {
 }
 
 
+// Produces a canonical key for state deduplication. It includes
+// movement progress and decision readiness, distinguishing states
+// whose future transitions may differ despite sharing cell positions.
 function searchStateKey(state) {
     const characterKey = character => [
         character.x,
@@ -972,7 +992,10 @@ function searchStateKey(state) {
     ]);
 }
 
-
+// Evaluates a hypothetical state using the domain objective and
+// penalizes lost lives. Temporarily installs the simulated state into
+// the existing evaluator, then restores the live game state even
+// if evaluation fails.
 function evaluateSearchState(state) {
     const previousState = {
         MAP,
@@ -1012,7 +1035,8 @@ function evaluateSearchState(state) {
     }
 }
 
-
+// Checks movement legality against the simulated map and the game's
+// boundary restrictions, independently of the live game state.
 function canMoveInSearchState(state, character, direction) {
     const x = wrap(character.x + direction.x, COLS);
     const y = wrap(character.y + direction.y, ROWS);
@@ -1021,7 +1045,9 @@ function canMoveInSearchState(state, character, direction) {
         !isBoundaryBlocked(character.x, character.y, direction);
 }
 
-
+// Generates legal movement choices, with a fallback for characters
+// that have no available move. Eaten ghosts may continue their current
+// direction when temporarily unable to select a new one.
 function getSearchDirections(state, character, isGhost) {
     const possible = Object.values(DIRECTIONS)
         .filter(direction =>
@@ -1037,7 +1063,9 @@ function getSearchDirections(state, character, isGhost) {
         : [{ x: 0, y: 0 }];
 }
 
-
+// Applies the actual control constraints of a player-directed ghost:
+// queued direction first, current direction second, and a legal
+// fallback only when neither can be continued.
 function getSearchGhostDirections(state, index) {
     const ghost = state.ghosts[index];
 
@@ -1064,7 +1092,9 @@ function getSearchGhostDirections(state, index) {
     return getSearchDirections(state, ghost, true);
 }
 
-
+// Reverses a ghost's movement without teleporting it to a cell center.
+// If it is between cells, the position and progress are transformed
+// together to preserve its physical location.
 function reverseSearchGhost(ghost) {
     if (ghost.progress > 0) {
         ghost.x = wrap(ghost.x + ghost.direction.x, COLS);
@@ -1076,7 +1106,10 @@ function reverseSearchGhost(ghost) {
     ghost.direction.y *= -1;
 }
 
-
+// Advances the simulation to the next relevant event rather than by
+// a fixed time step. Events include cell arrivals, frightened-mode
+// expiration, pellet collection, and continuous player-ghost collision.
+// Returns a new state without modifying the input state.
 function advanceSearchState(state, ghostDirections, playerDirection) {
     const next = {
         ...state,
@@ -1336,6 +1369,9 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
 }
 
 
+// Enumerates the joint actions available at the current event.
+// Only characters whose readiness flags are set choose new directions;
+// all other characters continue their existing movement.
 function getSearchActionProfiles(state) {
     if (state.terminal) {
         return [];
@@ -1387,7 +1423,9 @@ function getSearchActionProfiles(state) {
     return profiles;
 }
 
-
+// Creates a node in the shared strategic search graph. Identical
+// states can reuse an existing node, while incoming edges allow value
+// changes to propagate back to every parent that depends on the node.
 function createStrategicSearchNode(state, parent, parentEdge, depth, value) {
     const key = searchStateKey(state);
     const node = {
@@ -1423,7 +1461,8 @@ function createStrategicSearchNode(state, parent, parentEdge, depth, value) {
     return node;
 }
 
-
+// Lazily generates the node's possible joint actions, postponing
+// branching work until the search actually reaches that node.
 function prepareStrategicSearchNode(node) {
     if (node.candidates !== null) {
         return;
@@ -1441,7 +1480,10 @@ function prepareStrategicSearchNode(node) {
     }
 }
 
-
+// Aggregates action values according to the decision-maker at the
+// current event. Ghosts maximize their outcome; Pac-Man minimizes it.
+// When both sides can act, the value follows a maximin interpretation:
+// the ghosts choose a move and Pac-Man chooses the best response.
 function getStrategicSearchNodeValue(node) {
     if (!node.candidates || node.candidates.length === 0) {
         return node.staticValue;
@@ -1490,7 +1532,9 @@ function getStrategicSearchNodeValue(node) {
     return node.staticValue;
 }
 
-
+// Propagates changed values through the reverse dependency graph.
+// Shared states may affect multiple ancestors, so updates continue
+// until no reachable parent value changes beyond the tolerance.
 function refreshStrategicSearchValues(node) {
     const pending = [node];
     const queued = new Set(pending);
@@ -1518,6 +1562,9 @@ function refreshStrategicSearchValues(node) {
     }
 }
 
+// Detects whether adding a search-graph edge would create a cycle,
+// allowing repeated states to be shared without introducing cyclic
+// dependencies into the graph.
 function hasStrategicSearchPath(start, target) {
     const pending = [start];
     const visited = new Set();
@@ -1545,7 +1592,9 @@ function hasStrategicSearchPath(start, target) {
     return false;
 }
 
-
+// Evaluates one candidate transition and connects its resulting state
+// to the shared graph when doing so does not introduce an ancestor
+// cycle. Repeated states reuse their existing values and dependencies.
 function processStrategicSearchCandidate(node, candidate) {
     const childState = candidate.nextState;
     const childKey = searchStateKey(childState);
@@ -1593,7 +1642,9 @@ function processStrategicSearchCandidate(node, candidate) {
     refreshStrategicSearchValues(node);
 }
 
-
+// Defines frontier priority from the current decision-maker's
+// perspective, preferring strategically promising nodes while using
+// depth and improvement over the parent as tie-breakers.
 function compareStrategicSearchNodes(a, b) {
     const aSign = a.readyGhosts ? 1 : -1;
     const bSign = b.readyGhosts ? 1 : -1;
@@ -1618,7 +1669,8 @@ function compareStrategicSearchNodes(a, b) {
     return bImprovement - aImprovement;
 }
 
-
+// Swaps two frontier entries while keeping each node's stored heap
+// index synchronized with its actual position.
 function swapStrategicSearchFrontier(a, b) {
     const frontier = strategicSearch.frontier;
 
@@ -1627,7 +1679,8 @@ function swapStrategicSearchFrontier(a, b) {
     frontier[b].heapIndex = b;
 }
 
-
+// Inserts a node into the indexed priority queue used to schedule
+// further search expansions.
 function pushStrategicSearchFrontier(node) {
     const frontier = strategicSearch.frontier;
     let index = frontier.length;
@@ -1648,6 +1701,9 @@ function pushStrategicSearchFrontier(node) {
 }
 
 
+// Restores heap order after a node's strategic value changes.
+// Because values can propagate through the graph, frontier priorities
+// must be updated without inserting duplicate entries.
 function updateStrategicSearchFrontier(node) {
     let index = node.heapIndex;
 
@@ -1696,7 +1752,8 @@ function updateStrategicSearchFrontier(node) {
     }
 }
 
-
+// Removes and returns the highest-priority node, maintaining the
+// indexed heap required for efficient subsequent updates and removals.
 function popStrategicSearchFrontier() {
     const frontier = strategicSearch.frontier;
 
@@ -1717,7 +1774,8 @@ function popStrategicSearchFrontier() {
     return first;
 }
 
-
+// Removes a specific node from the frontier in logarithmic time,
+// using its stored heap index rather than searching the queue.
 function removeStrategicSearchFrontier(node) {
     const index = node.heapIndex;
 
@@ -1737,6 +1795,9 @@ function removeStrategicSearchFrontier(node) {
 }
 
 
+// Performs a bounded amount of search work per frame, allowing the
+// strategic graph to expand incrementally without monopolizing the
+// game loop. Each expansion processes one candidate transition.
 function advanceStrategicSearch() {
     for (
         let expansion = 0;
@@ -1768,7 +1829,10 @@ function advanceStrategicSearch() {
     }
 }
 
-
+// Selects the ghost's direction from the best available joint ghost
+// action, evaluating each action against Pac-Man's worst response.
+// Unresolved candidates use their parent's static evaluation until
+// further search expansions provide more accurate values.
 function getStrategicGhostDirection(node, ghostIndex, fallback) {
     prepareStrategicSearchNode(node);
 
@@ -1821,7 +1885,9 @@ function getStrategicGhostDirection(node, ghostIndex, fallback) {
         : { ...fallback };
 }
 
-
+// Retrieves or initializes the search node corresponding to the
+// current decision state. The root's immediate candidates are
+// evaluated before it is returned for action selection.
 function getStrategicSearchRoot(readyGhosts, readyPlayer = false) {
     const readyGhostIndices = readyGhosts.map(ghost => ghosts.indexOf(ghost));
     const state = createSearchState(readyGhostIndices, readyPlayer);
@@ -1854,6 +1920,8 @@ function getStrategicSearchRoot(readyGhosts, readyPlayer = false) {
 }
 
 
+// Chooses coordinated directions for the ghosts that are ready to
+// move, treating their simultaneous decisions as a joint action.
 function chooseStrategicGhostDirections(readyGhosts) {
     const root = getStrategicSearchRoot(readyGhosts);
 
@@ -1873,7 +1941,8 @@ function chooseStrategicGhostDirections(readyGhosts) {
     );
 }
 
-
+// Chooses Pac-Man's move by minimizing the worst outcome across
+// the ghost responses represented in the root's candidate actions.
 function chooseStrategicPacmanDirection() {
     const root = getStrategicSearchRoot([], true);
     const actionValues = new Map();
@@ -1932,6 +2001,8 @@ function chooseStrategicPacmanDirection() {
 // GHOST MOVE EVALUATION
 // ============================================================
 
+// Returns the legal directions available to a character at its
+// current position, using the live game's movement constraints.
 function getPossibleDirections(
     character
 ) {
