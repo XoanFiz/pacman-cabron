@@ -10,7 +10,7 @@ const LEVEL_MAP = [
     "#.####.###.#######.#",
     "#......#...#.......#",
     "######.#.###.#.######",
-    "     #.#.....#.#     ",
+    "     #.#...H.#.#     ",
     "######.#.###.#.######",
     "............#.......#",
     "#.####.###.###.####.#",
@@ -30,7 +30,7 @@ const LEVEL_MAP = [
     // "# #### ### ####### #",
     // "#      #   #       #",
     // "###### # ### # ######",
-    // "     # #     # #     ",
+    // "     # #   H # #     ",
     // "###### # ### # ######",
     // "            #       #",
     // "# #### ### ### #### #",
@@ -169,11 +169,11 @@ const DIRECTIONS = {
     right: { x: 1, y: 0 }
 };
 
-const DEFAULT_GHOST_HOUSES = [{ x: 11, y: 8 }];
+// const DEFAULT_GHOST_HOUSES = [{ x: 11, y: 8 }];
 
 
 function createBoundaryOnlyMap() {
-    const ghostHouses = DEFAULT_GHOST_HOUSES.map(cloneMapPosition);
+    const ghostHouses = buildGhostHouses();
     const occupied = [
         DEFAULT_PLAYER_START,
         ...DEFAULT_GHOST_STARTS,
@@ -362,9 +362,9 @@ const PREDEFINED_MAPS = [
     {
         id: "classic",
         nameKey: "classicMap",
-        tiles: clearMapTiles(LEVEL_MAP, DEFAULT_GHOST_HOUSES),
+        tiles: clearMapTiles(LEVEL_MAP, buildGhostHouses()),
         edges: [],
-        ghostHouses: DEFAULT_GHOST_HOUSES.map(cloneMapPosition),
+        ghostHouses: buildGhostHouses().map(cloneMapPosition),
         playerStart: DEFAULT_PLAYER_START,
         ghostStarts: DEFAULT_GHOST_STARTS
     },
@@ -633,13 +633,26 @@ function buildPellets() {
 
         for (let x = 0; x < COLS; x++) {
 
-            if (map[y][x] !== "." && map[y][x] !== "o") {
-                continue;
+            if (map[y][x] === "." || map[y][x] === "o") {
+                pellets.add(`${x},${y}`);
             }
 
-            pellets.add(`${x},${y}`);
         }
     }
+}
+
+function buildGhostHouses() {
+    const ghostHouses = [];
+    for (let y = 0; y < ROWS; y++) {
+
+        for (let x = 0; x < COLS; x++) {
+
+            if (map[y][x] === "H") {
+                ghostHouses.push({ x, y });
+            }
+        }
+    }
+    return ghostHouses;
 }
 
 
