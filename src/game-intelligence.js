@@ -235,7 +235,8 @@ function createDomainCell() {
 
     return {
         arrival: Infinity,
-        owners: []
+        owner: "",
+        blue: []
     };
 }
 
@@ -246,10 +247,159 @@ function createDomainCell() {
 // Equal-time arrivals preserve shared ownership, while contested
 // cells stop further propagation. Eaten ghosts re-enter the search
 // from their possible return-to-house positions.
-function calculateDomain({
+function calculateDomain(node, {
     respectCurrentMovement = true,
     includePacman = true
 } = {}) {
+
+    const isDuplicated = (assessedDomainFact) => {
+        const stateKey =
+            `${assessedDomainFact.owner}
+            :${assessedDomainFact.domainType ?? "normal"}
+            :${assessedDomainFact.x}
+            ,${assessedDomainFact.y}
+            :${assessedDomainFact.initialProgress}
+            :${assessedDomainFact.initialDirection}
+            :${Number(assessedDomainFact.isInitiatedMove)}`;
+
+        if (processedDomainMessages.has(stateKey)) {
+            return true
+        }
+
+        processedDomainMessages.add(stateKey);
+        return false;
+    };
+
+
+    function pushBlueDomainSeeds(queue, ghost, owner, node, respectCurrentMovement) {
+        queue.push({
+            x: ghost.x,
+            y: ghost.y,
+            time: node.gameTime,
+            frightenedTimer: ghost.frightenedTimer,
+            owner,
+            domainType: "blue",
+            originX: ghost.x,
+            originY: ghost.y,
+            speed: EATEN_GHOST_SPEED,
+            initialProgress: ghost.progress,
+            initialDirection: ghost.direction,
+            isInitiatedMove: respectCurrentMovement && ghost.progress > 0 && (ghost.direction.x !== 0 || ghost.direction.y !== 0) && canMove(ghost.x, ghost.y, ghost.direction)
+        });
+    }
+
+    const propagateFromGhostHouse = (node, ghost) => {
+        const isMoving =
+            ghost.progress > 0 &&
+            (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
+            canMove(ghost.x, ghost.y, ghost.direction);
+        const nextX =
+            wrap(ghost.x + ghost.direction.x, COLS);
+        const nextY =
+            wrap(ghost.y + ghost.direction.y, ROWS);
+
+        for (const house of GHOST_HOUSES) {
+            const distance =
+                isMoving
+                    ? 1 - ghost.progress +
+                    shortestDistance(nextX, nextY, house.x, house.y)
+                    : shortestDistance(ghost.x, ghost.y, house.x, house.y);
+
+            if (!Number.isFinite(distance)) {
+                continue;
+            }
+
+            const speed = ghost.eaten ? EATEN_GHOST_SPEED : FRIGHTENED_GHOST_SPEED
+
+            queue.push({
+                x: house.x,
+                y: house.y,
+                time: node.gameTime + distance / speed,
+                owner: `ghost${node.ghosts.indexOf(ghost)}`,
+                domainType: "normal",
+                originX: house.x,
+                originY: house.y,
+                speed,
+                initialProgress: 0,
+                initialDirection: { x: 0, y: 0 },
+                isInitiatedMove: false
+            });
+        }
+    }
+
+    const calculateNextTimeAndCell = (assessedDomainStatus, domain, next) => {
+        if (assessedDomainStatus.isInitiatedMove) {
+            return null;
+        }
+
+        const nextTime =
+            assessedDomainStatus.time +
+            (
+                assessedDomainStatus.isInitiatedMove
+                    ? 1 - assessedDomainStatus.initialProgress
+                    : 1
+            ) /
+            assessedDomainStatus.speed;
+
+
+        const nextCell =
+            domain[
+            next.y
+            ][
+            next.x
+            ];
+
+        return {
+            nextTime, nextCell
+        }
+    }
+
+    const spreadTheWave = (assessedDomainStatus, isBetter) => {
+        for (
+            const next of
+            graph[assessedDomainStatus.y][assessedDomainStatus.x]
+        ) {
+
+            const result = calculateNextTimeAndCell(assessedDomainStatus, domain, next);
+            if (!result) {
+                continue;
+            }
+
+            const { nextTime, nextCell } = { nextTime: result.nextTime, nextCell: result.nextCell };
+
+
+            if (!isBetter(nextTime, nextCell)
+            ) {
+                continue;
+            }
+
+            let nextFrigthenedTimer = undefined;
+            let nextDomainType = "normal";
+            if (assessedDomainStatus.frightenedTimer) {
+                nextFrigthenedTimer = assessedDomainStatus.frightenedTimer - nextTime + assessedDomainStatus.time
+                nextDomainType = "frightened"
+                if (nextFrightenedTimer <= 0) {
+                    nextFrigthenedTimer = 0;
+                    nextDomainType = "normal"
+                }
+            }
+
+
+            queue.push({
+                x: next.x,
+                y: next.y,
+                time: nextTime,
+                owner: assessedDomainStatus.owner,
+                domainType: nextDomainType,
+                frightenedTimer: nextFrigthenedTimer,
+                originX: assessedDomainStatus.originX,
+                originY: assessedDomainStatus.originY,
+                speed: assessedDomainStatus.speed,
+                direction: next.direction,
+                isInitiatedMove: false
+            });
+        }
+    }
 
     const domain =
         Array.from(
@@ -262,7 +412,7 @@ function calculateDomain({
 
 
     let queue = new MinHeap();
-    const processedStates = new Set();
+    const processedDomainMessages = new Set();
 
 
     // --------------------------------------------------------
@@ -271,20 +421,21 @@ function calculateDomain({
 
     if (includePacman) {
         queue.push({
-            x: player.x,
-            y: player.y,
-            time: gameTime,
+            x: node.player.x,
+            y: node.player.y,
+            time: node.gameTime,
             owner: "pacman",
-            originX: player.x,
-            originY: player.y,
+            domainType: "normal",
+            originX: node.player.x,
+            originY: node.player.y,
             speed: PACMAN_SPEED,
-            initialProgress: player.progress,
-            initialDirection: player.direction,
-            initialMove:
+            initialProgress: node.player.progress,
+            initialDirection: node.player.direction,
+            isInitiatedMove:
                 respectCurrentMovement &&
-                player.progress > 0 &&
-                (player.direction.x !== 0 || player.direction.y !== 0) &&
-                canMove(player.x, player.y, player.direction)
+                node.player.progress > 0 &&
+                (node.player.direction.x !== 0 || node.player.direction.y !== 0) &&
+                canMove(node.player.x, node.player.y, node.player.direction)
         });
     }
 
@@ -293,65 +444,46 @@ function calculateDomain({
     // GHOSTS
     // --------------------------------------------------------
 
-    for (let i = 0; i < ghosts.length; i++) {
+    for (let i = 0; i < node.ghosts.length; i++) {
 
-        const ghost = ghosts[i];
+        const ghost = node.ghosts[i];
         const owner = `ghost${i}`;
 
         if (ghost.eaten) {
-            const isMoving =
-                ghost.progress > 0 &&
-                (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
-                canMove(ghost.x, ghost.y, ghost.direction);
-            const nextX =
-                wrap(ghost.x + ghost.direction.x, COLS);
-            const nextY =
-                wrap(ghost.y + ghost.direction.y, ROWS);
+            propagateFromGhostHouse(node, ghost)
+        } else {
+            if (ghost.frightened) {
+                // Blue territory: starts at the ghost's current position. 
+                pushBlueDomainSeeds(queue, ghost, owner, node, respectCurrentMovement &&
+                    ghost.progress > 0 &&
+                    (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
+                    canMove(ghost.x, ghost.y, ghost.direction));
 
-            for (const house of GHOST_HOUSES) {
-                const distance =
-                    isMoving
-                        ? 1 - ghost.progress +
-                        shortestDistance(nextX, nextY, house.x, house.y)
-                        : shortestDistance(ghost.x, ghost.y, house.x, house.y);
-
-                if (!Number.isFinite(distance)) {
-                    continue;
-                }
-
-                queue.push({
-                    x: house.x,
-                    y: house.y,
-                    time: gameTime + distance / EATEN_GHOST_SPEED,
-                    owner,
-                    originX: house.x,
-                    originY: house.y,
-                    speed: GHOST_SPEED,
-                    initialProgress: 0,
-                    initialDirection: { x: 0, y: 0 },
-                    initialMove: false
-                });
+                // Normal territory: propagates from the ghost's house. 
+                propagateFromGhostHouse(node, ghost)
             }
 
-            continue;
+            else {
+                // Normal ghost
+                queue.push({
+                    x: ghost.x,
+                    y: ghost.y,
+                    time: node.gameTime,
+                    owner,
+                    domainType: "normal",
+                    originX: ghost.x,
+                    originY: ghost.y,
+                    speed: GHOST_SPEED,
+                    initialProgress: ghost.progress,
+                    initialDirection: ghost.direction,
+                    isInitiatedMove:
+                        respectCurrentMovement &&
+                        ghost.progress > 0 &&
+                        (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
+                        canMove(ghost.x, ghost.y, ghost.direction)
+                });
+            }
         }
-
-        queue.push({
-            x: ghost.x,
-            y: ghost.y,
-            time: gameTime,
-            owner,
-            originX: ghost.x,
-            originY: ghost.y,
-            speed: GHOST_SPEED,
-            initialProgress: ghost.progress,
-            initialDirection: ghost.direction,
-            initialMove:
-                respectCurrentMovement &&
-                ghost.progress > 0 &&
-                (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
-                canMove(ghost.x, ghost.y, ghost.direction)
-        });
     }
 
 
@@ -361,155 +493,106 @@ function calculateDomain({
 
     while (!queue.empty()) {
 
-        const assessedDomainCell =
+        const assessedDomainFact =
             queue.pop();
 
 
         const currentDomainCell =
             domain[
-            assessedDomainCell.y
+            assessedDomainFact.y
             ][
-            assessedDomainCell.x
+            assessedDomainFact.x
             ];
 
-        if (assessedDomainCell.time > currentDomainCell.arrival) {
-            // An owner may revisit its starting cell after the forced first move.
-            if (
-                (
-                    assessedDomainCell.x !== assessedDomainCell.originX ||
-                    assessedDomainCell.y !== assessedDomainCell.originY
-                ) ||
-                currentDomainCell.owners.length !== 1 ||
-                currentDomainCell.owners[0] !== assessedDomainCell.owner
-            ) {
-                continue;
-            }
-        }
-
-        if (assessedDomainCell.time < currentDomainCell.arrival) {
-            currentDomainCell.arrival = assessedDomainCell.time;
-            currentDomainCell.owners = [assessedDomainCell.owner];
-            currentDomainCell.direction = assessedDomainCell.direction;
-        } else if (
-            assessedDomainCell.time === currentDomainCell.arrival &&
-            !currentDomainCell.owners.includes(assessedDomainCell.owner)
-        ) {
-            currentDomainCell.owners.push(assessedDomainCell.owner);
-        }
-
-        const stateKey =
-            `${assessedDomainCell.owner}:${assessedDomainCell.x},${assessedDomainCell.y}:${Number(assessedDomainCell.initialMove)}`;
-
-        if (processedStates.has(stateKey)) {
-            continue;
-        }
-
-        processedStates.add(stateKey);
-
-        // Stop at a meeting point: a character must not propagate into
-        // territory already reached by another character at the same time.
-        if (currentDomainCell.owners.length > 1) {
-            continue;
-        }
-
-        // Pacman stops expanding as soon as he reaches a power pill.
-        if (
-            assessedDomainCell.owner === "pacman" &&
-            MAP[assessedDomainCell.y][assessedDomainCell.x] === "o"
-        ) {
-            continue;
-        }
-
-
-        /*
-         * We spread the wave.
-         */
-        for (
-            const next of
-            graph[assessedDomainCell.y][assessedDomainCell.x]
-        ) {
-
-            if (
-                assessedDomainCell.initialMove &&
-                (
-                    next.direction.x !== assessedDomainCell.initialDirection.x ||
-                    next.direction.y !== assessedDomainCell.initialDirection.y
-                )
-            ) {
+        if (assessedDomainFact.domainType !== "blue") {
+            // Normal domain
+            if (assessedDomainFact.time > currentDomainCell.arrival) {
                 continue;
             }
 
-            const nextTime =
-                assessedDomainCell.time +
-                (
-                    assessedDomainCell.initialMove
-                        ? 1 - assessedDomainCell.initialProgress
-                        : 1
-                ) /
-                assessedDomainCell.speed;
+            if (assessedDomainFact.time < currentDomainCell.arrival) {
+                currentDomainCell.arrival = assessedDomainFact.time;
+                currentDomainCell.owner = assessedDomainFact.owner;
+                currentDomainCell.direction = assessedDomainFact.direction;
 
+                if (assessedDomainFact.owner == "pacman") {
+                    currentDomainCell.blue = [];
+                }
+            }
 
-            const nextCell =
-                domain[
-                next.y
-                ][
-                next.x
-                ];
-
-
-            /*
-             * We only want to propagate if we can
-             * improve the time.
-             */
-            if (
-                nextTime > nextCell.arrival &&
-                (
-                    next.x !== assessedDomainCell.originX ||
-                    next.y !== assessedDomainCell.originY ||
-                    nextCell.owners.length !== 1 ||
-                    nextCell.owners[0] !== assessedDomainCell.owner
-                )
-            ) {
+            // Begin prepare for propagation
+            if (isDuplicated(assessedDomainFact)) {
                 continue;
             }
 
+            // Stop at a meeting point: a character must not propagate into
+            // territory already reached by another character at the same time.
+            if (!currentDomainCell.owner || currentDomainCell.owner === "") {
+                continue;
+            }
 
-            queue.push({
-                x: next.x,
-                y: next.y,
-                time: nextTime,
-                owner: assessedDomainCell.owner,
-                originX: assessedDomainCell.originX,
-                originY: assessedDomainCell.originY,
-                speed: assessedDomainCell.speed,
-                direction: next.direction,
-                initialMove: false
+            // Pacman stops expanding as soon as he reaches a power pill.
+            if (
+                assessedDomainFact.owner === "pacman" &&
+                map[assessedDomainFact.y][assessedDomainFact.x] === "o" &&
+                (node.pellets.has(`${assessedDomainFact.x},${assessedDomainFact.y}`))) {
+                continue;
+            }
+            // End prepare for propagation
+
+            spreadTheWave(assessedDomainFact, (nextTime, nextCell) => nextTime < nextCell.arrival);
+        } else {
+            // Blue domain
+            let blueDomainUnit = currentDomainCell.blue.filter(unit => unit.owner == assessedDomainFact.owner)[0];
+            if (!blueDomainUnit) {
+                blueDomainUnit = {};
+                blueDomainUnit.owner = assessedDomainFact.owner;
+                blueDomainUnit.arrival = assessedDomainFact.time;
+                blueDomainUnit.frightenedTimer = assessedDomainFact.frightenedTimer;
+                currentDomainCell.blue.push(blueDomainUnit);
+            } else {
+                if (assessedDomainFact.time > blueDomainUnit.arrival) {
+                    blueDomainUnit.arrival = assessedDomainFact.time;
+                    blueDomainUnit.frightenedTimer = assessedDomainFact.frightenedTimer;
+                }
+            }
+
+            // Begin prepare for propagation
+            if (isDuplicated(assessedDomainFact)) {
+                continue;
+            }
+
+            // End prepare for propagation
+
+            // Propagation
+            spreadTheWave(assessedDomainFact, (nextTime, nextCell) => {
+                (nextTime > nextCell.arrival) && (nextCell.blue.filter(unit => unit.owner == assessedDomainFact.owner)[0]?.arrival ?? Infinity) > nextTime
             });
         }
-    }
 
+    }
 
     return domain;
 }
 
 // Extracts ghost ownership identifiers from a cell's complete
 // ownership set, including ghosts represented by recovered states.
-function getGhostOwners(owners) {
+// function getGhostOwners(owners) {
 
-    return owners.filter(
-        owner =>
-            owner.startsWith("ghost") || owner.startsWith("recoveredGhost")
-    );
-}
+//     return owners.filter(
+//         owner =>
+//             owner.startsWith("ghost") || owner.startsWith("recoveredGhost")
+//     );
+// }
 
 // Resolves a ghost ownership identifier to the corresponding index
 // in the global ghosts array.
-function getGhostIndex(owner) {
+// function getGhostIndex(owner) {
 
-    return Number(
-        owner.replace("recoveredGhost", "").replace("ghost", "")
-    );
-}
+//     return Number(
+//         owner.replace("recoveredGhost", "").replace("ghost", "")
+//     );
+// }
 
 // Calculates the remaining grid distance while accounting for an
 // already-started movement segment, so arrival estimates remain
@@ -589,7 +672,7 @@ function getGhostArrivalTimeToPlayer(ghost) {
 // partition. Territory value is normalized by Pac-Man's controlled
 // area, while pellet value is discounted by travel time and shared
 // among ghosts that reach a pellet at the same earliest time.
-function calculateNormalAndPelletScore(
+function calculateNormalAndPelletScore({ pellets, ghosts, gameTime },
     domain
 ) {
 
@@ -599,8 +682,8 @@ function calculateNormalAndPelletScore(
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
             if (
-                MAP[y][x] !== "#" &&
-                domain[y][x].owners.includes("pacman")
+                map[y][x] !== "#" &&
+                domain[y][x].owner === "pacman"
             ) {
                 pacmanControlledSquares++;
             }
@@ -620,9 +703,10 @@ function calculateNormalAndPelletScore(
             : 1;
     const proximityAdjustedNormalScore =
         normalScore * normalArrivalMultiplier;
+    const pelletCount = pellets.length;
     const pelletValue =
-        pellets > 0
-            ? TOTAL_PELLET_VALUE / pellets
+        pelletCount > 0
+            ? TOTAL_PELLET_VALUE / pelletCount
             : 0;
 
 
@@ -631,7 +715,7 @@ function calculateNormalAndPelletScore(
         for (let x = 0; x < COLS; x++) {
 
             const cell =
-                MAP[y][x];
+                map[y][x];
 
 
             if (
@@ -641,14 +725,18 @@ function calculateNormalAndPelletScore(
                 continue;
             }
 
+            if (!pellets.has(`${x},${y}`)) {
+                continue;
+            }
 
-            const ghostOwners =
-                getGhostOwners(
-                    domain[y][x].owners
-                );
+            // const ghostOwners =
+            //     getGhostOwners(
+            //         domain[y][x].owners
+            //     );
+            const ghostOwner = domain[y][x].owner;
 
 
-            if (ghostOwners.length === 0)
+            if (ghostOwner === "")
                 continue;
 
             const travelTime =
@@ -661,8 +749,7 @@ function calculateNormalAndPelletScore(
 
             pelletScore +=
                 pelletValue *
-                distanceWeight /
-                ghostOwners.length;
+                distanceWeight;
         }
     }
 
@@ -675,196 +762,6 @@ function calculateNormalAndPelletScore(
 
 
 // ============================================================
-// BLUE PELLET DOMAIN
-// ============================================================
-
-// Distributes remaining pellet value among frightened ghosts that
-// own each pellet's cell, preserving shared ownership when arrivals
-// are tied.
-function calculateBluePelletValues(
-    domain
-) {
-
-    const values =
-        ghosts.map(() => 0);
-
-
-    const activeBlue =
-        ghosts
-            .map((ghost, index) => ({
-                ghost,
-                index
-            }))
-            .filter(({ ghost }) => ghost.frightened);
-
-
-    if (activeBlue.length === 0)
-        return values;
-
-
-    /*
-    * The total value of the pellets is still being distributed
-    * among the remaining pellets.
-    */
-    const pelletValue =
-        pellets > 0
-            ? TOTAL_PELLET_VALUE / pellets
-            : 0;
-
-
-    for (let y = 0; y < ROWS; y++) {
-
-        for (let x = 0; x < COLS; x++) {
-
-            const cell =
-                MAP[y][x];
-
-
-            if (
-                cell !== "." &&
-                cell !== "o"
-            ) {
-                continue;
-            }
-
-
-            /*
-            * Blue ghosts that dominate this square
-            * according to normal domain.
-            */
-            const blueOwners =
-                domain[y][x]
-                    .owners
-                    .filter(owner =>
-                        owner.startsWith("ghost")
-                    )
-                    .filter(owner => {
-
-                        const index =
-                            getGhostIndex(
-                                owner
-                            );
-
-                        return (
-                            ghosts[index].frightened
-                        );
-                    });
-
-
-            if (
-                blueOwners.length === 0
-            ) {
-                continue;
-            }
-
-
-            /*
-            * The pellet's value is distributed among the
-            * tied blue ghosts.
-            */
-            const share =
-                pelletValue /
-                blueOwners.length;
-
-
-            for (
-                const owner of blueOwners
-            ) {
-
-                const index =
-                    getGhostIndex(
-                        owner
-                    );
-
-
-                values[index] +=
-                    share;
-            }
-        }
-    }
-
-
-    return values;
-}
-
-
-// ============================================================
-// BLUE BALANCED SCORE
-// ============================================================
-
-// Evaluates the strategic value of frightened-ghost territory by
-// combining its total pellet value with the Jain Fairness Index.
-// This rewards both territory acquisition and balanced distribution
-// among the active frightened ghosts.
-function calculateBlueScore(
-    domain
-) {
-
-    const values =
-        calculateBluePelletValues(
-            domain
-        );
-
-
-    const activeValues =
-        values.filter(
-            (value, index) =>
-                ghosts[index].frightened
-        );
-
-
-    if (
-        activeValues.length === 0
-    ) {
-        return 0;
-    }
-
-
-    const total =
-        activeValues.reduce(
-            (sum, value) =>
-                sum + value,
-            0
-        );
-
-
-    if (total === 0)
-        return 0;
-
-
-    const squares =
-        activeValues.reduce(
-            (sum, value) =>
-                sum + value * value,
-            0
-        );
-
-
-    /*
-     * Jain Fairness Index.
-     *
-     * 1 = perfectly balanced distribution
-     * 1/n = all value concentrated in one ghost
-     */
-    const fairness =
-        total * total /
-        (
-            activeValues.length *
-            squares
-        );
-
-
-    /*
-    * We want it to matter as much:
-    *
-    * - how much pellet territory there is
-    * - how balanced is the distribution
-    */
-    return total * fairness;
-}
-
-
-// ============================================================
 // TOTAL DOMAIN EVALUATION
 // ============================================================
 
@@ -872,18 +769,12 @@ function calculateBlueScore(
 // Combines the territory, ordinary-pellet, and frightened-ghost
 // evaluations into a single objective, with a cap on the contribution
 // of ordinary pellets relative to normal territory.
-function evaluateDomain(
+function evaluateDomain({ pellets, ghosts, gameTime },
     domain
 ) {
 
     const normal =
-        calculateNormalAndPelletScore(
-            domain
-        );
-
-
-    const blue =
-        calculateBlueScore(
+        calculateNormalAndPelletScore({ pellets, ghosts, gameTime },
             domain
         );
 
@@ -900,10 +791,7 @@ function evaluateDomain(
         WEIGHT_NORMAL *
         normal.normalScore +
 
-        weightedPelletScore +
-
-        WEIGHT_BLUE *
-        blue;
+        weightedPelletScore;
 
 
     return {
@@ -912,9 +800,6 @@ function evaluateDomain(
 
         pelletScore:
             normal.pelletScore,
-
-        blueScore:
-            blue,
 
         total
     };
@@ -939,11 +824,9 @@ function createSearchState(readyGhostIndices, readyPlayer = false) {
     const readyGhostSet = new Set(readyGhostIndices);
 
     return {
-        map: MAP.slice(),
-        pellets,
+        pellets: new Set(pellets),
         lives,
         time: gameTime,
-        frightenedTimer,
         player: cloneSearchCharacter(player),
         ghosts: ghosts.map(cloneSearchCharacter),
         controlledGhostIndex: selectedCharacter.startsWith("ghost-")
@@ -977,12 +860,10 @@ function searchStateKey(state) {
     ].join(",");
 
     return JSON.stringify([
-        state.map,
-        state.pellets,
+        [...state.pellets].sort(),
         state.lives,
         state.terminal,
         state.controlledGhostIndex,
-        Number(state.frightenedTimer.toFixed(5)),
         characterKey(state.player),
         state.player.nextDirection.x,
         state.player.nextDirection.y,
@@ -997,42 +878,22 @@ function searchStateKey(state) {
 // the existing evaluator, then restores the live game state even
 // if evaluation fails.
 function evaluateSearchState(state) {
-    const previousState = {
-        MAP,
-        pellets,
-        gameTime,
-        frightenedTimer,
-        player,
-        ghosts
-    };
+    const domainValue =
+        evaluateDomain({ pellets: state.pellets, ghosts: state.ghosts, gameTime: state.gameTime },
+            calculateDomain({
+                pellets: state.pellets,
+                gameTime: state.time,
+                player: cloneSearchCharacter(state.player),
+                ghosts: state.ghosts.map(cloneSearchCharacter)
+            }, {
+                includePacman: !state.terminal
+            })
+        ).total;
 
-    try {
-        MAP = state.map.slice();
-        pellets = state.pellets;
-        gameTime = state.time;
-        frightenedTimer = state.frightenedTimer;
-        player = cloneSearchCharacter(state.player);
-        ghosts = state.ghosts.map(cloneSearchCharacter);
-
-        const domainValue =
-            evaluateDomain(
-                calculateDomain({
-                    includePacman: !state.terminal
-                })
-            ).total;
-
-        return (
-            (INITIAL_LIVES - state.lives) *
-            SEARCH_LIFE_PRIORITY
-        ) + domainValue;
-    } finally {
-        MAP = previousState.MAP;
-        pellets = previousState.pellets;
-        gameTime = previousState.gameTime;
-        frightenedTimer = previousState.frightenedTimer;
-        player = previousState.player;
-        ghosts = previousState.ghosts;
-    }
+    return (
+        (INITIAL_LIVES - state.lives) *
+        SEARCH_LIFE_PRIORITY
+    ) + domainValue;
 }
 
 // Checks movement legality against the simulated map and the game's
@@ -1041,7 +902,7 @@ function canMoveInSearchState(state, character, direction) {
     const x = wrap(character.x + direction.x, COLS);
     const y = wrap(character.y + direction.y, ROWS);
 
-    return state.map[y][x] !== "#" &&
+    return map[y][x] !== "#" &&
         !isBoundaryBlocked(character.x, character.y, direction);
 }
 
@@ -1113,7 +974,7 @@ function reverseSearchGhost(ghost) {
 function advanceSearchState(state, ghostDirections, playerDirection) {
     const next = {
         ...state,
-        map: state.map.slice(),
+        pellets: new Set(state.pellets),
         player: cloneSearchCharacter(state.player),
         ghosts: state.ghosts.map(cloneSearchCharacter),
         readyPlayer: false,
@@ -1128,9 +989,9 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         next.ghosts[index].direction = { ...direction };
     }
 
-    let nextEventTime = Infinity;
+    let timeToNextEvent = Infinity;
 
-    const findNextEvent = (character, speed) => {
+    const computeCentreArrivalCandidate = (character, speed) => {
         if (character.direction.x === 0 && character.direction.y === 0) {
             return;
         }
@@ -1138,17 +999,11 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         const timeToCenter =
             Math.max(0, 1 - character.progress) / speed;
 
-        nextEventTime = Math.min(nextEventTime, timeToCenter);
+        timeToNextEvent = Math.min(timeToNextEvent, timeToCenter);
     };
 
-    findNextEvent(next.player, PACMAN_SPEED);
-
-    if (next.frightenedTimer > 0) {
-        nextEventTime = Math.min(
-            nextEventTime,
-            next.frightenedTimer
-        );
-    }
+    // Pac-man
+    computeCentreArrivalCandidate(next.player, PACMAN_SPEED);
 
     const playerX =
         next.player.x +
@@ -1163,8 +1018,20 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
     const playerVelocityY =
         next.player.direction.y * PACMAN_SPEED;
 
-    for (const ghost of next.ghosts) {
-        findNextEvent(
+
+    let collisionedGhostIndex = undefined;
+    // Ghosts 
+    for (let ghostIndex = 0; ghostIndex < next.ghosts.length; ghostIndex++) {
+        const ghost = next.ghosts[ghostIndex];
+        if (ghost.frightened) {
+            // Frightened expirancy
+            timeToNextEvent = Math.min(
+                timeToNextEvent,
+                ghost.frightenedTimer
+            );
+        }
+
+        computeCentreArrivalCandidate(
             ghost,
             ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED
         );
@@ -1173,6 +1040,7 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
             continue;
         }
 
+        // Begin considering a current collision
         const relativeX =
             ghost.x +
             ghost.direction.x * ghost.progress -
@@ -1189,7 +1057,7 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
             ghost.direction.y *
             (ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED) -
             playerVelocityY;
-        const velocitySquared =
+        const relativeVelocitySquared =
             relativeVelocityX * relativeVelocityX +
             relativeVelocityY * relativeVelocityY;
         const distanceSquared =
@@ -1197,11 +1065,15 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
             relativeY * relativeY;
 
         if (distanceSquared <= GHOST_COLLISION_DISTANCE ** 2) {
-            nextEventTime = 0;
+            timeToNextEvent = 0;
+            collisionedGhostIndex = ghostIndex;
             continue;
         }
+        // End considering a current collision
 
-        if (velocitySquared === 0) {
+        // Begin considering a future collision
+        if (relativeVelocitySquared === 0) {
+            collisionedGhostIndex = ghostIndex;
             continue;
         }
 
@@ -1212,51 +1084,46 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
             );
         const discriminant =
             linear * linear -
-            4 * velocitySquared *
+            4 * relativeVelocitySquared *
             (distanceSquared - GHOST_COLLISION_DISTANCE ** 2);
 
         if (discriminant < 0) {
+            collisionedGhostIndex = ghostIndex;
             continue;
         }
 
         const collisionTime =
             (-linear - Math.sqrt(discriminant)) /
-            (2 * velocitySquared);
+            (2 * relativeVelocitySquared);
 
         if (collisionTime >= 0) {
-            nextEventTime = Math.min(
-                nextEventTime,
+            timeToNextEvent = Math.min(
+                timeToNextEvent,
                 collisionTime
             );
+            if (timeToNextEvent == timeToNextEvent) {
+                collisionedGhostIndex = ghostIndex;
+            }
         }
+        // End considering a future collision
     }
 
-    if (!Number.isFinite(nextEventTime)) {
+    if (!Number.isFinite(timeToNextEvent)) {
         return next;
     }
 
-    next.time += nextEventTime;
 
-    if (next.frightenedTimer > 0) {
-        next.frightenedTimer -= nextEventTime;
+    next.time += timeToNextEvent;
 
-        if (next.frightenedTimer <= 0) {
-            next.frightenedTimer = 0;
+    // Update the next state with timeToNextEvent calculated
 
-            for (const ghost of next.ghosts) {
-                if (!ghost.eaten) {
-                    ghost.frightened = false;
-                }
-            }
-        }
-    }
-
+    // This funcion need to be used upon every character individually
     const moveToEvent = (character, speed) => {
         if (character.direction.x === 0 && character.direction.y === 0) {
             return false;
         }
 
-        character.progress += speed * nextEventTime;
+        character.progress += speed * timeToNextEvent;
 
         if (character.progress < 1 - SEARCH_EPSILON) {
             return false;
@@ -1269,100 +1136,79 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         return true;
     };
 
+    // Movement to the new state is done progressively. Changes in order here might have some collateral effect but should not usually.
+    // Many conditions are checked here but it will be usual that only one, the originator of the event, has to do things. 
+    // For example, frightened timer reaching 0 can be thought to have to be above the code checking that a power pill was eaten, so that the ghost enters frightened mode in 
+    // the new state. But since only the first event is the originator of the state (the first thing to happen), only the check to see if frightened timer reaches 0 for a 
+    // ghost will happen, and the pill will be reached in another subsequent state.
+
     next.readyPlayer = moveToEvent(next.player, PACMAN_SPEED);
 
-    for (let i = 0; i < next.ghosts.length; i++) {
-        const ghost = next.ghosts[i];
+    for (let ghostIndex = 0; ghostIndex < next.ghosts.length; ghostIndex++) {
+        const ghost = next.ghosts[ghostIndex];
         const arrived = moveToEvent(
             ghost,
-            ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED
+            ghost.eaten ? (ghost.frightened ? FRIGHTENED_GHOST_SPEED : EATEN_GHOST_SPEED) : GHOST_SPEED
         );
 
-        next.readyGhosts[i] = arrived;
-
-        if (
-            arrived &&
-            ghost.eaten &&
-            GHOST_HOUSES.some(house =>
-                ghost.x === house.x && ghost.y === house.y
-            )
-        ) {
-            ghost.eaten = false;
-            ghost.frightened = false;
-            next.readyGhosts[i] = true;
-        }
-    }
-
-    if (next.readyPlayer) {
-        const cell = next.map[next.player.y][next.player.x];
-
-        if (cell === "." || cell === "o") {
-            const row = next.map[next.player.y].split("");
-            row[next.player.x] = " ";
-            next.map[next.player.y] = row.join("");
-            next.pellets--;
-
-            if (cell === "o") {
-                next.frightenedTimer = FRIGHTENED_DURATION;
-
-                for (const ghost of next.ghosts) {
-                    if (ghost.eaten) {
-                        continue;
-                    }
-
-                    ghost.frightened = true;
-                    reverseSearchGhost(ghost);
+        next.readyGhosts[ghostIndex] = arrived;
+        if (arrived) {
+            if (ghost.eaten) {
+                if (GHOST_HOUSES.some(house =>
+                    ghost.x === house.x && ghost.y === house.y
+                )
+                ) {
+                    ghost.eaten = false;
+                    ghost.frightened = false;
+                    next.readyGhosts[ghostIndex] = true;
+                }
+            } else if (ghost.frightened) {
+                ghost.frightenedTimer -= timeToNextEvent
+                if (ghost.frightenedTimer <= 0) {
+                    // When true ghost.frightenedTimer should be exactly 0 safe for small numeric errors
+                    ghost.frightened = false;
+                    ghost.frightenedTimer = undefined;
                 }
             }
         }
     }
 
-    const currentPlayerX =
-        next.player.x +
-        next.player.direction.x *
-        next.player.progress;
-    const currentPlayerY =
-        next.player.y +
-        next.player.direction.y *
-        next.player.progress;
+    if (next.readyPlayer) {
+        const cell = map[next.player.y][next.player.x];
 
-    for (const ghost of next.ghosts) {
-        const dx =
-            ghost.x +
-            ghost.direction.x *
-            ghost.progress -
-            currentPlayerX;
-        const dy =
-            ghost.y +
-            ghost.direction.y *
-            ghost.progress -
-            currentPlayerY;
+        if ((cell === "." || cell === "o") && next.pellets.has(`${next.player.x},${next.player.y}`)) {
+            next.pellets.delete(`${next.player.x},${next.player.y}`);
 
-        if (
-            Math.sqrt(dx * dx + dy * dy) >
-            GHOST_COLLISION_DISTANCE + SEARCH_EPSILON ||
-            ghost.eaten
-        ) {
-            continue;
-        }
+            if (cell === "o") {
+                for (let ghostIndex = 0; ghostIndex < next.ghosts.length; ghostIndex++) {
+                    const ghost = next.ghosts[ghostIndex];
+                    if (ghost.eaten) {
+                        continue;
+                    }
 
-        if (ghost.frightened) {
-            ghost.eaten = true;
-            ghost.frightened = false;
-            continue;
-        }
-
-        next.lives--;
-        next.terminal = true;
-        next.frightenedTimer = 0;
-
-        for (const remainingGhost of next.ghosts) {
-            if (!remainingGhost.eaten) {
-                remainingGhost.frightened = false;
+                    ghost.frightened = true;
+                    // reverseSearchGhost(ghost);
+                    next.readyGhosts[ghostIndex] = true;
+                }
             }
         }
+    }
 
-        break;
+    if (collisionedGhostIndex) {
+        const collisionedGhost = next.ghosts[collisionedGhostIndex];
+        // Ghost should be frighened or normal, not eaten.
+
+        if (collisionedGhost.frightened) {
+            collisionedGhost.eaten = true;
+            collisionedGhost.frightened = false;
+            collisionedGhost.frightenedTimer = undefined;
+        } else {
+            next.lives--;
+            next.player = { ...player }
+            next.ghosts = ghosts.map(cloneSearchCharacter)
+            next.readyPlayer = selectedCharacter === "pacman" ? true : false;
+            next.readyGhosts = ghosts.map((_, index) => selectedCharacter === `ghost-${index}` ? true : false);
+        }
     }
 
     return next;

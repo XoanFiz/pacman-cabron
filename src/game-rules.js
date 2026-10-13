@@ -15,7 +15,7 @@ function resetGame() {
 
 function resetLevel() {
 
-    pellets = 0;
+    pellets = buildPellets();
     gameTime = 0;
     paused = false;
     strategicSearch.nodes.clear();
@@ -36,21 +36,6 @@ function resetLevel() {
     MAP_EDGES = new Set(mapDefinition.edges);
     GHOST_HOUSES = mapDefinition.ghostHouses.map(cloneMapPosition);
 
-
-    for (const row of MAP) {
-
-        for (const cell of row) {
-
-            if (
-                cell === "." ||
-                cell === "o"
-            ) {
-                pellets++;
-            }
-        }
-    }
-
-
     const playerStart = mapDefinition.playerStart;
 
     player = {
@@ -68,32 +53,34 @@ function resetLevel() {
             y: 0
         },
 
-        progress: 0
+        progress: 0,
+        speed: PACMAN_SPEED
     };
 
 
     const ghostStarts = mapDefinition.ghostStarts;
 
-    ghosts = ghostStarts.map(start => ({
-        x: start.x,
-        y: start.y,
-        px: start.x,
-        py: start.y,
-        color: start.color,
-        direction: { ...start.direction },
-        nextDirection: { ...start.direction },
+    ghosts = ghostStarts.map((ghost, index) => ({
+        x: ghost.x,
+        y: ghost.y,
+        px: ghost.x,
+        py: ghost.y,
+        color: ghost.color || getGhostColor(index),
+        direction: { ...ghost.direction },
+        nextDirection: { ...ghost.direction },
         frightened: false,
         eaten: false,
-        progress: 0
+        progress: 0,
+        speed: GHOST_SPEED
     }));
 
 
     running = false;
-    deathTimer = 0;
-    frightenedTimer = 0;
+    deathTimer = 0
 
 
     buildGraph();
+    buildPellets();
 
 
     setStatus(
@@ -110,10 +97,6 @@ function resetLevel() {
 
 function updatePlayer(dt) {
 
-    const speed =
-        PACMAN_SPEED;
-
-
     if (
         player.direction.x === 0 &&
         player.direction.y === 0
@@ -126,7 +109,7 @@ function updatePlayer(dt) {
 
 
     player.progress +=
-        speed * dt;
+        PACMAN_SPEED * dt;
 
 
     while (
@@ -260,8 +243,8 @@ function eatPellet() {
 
 
     if (
-        cell !== "." &&
-        cell !== "o"
+        (cell !== "." &&
+            cell !== "o") || !pellets.has(`${x},${y}`)
     ) {
         return;
     }
@@ -278,7 +261,7 @@ function eatPellet() {
         row.join("");
 
 
-    pellets--;
+    pellets.delete(`${x},${y}`)
 
 
     if (cell === "o") {
@@ -295,7 +278,7 @@ function eatPellet() {
     }
 
 
-    if (pellets === 0) {
+    if (pellets.size === 0) {
 
         running = false;
         gameWon = true;
@@ -308,11 +291,6 @@ function eatPellet() {
 
 
 function activateFrightenedMode() {
-
-    frightenedTimer =
-        FRIGHTENED_DURATION;
-
-
     for (const ghost of ghosts) {
 
         if (ghost.eaten)
@@ -320,11 +298,12 @@ function activateFrightenedMode() {
 
 
         ghost.frightened = true;
+        ghost.frightenedTimer = FRIGHTENED_DURATION;
+        ghost.speed = FRIGHTENED_GHOST_SPEED;
 
-
-        reverseGhostDirection(
-            ghost
-        );
+        // reverseGhostDirection(
+        //     ghost
+        // );
     }
 }
 
@@ -375,17 +354,11 @@ function updateGhost(
     dt
 ) {
 
-    const speed =
-        ghost.eaten
-            ? EATEN_GHOST_SPEED
-            : GHOST_SPEED;
-
-
     ghost.progress ??= 0;
 
 
     ghost.progress +=
-        speed * dt;
+        ghost.speed * dt;
 
 
     while (
@@ -468,7 +441,7 @@ function updateGhost(
             ghost.needsDirection = true;
             ghost.pendingDecisionTime =
                 gameTime -
-                ghost.progress / speed;
+                ghost.progress / ghost.speed;
         }
 
         break;
@@ -492,7 +465,7 @@ function updateGhost(
 // COLLISIONS
 // ============================================================
 
-function checkGhostCollisions() {
+function checkGhostCollisions(ghosts, player) {
 
     for (
         const ghost of ghosts
@@ -563,11 +536,11 @@ function loseLife() {
     running = false;
 
     deathTimer = 1.0;
-    frightenedTimer = 0;
 
     for (const ghost of ghosts) {
         if (!ghost.eaten) {
             ghost.frightened = false;
+            frightenedTimer = undefined;
         }
     }
 
@@ -615,29 +588,17 @@ function update(dt) {
 
     gameTime += dt;
 
-
-    if (frightenedTimer > 0) {
-
-        frightenedTimer -= dt;
-
-
-        if (
-            frightenedTimer <= 0
-        ) {
-
-            frightenedTimer = 0;
-
-
-            for (
-                const ghost of ghosts
-            ) {
-
-                if (!ghost.eaten)
-                    ghost.frightened = false;
+    for (
+        const ghost of ghosts
+    ) {
+        if (ghost.frightened) {
+            ghost.frightenedTimer -= dt;
+            if (ghost.frightenedTimer <= 0) {
+                ghost.frightened = false;
             }
+
         }
     }
-
 
     updatePlayer(dt);
 
@@ -697,7 +658,7 @@ function update(dt) {
     }
 
 
-    checkGhostCollisions();
+    checkGhostCollisions(ghosts, player);
 }
 
 

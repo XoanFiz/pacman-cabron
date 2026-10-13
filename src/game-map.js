@@ -108,19 +108,18 @@ let deathTimer = 0;
 let currentTime = 0;
 let gameTime = 0;
 
-let frightenedTimer = 0;
-
 const FRIGHTENED_DURATION = 7;
 const FRIGHTENED_BLINK_TIME = 2;
 const FRIGHTENED_BLINK_FREQUENCY = 12;
 const GHOST_COLLISION_DISTANCE = 0.55;
 
-let MAP;
+let map = LEVEL_MAP;
 let MAP_EDGES = new Set();
 let GHOST_HOUSES = [];
 
 const PACMAN_SPEED = 3.5;
 const GHOST_SPEED = 2.25;
+const FRIGHTENED_GHOST_SPEED = 1.5;
 const EATEN_GHOST_SPEED = 4;
 
 // ============================================================
@@ -526,7 +525,7 @@ function isWall(x, y) {
     if (x < 0 || x >= COLS || y < 0 || y >= ROWS)
         return true;
 
-    return MAP[y][x] === "#";
+    return map[y][x] === "#";
 }
 
 
@@ -624,6 +623,21 @@ function buildGraph() {
                     });
                 }
             }
+        }
+    }
+}
+
+function buildPellets() {
+    pellets = new Set();
+    for (let y = 0; y < ROWS; y++) {
+
+        for (let x = 0; x < COLS; x++) {
+
+            if (map[y][x] !== "." && map[y][x] !== "o") {
+                continue;
+            }
+
+            pellets.add(`${x},${y}`);
         }
     }
 }

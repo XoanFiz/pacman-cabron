@@ -29,8 +29,12 @@ function draw() {
             x++
         ) {
 
-            const cell =
-                MAP[y][x];
+            let cell =
+                map[y][x];
+
+            if ((cell === "." || cell === "o") && !pellets.has(`${x},${y}`)) {
+                cell = " "
+            }
 
 
             const px =
@@ -288,7 +292,7 @@ function drawGhost(
     if (ghost.frightened) {
 
         const blinking =
-            frightenedTimer <= FRIGHTENED_BLINK_TIME &&
+            ghost.frightenedTimer <= FRIGHTENED_BLINK_TIME &&
             Math.floor(gameTime * FRIGHTENED_BLINK_FREQUENCY) % 2 === 0;
 
         ctx.fillStyle = blinking
@@ -442,82 +446,47 @@ function drawVoronoiDomains() {
         return;
     }
 
+    const getGhostIndex = (owner) => owner.replace("ghost", "");
+
+
     const domain = calculateDomain({
+        player, gameTime, ghosts, pellets
+    }, {
         respectCurrentMovement: running
     });
 
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
 
-            if (MAP[y][x] === "#") {
+            if (map[y][x] === "#") {
                 continue;
             }
 
-            const owners = domain[y][x].owners;
+            const owner = domain[y][x].owner;
 
-            if (owners.length === 0) {
+            if (!owner || owner === "") {
                 continue;
             }
 
-            // We normalize owners to their actual agents.
-            const normalizedOwners = [
-                ...new Set(
-                    owners.map(owner => {
-                        if (
-                            owner === "powerPacman" ||
-                            owner === "pacman"
-                        ) {
-                            return "pacman";
-                        }
+            let color;
+            if (owner === "pacman") {
+                color = DOMAIN_COLORS.pacman;
+            }
 
-                        if (owner.startsWith("recoveredGhost")) {
-                            return owner.replace(
-                                "recoveredGhost",
-                                "ghost"
-                            );
-                        }
+            if (owner.startsWith("ghost")) {
+                const index = getGhostIndex(owner);
+                color = ghosts[index]?.color
+                    ? hexToRgb(ghosts[index].color)
+                    : getGhostColorRgb(index);
+            }
 
-                        return owner;
-                    })
-                )
-            ];
-
-            const colors = normalizedOwners
-                .map(owner => {
-                    if (owner === "pacman") {
-                        return DOMAIN_COLORS.pacman;
-                    }
-
-                    if (owner.startsWith("ghost")) {
-                        const index = getGhostIndex(owner);
-                        return ghosts[index]?.color
-                            ? hexToRgb(ghosts[index].color)
-                            : getGhostColorRgb(index);
-                    }
-
-                    return null;
-                })
-                .filter(Boolean);
-
-            if (colors.length === 0) {
+            if (!color) {
                 continue;
             }
 
-            // The average of the colors allows identifying ties.
-            const r = Math.round(
-                colors.reduce((sum, c) => sum + c[0], 0)
-                / colors.length
-            );
-
-            const g = Math.round(
-                colors.reduce((sum, c) => sum + c[1], 0)
-                / colors.length
-            );
-
-            const b = Math.round(
-                colors.reduce((sum, c) => sum + c[2], 0)
-                / colors.length
-            );
+            const r = color[0];
+            const g = color[1];
+            const b = color[2];
 
             ctx.fillStyle =
                 `rgba(${r}, ${g}, ${b}, ${DOMAIN_ALPHA})`;

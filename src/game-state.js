@@ -80,6 +80,7 @@ const DOMAIN_COLORS = {
     pacman: [255, 212, 59]
 };
 
+// TODO move this to game-renderer
 const BASE_GHOST_COLORS = ["#e05252", "#e99b35", "#d66ad9"];
 const ghostColorPalette = BASE_GHOST_COLORS.slice();
 
