@@ -375,6 +375,7 @@ function updateGhost(
         ) {
             ghost.eaten = false;
             ghost.frightened = false;
+            ghost.speed = GHOST_SPEED;
         }
 
         const possibleDirections =
@@ -502,6 +503,7 @@ function eatGhost(ghost) {
 
     ghost.eaten = true;
     ghost.frightened = false;
+    ghost.speed = EATEN_GHOST_SPEED;
 
     score += 200;
 
@@ -547,6 +549,7 @@ function loseLife() {
 function update(dt) {
 
     if (deathTimer > 0) {
+        // Pause after death
 
         deathTimer -= dt;
 
@@ -579,6 +582,8 @@ function update(dt) {
             ghost.frightenedTimer -= dt;
             if (ghost.frightenedTimer <= 0) {
                 ghost.frightened = false;
+                ghost.frightenedTimer = undefined;
+                ghost.speed = GHOST_SPEED;
             }
 
         }
