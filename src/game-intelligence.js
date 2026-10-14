@@ -276,7 +276,7 @@ function calculateDomain(node, {
         queue.push({
             x: ghost.x,
             y: ghost.y,
-            time: node.gameTime,
+            time: node.time,
             frightenedTimer: ghost.frightenedTimer,
             owner,
             domainType: "blue",
@@ -314,7 +314,7 @@ function calculateDomain(node, {
             queue.push({
                 x: house.x,
                 y: house.y,
-                time: node.gameTime + distance / speed,
+                time: node.time + distance / speed,
                 owner: `ghost${node.ghosts.indexOf(ghost)}`,
                 domainType: "normal",
                 originX: house.x,
@@ -410,7 +410,7 @@ function calculateDomain(node, {
         queue.push({
             x: node.player.x,
             y: node.player.y,
-            time: node.gameTime,
+            time: node.time,
             owner: "pacman",
             domainType: "normal",
             originX: node.player.x,
@@ -447,7 +447,7 @@ function calculateDomain(node, {
                 queue.push({
                     x: ghost.x,
                     y: ghost.y,
-                    time: node.gameTime,
+                    time: node.time,
                     owner,
                     domainType: "normal",
                     originX: ghost.x,
@@ -646,7 +646,7 @@ function getGhostArrivalTimeToPlayer(ghost) {
 // partition. Territory value is normalized by Pac-Man's controlled
 // area, while pellet value is discounted by travel time and shared
 // among ghosts that reach a pellet at the same earliest time.
-function calculateNormalAndPelletScore({ pellets, ghosts, gameTime },
+function calculateNormalAndPelletScore({ pellets, ghosts, time },
     domain
 ) {
 
@@ -716,7 +716,7 @@ function calculateNormalAndPelletScore({ pellets, ghosts, gameTime },
             const travelTime =
                 Math.max(
                     0,
-                    domain[y][x].arrival - gameTime
+                    domain[y][x].arrival - time
                 );
             const distanceWeight =
                 1 / (1 + travelTime);
@@ -743,12 +743,12 @@ function calculateNormalAndPelletScore({ pellets, ghosts, gameTime },
 // Combines the territory, ordinary-pellet, and frightened-ghost
 // evaluations into a single objective, with a cap on the contribution
 // of ordinary pellets relative to normal territory.
-function evaluateDomain({ pellets, ghosts, gameTime },
+function evaluateDomain({ pellets, ghosts, time },
     domain
 ) {
 
     const normal =
-        calculateNormalAndPelletScore({ pellets, ghosts, gameTime },
+        calculateNormalAndPelletScore({ pellets, ghosts, time },
             domain
         );
 
@@ -853,10 +853,10 @@ function buildStateKey(state) {
 // if evaluation fails.
 function evaluateSearchState(state) {
     const domainValue =
-        evaluateDomain({ pellets: state.pellets, ghosts: state.ghosts, gameTime: state.gameTime },
+        evaluateDomain({ pellets: state.pellets, ghosts: state.ghosts, time: state.time },
             calculateDomain({
                 pellets: state.pellets,
-                gameTime: state.time,
+                time: state.time,
                 player: cloneSearchCharacter(state.player),
                 ghosts: state.ghosts.map(cloneSearchCharacter)
             }, {
