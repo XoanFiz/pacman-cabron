@@ -358,7 +358,7 @@ function isEditorMapConnected() {
 }
 
 
-function cycleEditorTile(position, count=1) {
+function cycleEditorTile(position, count = 1) {
     const houseIndex = getEditorGhostHouse(position);
     const cycle = [".", "o", " ", "house", "#"];
     const currentTile = houseIndex >= 0
@@ -405,6 +405,7 @@ function cycleEditorTile(position, count=1) {
     // pellets = MAP.reduce((total, row) =>
     //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
     // 0);
+    pellets = buildPellets();
     buildGraph();
 
     if (!isEditorMapConnected()) {
@@ -414,6 +415,7 @@ function cycleEditorTile(position, count=1) {
         // pellets = MAP.reduce((total, row) =>
         //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
         // 0);
+        pellets = buildPellets();
         buildGraph();
         showEditorToast("mapConnectivityError");
 
