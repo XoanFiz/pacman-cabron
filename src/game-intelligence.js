@@ -255,13 +255,18 @@ function calculateDomain(node, {
     let queue = new MinHeap();
 
     const isDuplicated = (assessedDomainFact) => {
-        const factKey =
-            `${assessedDomainFact.owner}
-            :${assessedDomainFact.domainType ?? "normal"}
-            :${assessedDomainFact.x}
-            ,${assessedDomainFact.y}
-            :${assessedDomainFact.initialProgress}
-            :${assessedDomainFact.initialDirection}`;
+        const direction = assessedDomainFact.initialDirection;
+
+        const factKey = [
+            assessedDomainFact.owner,
+            assessedDomainFact.domainType ?? "normal",
+            assessedDomainFact.x,
+            assessedDomainFact.y,
+            assessedDomainFact.initialProgress,
+            direction?.x ?? null,
+            direction?.y ?? null,
+            assessedDomainFact.frightenedTimer ?? null
+        ].join(":");
 
         if (processedDomainMessages.has(factKey)) {
             return true
@@ -288,7 +293,7 @@ function calculateDomain(node, {
         });
     }
 
-    const propagateFromGhostHouse = (node, ghost) => {
+    const propagateFromGhostHouse = (node, ghost, index) => {
         const isMoving =
             ghost.progress > 0 &&
             (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
@@ -298,7 +303,7 @@ function calculateDomain(node, {
         const nextY =
             wrap(ghost.y + ghost.direction.y, getMapRowCount(map));
 
-        for (const house of GHOST_HOUSES) {
+        for (const house of node.respawnState.houses) {
             const distance =
                 isMoving
                     ? 1 - ghost.progress +
@@ -315,7 +320,7 @@ function calculateDomain(node, {
                 x: house.x,
                 y: house.y,
                 time: node.time + distance / speed,
-                owner: `ghost${node.ghosts.indexOf(ghost)}`,
+                owner: `ghost${index}`,
                 domainType: "normal",
                 originX: house.x,
                 originY: house.y,
@@ -361,14 +366,19 @@ function calculateDomain(node, {
                 continue;
             }
 
-            let nextFrigthenedTimer = undefined;
+            let nextFrightenedTimer = undefined;
             let nextDomainType = "normal";
-            if (assessedDomainStatus.frightenedTimer) {
-                nextFrigthenedTimer = assessedDomainStatus.frightenedTimer - nextTime + assessedDomainStatus.time
-                nextDomainType = "frightened"
+
+            if (assessedDomainStatus.frightenedTimer !== undefined) {
+                nextFrightenedTimer =
+                    assessedDomainStatus.frightenedTimer -
+                    (nextTime - assessedDomainStatus.time);
+
+                nextDomainType = "frightened";
+
                 if (nextFrightenedTimer <= 0) {
-                    nextFrigthenedTimer = 0;
-                    nextDomainType = "normal"
+                    nextFrightenedTimer = 0;
+                    nextDomainType = "normal";
                 }
             }
 
@@ -379,7 +389,7 @@ function calculateDomain(node, {
                 time: nextTime,
                 owner: assessedDomainStatus.owner,
                 domainType: nextDomainType,
-                frightenedTimer: nextFrigthenedTimer,
+                frightenedTimer: nextFrightenedTimer,
                 originX: assessedDomainStatus.originX,
                 originY: assessedDomainStatus.originY,
                 speed: assessedDomainStatus.speed,
@@ -432,14 +442,14 @@ function calculateDomain(node, {
         const owner = `ghost${i}`;
 
         if (ghost.eaten) {
-            propagateFromGhostHouse(node, ghost)
+            propagateFromGhostHouse(node, ghost, i)
         } else {
             if (ghost.frightened) {
                 // Blue territory: starts at the ghost's current position. 
                 pushBlueDomainSeeds(queue, ghost, owner, node);
 
                 // Normal territory: propagates from the ghost's house. 
-                propagateFromGhostHouse(node, ghost)
+                propagateFromGhostHouse(node, ghost, i)
             }
 
             else {
@@ -601,18 +611,22 @@ function getRemainingDistanceToPosition(
 
 // Estimates when a ghost could reach Pac-Man. Eaten ghosts must
 // first return to a house and then resume normal-speed movement.
-function getGhostArrivalTimeToPlayer(ghost, player) {
+function getGhostArrivalTimeToPlayer(ghost, player, houses) {
     if (!ghost.eaten) {
+        const speed = ghost.frightened
+            ? FRIGHTENED_GHOST_SPEED
+            : GHOST_SPEED;
+
         return getRemainingDistanceToPosition(
             ghost,
             player.x,
             player.y
-        ) / GHOST_SPEED;
+        ) / speed;
     }
 
     let minimumArrivalTime = Infinity;
 
-    for (const house of GHOST_HOUSES) {
+    for (const house of houses) {
         const returnDistance =
             getRemainingDistanceToPosition(
                 ghost,
@@ -646,7 +660,7 @@ function getGhostArrivalTimeToPlayer(ghost, player) {
 // partition. Territory value is normalized by Pac-Man's controlled
 // area, while pellet value is discounted by travel time and shared
 // among ghosts that reach a pellet at the same earliest time.
-function calculateNormalAndPelletScore({ pellets, ghosts, player, time },
+function calculateNormalAndPelletScore({ pellets, ghosts, player, time, respawnState },
     domain
 ) {
 
@@ -667,10 +681,15 @@ function calculateNormalAndPelletScore({ pellets, ghosts, player, time },
     const normalScore =
         TOTAL_NORMAL_VALUE /
         Math.max(1, pacmanControlledSquares);
-    const nearestGhostArrivalTime =
-        Math.min(
-            ...ghosts.map(ghost=>getGhostArrivalTimeToPlayer(ghost, player))
-        );
+    const nearestGhostArrivalTime = Math.min(
+        ...ghosts.map(ghost =>
+            getGhostArrivalTimeToPlayer(
+                ghost,
+                player,
+                respawnState.houses
+            )
+        )
+    );
     const normalArrivalMultiplier =
         Number.isFinite(nearestGhostArrivalTime)
             ? 1 + 1 / (1 + Math.max(0, nearestGhostArrivalTime))
@@ -743,12 +762,12 @@ function calculateNormalAndPelletScore({ pellets, ghosts, player, time },
 // Combines the territory, ordinary-pellet, and frightened-ghost
 // evaluations into a single objective, with a cap on the contribution
 // of ordinary pellets relative to normal territory.
-function evaluateDomain({ pellets, ghosts, player, time },
+function evaluateDomain({ pellets, ghosts, player, time, respawnState },
     domain
 ) {
 
     const normal =
-        calculateNormalAndPelletScore({ pellets, ghosts, player, time },
+        calculateNormalAndPelletScore({ pellets, ghosts, player, time, respawnState },
             domain
         );
 
@@ -794,21 +813,42 @@ function cloneSearchCharacter(character) {
 // Captures the game configuration needed to simulate future events.
 // Readiness flags identify which characters must choose a new direction
 // at the current decision point.
-function createCurrentGameSearchState(readyGhostIndices, readyPlayer = false) {
+function createCurrentGameSearchState(
+    searchContext,
+    readyGhostIndices,
+    readyPlayer = false
+) {
     const readyGhostSet = new Set(readyGhostIndices);
 
     return {
-        pellets: new Set(pellets),
-        lives,
-        time: gameTime,
-        player: cloneSearchCharacter(player),
-        ghosts: ghosts.map(cloneSearchCharacter),
-        controlledGhostIndex: selectedCharacter.startsWith("ghost-")
-            ? Number(selectedCharacter.slice("ghost-".length))
-            : -1,
+        pellets: new Set(searchContext.pellets),
+        lives: searchContext.lives,
+        time: searchContext.time,
+
+        player: cloneSearchCharacter(searchContext.player),
+        ghosts: searchContext.ghosts.map(cloneSearchCharacter),
+
+        respawnState: {
+            player: { ...searchContext.respawnState.player },
+
+            ghosts: searchContext.respawnState.ghosts.map(start => ({
+                ...start,
+                direction: { ...start.direction }
+            })),
+
+            houses: searchContext.respawnState.houses.map(
+                house => ({ ...house })
+            )
+        },
+
+        controlledGhostIndex: searchContext.controlledGhostIndex,
+
         terminal: false,
         readyPlayer,
-        readyGhosts: ghosts.map((_, index) => readyGhostSet.has(index))
+
+        readyGhosts: searchContext.ghosts.map(
+            (_, index) => readyGhostSet.has(index)
+        )
     };
 }
 
@@ -824,6 +864,9 @@ function buildStateKey(state) {
         character.direction.y,
         Number(character.progress.toFixed(5)),
         Boolean(character.frightened),
+        Number.isFinite(character.frightenedTimer)
+            ? Number(character.frightenedTimer.toFixed(5))
+            : null,
         Boolean(character.eaten),
         character.nextDirection
             ? character.nextDirection.x
@@ -833,14 +876,15 @@ function buildStateKey(state) {
             : null
     ].join(",");
 
+    // I do not include time in the key: the domain evaluation uses the arrival time relative to the state's timestamp, 
+    // and the remaining fear time is already represented within each ghost. This allows for the sharing of equivalent 
+    // states reached at different absolute times.
     return JSON.stringify([
         [...state.pellets].sort(),
         state.lives,
         state.terminal,
         state.controlledGhostIndex,
         characterKey(state.player),
-        state.player.nextDirection.x,
-        state.player.nextDirection.y,
         state.ghosts.map(characterKey),
         state.readyPlayer,
         state.readyGhosts
@@ -852,22 +896,22 @@ function buildStateKey(state) {
 // the existing evaluator, then restores the live game state even
 // if evaluation fails.
 function evaluateSearchState(state) {
-    const domainValue =
-        evaluateDomain({ pellets: state.pellets, ghosts: state.ghosts, player: state.player, time: state.time },
-            calculateDomain({
-                pellets: state.pellets,
-                time: state.time,
-                player: cloneSearchCharacter(state.player),
-                ghosts: state.ghosts.map(cloneSearchCharacter)
-            }, {
-                includePacman: !state.terminal
-            })
-        ).total;
-
-    return (
+    const lifePenalty =
         (INITIAL_LIVES - state.lives) *
-        SEARCH_LIFE_PRIORITY
-    ) + domainValue;
+        SEARCH_LIFE_PRIORITY;
+
+    if (state.terminal) {
+        return lifePenalty;
+    }
+
+    const domain = calculateDomain(state);
+
+    const domainValue = evaluateDomain(
+        state,
+        domain
+    ).total;
+
+    return lifePenalty + domainValue;
 }
 
 // Checks movement legality against the simulated map and the game's
@@ -993,7 +1037,7 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         next.player.direction.y * PACMAN_SPEED;
 
 
-    let collisionedGhostIndex = undefined;
+    let collisionedGhostIndex = -1;
     // Ghosts 
     for (let ghostIndex = 0; ghostIndex < next.ghosts.length; ghostIndex++) {
         const ghost = next.ghosts[ghostIndex];
@@ -1120,28 +1164,34 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
 
     for (let ghostIndex = 0; ghostIndex < next.ghosts.length; ghostIndex++) {
         const ghost = next.ghosts[ghostIndex];
-        const arrived = moveToEvent(
-            ghost,
-            ghost.eaten ? (ghost.frightened ? FRIGHTENED_GHOST_SPEED : EATEN_GHOST_SPEED) : GHOST_SPEED
-        );
+
+        const ghostSpeed = ghost.eaten
+            ? EATEN_GHOST_SPEED
+            : ghost.frightened
+                ? FRIGHTENED_GHOST_SPEED
+                : GHOST_SPEED;
+
+        const arrived = moveToEvent(ghost, ghostSpeed);
 
         next.readyGhosts[ghostIndex] = arrived;
+
+        if (ghost.frightened) {
+            ghost.frightenedTimer -= timeToNextEvent;
+
+            if (ghost.frightenedTimer <= 0) {
+                ghost.frightened = false;
+                ghost.frightenedTimer = undefined;
+            }
+        }
         if (arrived) {
             if (ghost.eaten) {
-                if (GHOST_HOUSES.some(house =>
+                if (state.respawnState.houses.some(house =>
                     ghost.x === house.x && ghost.y === house.y
                 )
                 ) {
                     ghost.eaten = false;
                     ghost.frightened = false;
                     next.readyGhosts[ghostIndex] = true;
-                }
-            } else if (ghost.frightened) {
-                ghost.frightenedTimer -= timeToNextEvent
-                if (ghost.frightenedTimer <= 0) {
-                    // When true ghost.frightenedTimer should be exactly 0 safe for small numeric errors
-                    ghost.frightened = false;
-                    ghost.frightenedTimer = undefined;
                 }
             }
         }
@@ -1161,6 +1211,7 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
                     }
 
                     ghost.frightened = true;
+                    ghost.frightenedTimer = FRIGHTENED_GHOST_SPEED;
                     // reverseSearchGhost(ghost);
                     next.readyGhosts[ghostIndex] = true;
                 }
@@ -1168,9 +1219,9 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         }
     }
 
-    if (collisionedGhostIndex) {
-        const collisionedGhost = next.ghosts[collisionedGhostIndex];
-        // Ghost should be frighened or normal, not eaten.
+    if (collisionedGhostIndex >= 0) {
+        const collisionedGhost =
+            next.ghosts[collisionedGhostIndex];
 
         if (collisionedGhost.frightened) {
             collisionedGhost.eaten = true;
@@ -1178,10 +1229,52 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
             collisionedGhost.frightenedTimer = undefined;
         } else {
             next.lives--;
-            next.player = { ...state.player } // copies player position
-            next.ghosts = ghosts.map(cloneSearchCharacter)
-            next.readyPlayer = selectedCharacter === "pacman" ? true : false;
-            next.readyGhosts = ghosts.map((_, index) => selectedCharacter === `ghost-${index}` ? true : false);
+
+            if (next.lives <= 0) {
+                next.terminal = true;
+                next.readyPlayer = false;
+                next.readyGhosts = next.ghosts.map(() => false);
+
+                return next;
+            }
+
+            const playerStart = state.respawnState.player;
+
+            next.player.x = playerStart.x;
+            next.player.y = playerStart.y;
+            next.player.px = playerStart.x;
+            next.player.py = playerStart.y;
+            next.player.progress = 0;
+            next.player.direction = { x: 0, y: 0 };
+            next.player.nextDirection = { x: 0, y: 0 };
+
+            next.ghosts = state.ghosts.map((ghost, index) => {
+                const start = state.respawnState.ghosts[index];
+
+                return {
+                    ...cloneSearchCharacter(ghost),
+                    x: start.x,
+                    y: start.y,
+                    px: start.x,
+                    py: start.y,
+                    direction: { ...start.direction },
+                    nextDirection: { ...start.direction },
+                    progress: 0,
+                    needsDirection: false,
+                    eaten: false,
+                    frightened: false,
+                    frightenedTimer: undefined,
+                    speed: start.speed
+                };
+            });
+
+            next.readyPlayer =
+                state.controlledGhostIndex === -1;
+
+            next.readyGhosts = next.ghosts.map(
+                (_, index) =>
+                    index === state.controlledGhostIndex
+            );
         }
     }
 
@@ -1708,68 +1801,86 @@ function getStrategicGhostDirection(node, ghostIndex, fallback) {
 // Retrieves or initializes the search node corresponding to the
 // current decision state. The root's immediate candidates are
 // evaluated before it is returned for action selection.
-function getStrategicSearchRoot(readyGhosts, readyPlayer = false) {
-    const readyGhostIndices = readyGhosts.map(ghost => ghosts.indexOf(ghost));
-    const tempCurrentGameState = createCurrentGameSearchState(readyGhostIndices, readyPlayer);
-    const currentGameStateKey = buildStateKey(tempCurrentGameState);
-    let currentGameState = strategicSearch.nodes.get(currentGameStateKey);
+function getOrSetStrategicSearchRoot(
+    searchContext,
+    readyGhostIndices = [],
+    readyPlayer = false
+) {
+    const provisionalState = createCurrentGameSearchState(
+        searchContext,
+        readyGhostIndices,
+        readyPlayer
+    );
 
-    if (!currentGameState) {
-        currentGameState = createStrategicSearchNode(
-            tempCurrentGameState,
+    const stateKey = buildStateKey(provisionalState);
+
+    let root = strategicSearch.nodes.get(stateKey);
+
+    if (!root) {
+        root = createStrategicSearchNode(
+            provisionalState,
             null,
             null,
             0,
-            evaluateSearchState(tempCurrentGameState)
+            evaluateSearchState(provisionalState)
         );
     }
 
-    prepareStrategicSearchNode(currentGameState);
+    prepareStrategicSearchNode(root);
 
-    while (currentGameState.nextCandidate < currentGameState.candidates.length) {
-        const candidate = currentGameState.candidates[currentGameState.nextCandidate++];
-        processStrategicSearchCandidate(currentGameState, candidate);
+    while (root.nextCandidate < root.candidates.length) {
+        const candidate = root.candidates[root.nextCandidate++];
+
+        processStrategicSearchCandidate(root, candidate);
     }
 
-    currentGameState.expanded = true;
-    removeStrategicSearchFrontier(currentGameState);
+    root.expanded = true;
+    removeStrategicSearchFrontier(root);
 
-    strategicSearch.root = currentGameState;
+    strategicSearch.root = root;
 
-    return currentGameState;
+    return root;
 }
 
 
 // Chooses coordinated directions for the ghosts that are ready to
 // move, treating their simultaneous decisions as a joint action.
-function chooseStrategicGhostDirections(readyGhosts) {
-    const root = getStrategicSearchRoot(readyGhosts);
+function chooseStrategicGhostDirections(
+    searchContext,
+    readyGhostIndices
+) {
+    const root = getOrSetStrategicSearchRoot(
+        searchContext,
+        readyGhostIndices
+    );
 
     return new Map(
-        readyGhosts.map(ghost => {
-            const index = ghosts.indexOf(ghost);
-
-            return [
-                ghost,
-                getStrategicGhostDirection(
-                    root,
-                    index,
-                    ghost.direction
-                )
-            ];
-        })
+        readyGhostIndices.map(index => [
+            index,
+            getStrategicGhostDirection(
+                root,
+                index,
+                searchContext.ghosts[index].direction
+            )
+        ])
     );
 }
 
 // Chooses Pac-Man's move by minimizing the worst outcome across
 // the ghost responses represented in the root's candidate actions.
-function chooseStrategicPacmanDirection() {
-    const root = getStrategicSearchRoot([], true);
+function chooseStrategicPacmanDirection(searchContext) {
+    const root = getOrSetStrategicSearchRoot(
+        searchContext,
+        [],
+        true
+    );
+
     const actionValues = new Map();
 
     for (const candidate of root.candidates) {
         const direction = candidate.playerDirection;
         const key = `${direction.x},${direction.y}`;
+
         const ghostKey = candidate.ghostDirections
             .map(([index, ghostDirection]) =>
                 `${index}:${ghostDirection.x},${ghostDirection.y}`
@@ -1784,9 +1895,12 @@ function chooseStrategicPacmanDirection() {
         }
 
         const action = actionValues.get(key);
-        const value = candidate.processed
-            ? candidate.value
-            : root.staticValue;
+
+        const value = candidate.child
+            ? candidate.child.value
+            : candidate.processed
+                ? candidate.value
+                : root.staticValue;
 
         action.ghostResponses.set(
             ghostKey,
@@ -1813,5 +1927,5 @@ function chooseStrategicPacmanDirection() {
 
     return bestDirection
         ? { ...bestDirection }
-        : { ...root.player.direction };
+        : { ...root.state.player.direction };
 }

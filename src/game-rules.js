@@ -142,7 +142,9 @@ function updatePlayer(dt) {
 
         if (selectedCharacter !== "pacman" && running) {
             player.nextDirection =
-                chooseStrategicPacmanDirection();
+                chooseStrategicPacmanDirection(
+                    getCurrentSearchContext()
+                );
         }
 
 
@@ -525,8 +527,8 @@ function loseLife() {
 
     for (const ghost of ghosts) {
         ghost.frightened = false;
-        ghost.eaten=false;
-        frightenedTimer = undefined;
+        ghost.frightenedTimer = undefined;
+        ghost.eaten = false;
         ghost.speed = GHOST_SPEED
     }
 
@@ -629,11 +631,19 @@ function update(dt) {
     }
 
     for (const group of decisionGroups) {
-        const directions =
-            chooseStrategicGhostDirections(group.ghosts);
+        const readyGhostIndices = group.ghosts.map(
+            ghost => ghosts.indexOf(ghost)
+        );
+
+        const directions = chooseStrategicGhostDirections(
+            getCurrentSearchContext(),
+            readyGhostIndices
+        );
+
 
         for (const ghost of group.ghosts) {
-            ghost.direction = directions.get(ghost);
+            const ghostIndex = ghosts.indexOf(ghost);
+            ghost.direction = directions.get(ghostIndex);
             ghost.needsDirection = false;
             ghost.px =
                 ghost.x +
@@ -696,8 +706,82 @@ function resetPositions() {
         ghost.needsDirection = false;
         ghost.eaten = false;
         ghost.frightened = false;
+        ghost.speed = GHOST_SPEED;
     });
 }
 
 
 // ============================================================
+function getCurrentSearchContext() {
+    const mapDefinition = getCurrentMapDefinition();
+
+    return {
+        player: cloneSearchCharacter(player),
+        ghosts: ghosts.map(cloneSearchCharacter),
+
+        pellets: new Set(pellets),
+        lives,
+        time: gameTime,
+
+        controlledGhostIndex: selectedCharacter.startsWith("ghost-")
+            ? Number(selectedCharacter.slice("ghost-".length))
+            : -1,
+
+        respawnState: {
+            player: {
+                x: mapDefinition.playerStart.x,
+                y: mapDefinition.playerStart.y
+            },
+            ghosts: mapDefinition.ghostStarts.map(start => ({
+                x: start.x,
+                y: start.y,
+                direction: { ...start.direction },
+                speed: GHOST_SPEED
+            })),
+
+            houses: mapDefinition.ghostHouses.map(cloneMapPosition)
+        }
+    };
+}
+
+
+function setDirection(
+    direction
+) {
+
+    if (editorMode || paused) {
+        return;
+    }
+
+    const controlledGhost = getControlledGhost();
+
+    if (controlledGhost) {
+        controlledGhost.nextDirection = { ...direction };
+    } else {
+        player.nextDirection = { ...direction };
+    }
+
+    if (
+        !running &&
+        deathTimer <= 0 &&
+        lives > 0
+    ) {
+
+        running = true;
+
+        statusElement.textContent = "";
+        updatePauseButton();
+
+        if (controlledGhost) {
+            if (canMove(controlledGhost.x, controlledGhost.y, direction)) {
+                controlledGhost.direction = { ...direction };
+            }
+
+            player.nextDirection =
+                chooseStrategicPacmanDirection(getCurrentSearchContext());
+            tryChangeDirection();
+        } else {
+            tryChangeDirection();
+        }
+    }
+}

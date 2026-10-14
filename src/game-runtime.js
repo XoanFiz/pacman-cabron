@@ -31,48 +31,6 @@ function updatePressedDirectionButtons() {
 }
 
 
-function setDirection(
-    direction
-) {
-
-    if (editorMode || paused) {
-        return;
-    }
-
-    const controlledGhost = getControlledGhost();
-
-    if (controlledGhost) {
-        controlledGhost.nextDirection = { ...direction };
-    } else {
-        player.nextDirection = { ...direction };
-    }
-
-    if (
-        !running &&
-        deathTimer <= 0 &&
-        lives > 0
-    ) {
-
-        running = true;
-
-        statusElement.textContent = "";
-        updatePauseButton();
-
-        if (controlledGhost) {
-            if (canMove(controlledGhost.x, controlledGhost.y, direction)) {
-                controlledGhost.direction = { ...direction };
-            }
-
-            player.nextDirection =
-                chooseStrategicPacmanDirection();
-            tryChangeDirection();
-        } else {
-            tryChangeDirection();
-        }
-    }
-}
-
-
 document
     .querySelector('[data-character="pacman"]')
     .addEventListener("click", event =>
