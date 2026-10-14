@@ -794,7 +794,7 @@ function cloneSearchCharacter(character) {
 // Captures the game configuration needed to simulate future events.
 // Readiness flags identify which characters must choose a new direction
 // at the current decision point.
-function createSearchState(readyGhostIndices, readyPlayer = false) {
+function createCurrentGameSearchState(readyGhostIndices, readyPlayer = false) {
     const readyGhostSet = new Set(readyGhostIndices);
 
     return {
@@ -1710,33 +1710,33 @@ function getStrategicGhostDirection(node, ghostIndex, fallback) {
 // evaluated before it is returned for action selection.
 function getStrategicSearchRoot(readyGhosts, readyPlayer = false) {
     const readyGhostIndices = readyGhosts.map(ghost => ghosts.indexOf(ghost));
-    const state = createSearchState(readyGhostIndices, readyPlayer);
-    const key = buildStateKey(state);
-    let root = strategicSearch.nodes.get(key);
+    const tempCurrentGameState = createCurrentGameSearchState(readyGhostIndices, readyPlayer);
+    const currentGameStateKey = buildStateKey(tempCurrentGameState);
+    let currentGameState = strategicSearch.nodes.get(currentGameStateKey);
 
-    if (!root) {
-        root = createStrategicSearchNode(
-            state,
+    if (!currentGameState) {
+        currentGameState = createStrategicSearchNode(
+            tempCurrentGameState,
             null,
             null,
             0,
-            evaluateSearchState(state)
+            evaluateSearchState(tempCurrentGameState)
         );
     }
 
-    prepareStrategicSearchNode(root);
+    prepareStrategicSearchNode(currentGameState);
 
-    while (root.nextCandidate < root.candidates.length) {
-        const candidate = root.candidates[root.nextCandidate++];
-        processStrategicSearchCandidate(root, candidate);
+    while (currentGameState.nextCandidate < currentGameState.candidates.length) {
+        const candidate = currentGameState.candidates[currentGameState.nextCandidate++];
+        processStrategicSearchCandidate(currentGameState, candidate);
     }
 
-    root.expanded = true;
-    removeStrategicSearchFrontier(root);
+    currentGameState.expanded = true;
+    removeStrategicSearchFrontier(currentGameState);
 
-    strategicSearch.root = root;
+    strategicSearch.root = currentGameState;
 
-    return root;
+    return currentGameState;
 }
 
 
