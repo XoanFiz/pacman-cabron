@@ -19,6 +19,39 @@ const pressedDirectionKeys = new Set();
 const messages = window.PACMAN_TRANSLATIONS;
 const contentLanguage = window.PACMAN_LOCALE;
 
+
+// ============================================================
+// STATE
+// ============================================================
+
+let score;
+let lives;
+let pellets;
+
+let player;
+let ghosts;
+
+let selectedCharacter = "pacman";
+
+let editorMode = false;
+let editorGesture = null;
+let editorToastTimer = 0;
+let addingGhost = false;
+
+let running = false;
+let paused = false;
+let gameWon = false;
+let deathTimer = 0;
+let currentTime = 0;
+let gameTime = 0;
+
+const FRIGHTENED_DURATION = 7;
+const FRIGHTENED_BLINK_TIME = 2;
+const FRIGHTENED_BLINK_FREQUENCY = 12;
+const GHOST_COLLISION_DISTANCE = 0.55;
+
+const CELL = 28;
+
 function localizeContent() {
     document.documentElement.lang = contentLanguage;
     document.documentElement.dir =

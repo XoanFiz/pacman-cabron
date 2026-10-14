@@ -19,18 +19,18 @@ function draw() {
 
     for (
         let y = 0;
-        y < ROWS;
+        y < map.tiles.length;
         y++
     ) {
 
         for (
             let x = 0;
-            x < COLS;
+            x < map.tiles[y].length;
             x++
         ) {
 
             let cell =
-                map[y][x];
+                map.tiles[y][x];
 
             if ((cell === "." || cell === "o") && !pellets.has(`${x},${y}`)) {
                 cell = " "
@@ -124,7 +124,7 @@ function drawBoundaryWalls() {
             const edgeY = y * CELL;
             ctx.fillRect(edgeX, edgeY, thickness, CELL);
 
-            if (x === COLS - 1) {
+            if (x === map.tiles[0].length - 1) {
                 ctx.fillRect(-thickness / 2, edgeY, thickness, CELL);
             }
         } else {
@@ -132,7 +132,7 @@ function drawBoundaryWalls() {
             const edgeY = (y + 1) * CELL - thickness / 2;
             ctx.fillRect(edgeX, edgeY, CELL, thickness);
 
-            if (y === ROWS - 1) {
+            if (y === map.tiles.length - 1) {
                 ctx.fillRect(edgeX, -thickness / 2, CELL, thickness);
             }
         }
@@ -170,17 +170,17 @@ function drawMapEditorGrid() {
     ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
     ctx.lineWidth = 1;
 
-    for (let x = 0; x <= COLS; x++) {
+    for (let x = 0; x <= map.tiles[0].length; x++) {
         ctx.beginPath();
         ctx.moveTo(x * CELL + 0.5, 0);
-        ctx.lineTo(x * CELL + 0.5, ROWS * CELL);
+        ctx.lineTo(x * CELL + 0.5, map.tiles.length * CELL);
         ctx.stroke();
     }
 
-    for (let y = 0; y <= ROWS; y++) {
+    for (let y = 0; y <= map.tiles.length; y++) {
         ctx.beginPath();
         ctx.moveTo(0, y * CELL + 0.5);
-        ctx.lineTo(COLS * CELL, y * CELL + 0.5);
+        ctx.lineTo(map.tiles[0].length * CELL, y * CELL + 0.5);
         ctx.stroke();
     }
 }
@@ -455,10 +455,10 @@ function drawVoronoiDomains() {
         respectCurrentMovement: running
     });
 
-    for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
+    for (let y = 0; y < map.tiles.length; y++) {
+        for (let x = 0; x < map.tiles[0].length; x++) {
 
-            if (map[y][x] === "#") {
+            if (map.tiles[y][x] === "#") {
                 continue;
             }
 

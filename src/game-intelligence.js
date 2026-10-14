@@ -153,8 +153,8 @@ function shortestDistance(
 
     const distances =
         Array.from(
-            { length: ROWS },
-            () => Array(COLS).fill(Infinity)
+            { length: map.tiles.length },
+            () => Array(map.tiles[0].length).fill(Infinity)
         );
 
 
@@ -294,9 +294,9 @@ function calculateDomain(node, {
             (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
             canMove(ghost.x, ghost.y, ghost.direction);
         const nextX =
-            wrap(ghost.x + ghost.direction.x, COLS);
+            wrap(ghost.x + ghost.direction.x, map.tiles[0].length);
         const nextY =
-            wrap(ghost.y + ghost.direction.y, ROWS);
+            wrap(ghost.y + ghost.direction.y, map.tiles.length);
 
         for (const house of GHOST_HOUSES) {
             const distance =
@@ -403,9 +403,9 @@ function calculateDomain(node, {
 
     const domain =
         Array.from(
-            { length: ROWS },
+            { length: map.tiles.length },
             () => Array.from(
-                { length: COLS },
+                { length: map.tiles[0].length },
                 createDomainCell
             )
         );
@@ -534,7 +534,7 @@ function calculateDomain(node, {
             // Pacman stops expanding as soon as he reaches a power pill.
             if (
                 assessedDomainFact.owner === "pacman" &&
-                map[assessedDomainFact.y][assessedDomainFact.x] === "o" &&
+                map.tiles[assessedDomainFact.y][assessedDomainFact.x] === "o" &&
                 (node.pellets.has(`${assessedDomainFact.x},${assessedDomainFact.y}`))) {
                 continue;
             }
@@ -617,9 +617,9 @@ function getRemainingDistanceToPosition(
     }
 
     const nextX =
-        wrap(character.x + character.direction.x, COLS);
+        wrap(character.x + character.direction.x, map.tiles[0].length);
     const nextY =
-        wrap(character.y + character.direction.y, ROWS);
+        wrap(character.y + character.direction.y, map.tiles.length);
 
     return 1 - character.progress +
         shortestDistance(nextX, nextY, targetX, targetY);
@@ -679,10 +679,10 @@ function calculateNormalAndPelletScore({ pellets, ghosts, gameTime },
     let pelletScore = 0;
 
     let pacmanControlledSquares = 0;
-    for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
+    for (let y = 0; y < map.tiles.length; y++) {
+        for (let x = 0; x < map.tiles[0].length; x++) {
             if (
-                map[y][x] !== "#" &&
+                map.tiles[y][x] !== "#" &&
                 domain[y][x].owner === "pacman"
             ) {
                 pacmanControlledSquares++;
@@ -710,12 +710,12 @@ function calculateNormalAndPelletScore({ pellets, ghosts, gameTime },
             : 0;
 
 
-    for (let y = 0; y < ROWS; y++) {
+    for (let y = 0; y < map.tiles.length; y++) {
 
-        for (let x = 0; x < COLS; x++) {
+        for (let x = 0; x < map.tiles[0].length; x++) {
 
             const cell =
-                map[y][x];
+                map.tiles[y][x];
 
 
             if (
@@ -899,10 +899,10 @@ function evaluateSearchState(state) {
 // Checks movement legality against the simulated map and the game's
 // boundary restrictions, independently of the live game state.
 function canMoveInSearchState(state, character, direction) {
-    const x = wrap(character.x + direction.x, COLS);
-    const y = wrap(character.y + direction.y, ROWS);
+    const x = wrap(character.x + direction.x, map.tiles[0].length);
+    const y = wrap(character.y + direction.y, map.tiles.length);
 
-    return map[y][x] !== "#" &&
+    return map.tiles[y][x] !== "#" &&
         !isBoundaryBlocked(character.x, character.y, direction);
 }
 
@@ -958,8 +958,8 @@ function getSearchGhostDirections(state, index) {
 // together to preserve its physical location.
 function reverseSearchGhost(ghost) {
     if (ghost.progress > 0) {
-        ghost.x = wrap(ghost.x + ghost.direction.x, COLS);
-        ghost.y = wrap(ghost.y + ghost.direction.y, ROWS);
+        ghost.x = wrap(ghost.x + ghost.direction.x, map.tiles[0].length);
+        ghost.y = wrap(ghost.y + ghost.direction.y, map.tiles.length);
         ghost.progress = 1 - ghost.progress;
     }
 
@@ -1130,8 +1130,8 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         }
 
         character.progress = Math.max(0, character.progress - 1);
-        character.x = wrap(character.x + character.direction.x, COLS);
-        character.y = wrap(character.y + character.direction.y, ROWS);
+        character.x = wrap(character.x + character.direction.x, map.tiles[0].length);
+        character.y = wrap(character.y + character.direction.y, map.tiles.length);
 
         return true;
     };
@@ -1174,7 +1174,7 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
     }
 
     if (next.readyPlayer) {
-        const cell = map[next.player.y][next.player.x];
+        const cell = map.tiles[next.player.y][next.player.x];
 
         if ((cell === "." || cell === "o") && next.pellets.has(`${next.player.x},${next.player.y}`)) {
             next.pellets.delete(`${next.player.x},${next.player.y}`);
