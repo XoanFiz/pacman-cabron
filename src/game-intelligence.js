@@ -252,26 +252,27 @@ function calculateDomain(node, {
     includePacman = true
 } = {}) {
 
+    let queue = new MinHeap();
+
     const isDuplicated = (assessedDomainFact) => {
-        const stateKey =
+        const factKey =
             `${assessedDomainFact.owner}
             :${assessedDomainFact.domainType ?? "normal"}
             :${assessedDomainFact.x}
             ,${assessedDomainFact.y}
             :${assessedDomainFact.initialProgress}
-            :${assessedDomainFact.initialDirection}
-            :${Number(assessedDomainFact.isInitiatedMove)}`;
+            :${assessedDomainFact.initialDirection}`;
 
-        if (processedDomainMessages.has(stateKey)) {
+        if (processedDomainMessages.has(factKey)) {
             return true
         }
 
-        processedDomainMessages.add(stateKey);
+        processedDomainMessages.add(factKey);
         return false;
     };
 
 
-    function pushBlueDomainSeeds(queue, ghost, owner, node, respectCurrentMovement) {
+    function pushBlueDomainSeeds(queue, ghost, owner, node) {
         queue.push({
             x: ghost.x,
             y: ghost.y,
@@ -283,8 +284,7 @@ function calculateDomain(node, {
             originY: ghost.y,
             speed: EATEN_GHOST_SPEED,
             initialProgress: ghost.progress,
-            initialDirection: ghost.direction,
-            isInitiatedMove: respectCurrentMovement && ghost.progress > 0 && (ghost.direction.x !== 0 || ghost.direction.y !== 0) && canMove(ghost.x, ghost.y, ghost.direction)
+            initialDirection: ghost.direction
         });
     }
 
@@ -321,25 +321,17 @@ function calculateDomain(node, {
                 originY: house.y,
                 speed,
                 initialProgress: 0,
-                initialDirection: { x: 0, y: 0 },
-                isInitiatedMove: false
+                initialDirection: { x: 0, y: 0 }
             });
         }
     }
 
     const calculateNextTimeAndCell = (assessedDomainStatus, domain, next) => {
-        if (assessedDomainStatus.isInitiatedMove) {
-            return null;
-        }
-
         const nextTime =
             assessedDomainStatus.time +
             (
-                assessedDomainStatus.isInitiatedMove
-                    ? 1 - assessedDomainStatus.initialProgress
-                    : 1
-            ) /
-            assessedDomainStatus.speed;
+                1 - assessedDomainStatus.initialProgress
+            ) / assessedDomainStatus.speed;
 
 
         const nextCell =
@@ -361,10 +353,6 @@ function calculateDomain(node, {
         ) {
 
             const result = calculateNextTimeAndCell(assessedDomainStatus, domain, next);
-            if (!result) {
-                continue;
-            }
-
             const { nextTime, nextCell } = { nextTime: result.nextTime, nextCell: result.nextCell };
 
 
@@ -396,7 +384,8 @@ function calculateDomain(node, {
                 originY: assessedDomainStatus.originY,
                 speed: assessedDomainStatus.speed,
                 direction: next.direction,
-                isInitiatedMove: false
+                initialProgress: 0,
+                initialDirection: { x: 0, y: 0 }
             });
         }
     }
@@ -410,8 +399,6 @@ function calculateDomain(node, {
             )
         );
 
-
-    let queue = new MinHeap();
     const processedDomainMessages = new Set();
 
 
@@ -430,12 +417,7 @@ function calculateDomain(node, {
             originY: node.player.y,
             speed: PACMAN_SPEED,
             initialProgress: node.player.progress,
-            initialDirection: node.player.direction,
-            isInitiatedMove:
-                respectCurrentMovement &&
-                node.player.progress > 0 &&
-                (node.player.direction.x !== 0 || node.player.direction.y !== 0) &&
-                canMove(node.player.x, node.player.y, node.player.direction)
+            initialDirection: node.player.direction
         });
     }
 
@@ -454,10 +436,7 @@ function calculateDomain(node, {
         } else {
             if (ghost.frightened) {
                 // Blue territory: starts at the ghost's current position. 
-                pushBlueDomainSeeds(queue, ghost, owner, node, respectCurrentMovement &&
-                    ghost.progress > 0 &&
-                    (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
-                    canMove(ghost.x, ghost.y, ghost.direction));
+                pushBlueDomainSeeds(queue, ghost, owner, node);
 
                 // Normal territory: propagates from the ghost's house. 
                 propagateFromGhostHouse(node, ghost)
@@ -475,12 +454,7 @@ function calculateDomain(node, {
                     originY: ghost.y,
                     speed: GHOST_SPEED,
                     initialProgress: ghost.progress,
-                    initialDirection: ghost.direction,
-                    isInitiatedMove:
-                        respectCurrentMovement &&
-                        ghost.progress > 0 &&
-                        (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
-                        canMove(ghost.x, ghost.y, ghost.direction)
+                    initialDirection: ghost.direction
                 });
             }
         }

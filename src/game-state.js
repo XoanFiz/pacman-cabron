@@ -107,7 +107,7 @@ localizeContent();
 // ============================================================
 // DEBUG
 // ============================================================
-let showVoronoi = false;
+let showVoronoiDomains = false;
 
 const DOMAIN_COLORS = {
     pacman: [255, 212, 59]

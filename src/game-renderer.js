@@ -442,7 +442,7 @@ const EDITOR_DIRECTIONS = [
 
 
 function drawVoronoiDomains() {
-    if (!showVoronoi) {
+    if (!showVoronoiDomains) {
         return;
     }
 
@@ -452,7 +452,7 @@ function drawVoronoiDomains() {
     const domain = calculateDomain({
         player, gameTime, ghosts, pellets: pellets
     }, {
-        respectCurrentMovement: running
+        respectCurrentMovement: true
     });
 
     for (let y = 0; y < getMapRowCount(map); y++) {

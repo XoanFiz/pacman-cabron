@@ -95,7 +95,7 @@ document.addEventListener(
         }
 
         if (event.key.toLowerCase() === "v") {
-            showVoronoi = !showVoronoi;
+            showVoronoiDomains = !showVoronoiDomains;
             return;
         }
 
