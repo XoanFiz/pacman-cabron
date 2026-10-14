@@ -19,7 +19,7 @@ function draw() {
 
     for (
         let y = 0;
-        y < map.tiles.length;
+        y < getMapRows(map);
         y++
     ) {
 
@@ -32,7 +32,7 @@ function draw() {
             let cell =
                 map.tiles[y][x];
 
-            if ((cell === "." || cell === "o") && !pellets.has(`${x},${y}`)) {
+            if ((cell === "." || cell === "o") && ! pellets.has(`${x},${y}`)) {
                 cell = " "
             }
 
@@ -124,7 +124,7 @@ function drawBoundaryWalls() {
             const edgeY = y * CELL;
             ctx.fillRect(edgeX, edgeY, thickness, CELL);
 
-            if (x === map.tiles[0].length - 1) {
+            if (x === getMapCols(map) - 1) {
                 ctx.fillRect(-thickness / 2, edgeY, thickness, CELL);
             }
         } else {
@@ -132,7 +132,7 @@ function drawBoundaryWalls() {
             const edgeY = (y + 1) * CELL - thickness / 2;
             ctx.fillRect(edgeX, edgeY, CELL, thickness);
 
-            if (y === map.tiles.length - 1) {
+            if (y === getMapRows(map) - 1) {
                 ctx.fillRect(edgeX, -thickness / 2, CELL, thickness);
             }
         }
@@ -170,17 +170,17 @@ function drawMapEditorGrid() {
     ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
     ctx.lineWidth = 1;
 
-    for (let x = 0; x <= map.tiles[0].length; x++) {
+    for (let x = 0; x <= getMapCols(map); x++) {
         ctx.beginPath();
         ctx.moveTo(x * CELL + 0.5, 0);
-        ctx.lineTo(x * CELL + 0.5, map.tiles.length * CELL);
+        ctx.lineTo(x * CELL + 0.5, getMapRows(map) * CELL);
         ctx.stroke();
     }
 
-    for (let y = 0; y <= map.tiles.length; y++) {
+    for (let y = 0; y <= getMapRows(map); y++) {
         ctx.beginPath();
         ctx.moveTo(0, y * CELL + 0.5);
-        ctx.lineTo(map.tiles[0].length * CELL, y * CELL + 0.5);
+        ctx.lineTo(getMapCols(map) * CELL, y * CELL + 0.5);
         ctx.stroke();
     }
 }
@@ -450,13 +450,13 @@ function drawVoronoiDomains() {
 
 
     const domain = calculateDomain({
-        player, gameTime, ghosts, pellets
+        player, gameTime, ghosts, pellets: pellets
     }, {
         respectCurrentMovement: running
     });
 
-    for (let y = 0; y < map.tiles.length; y++) {
-        for (let x = 0; x < map.tiles[0].length; x++) {
+    for (let y = 0; y < getMapRows(map); y++) {
+        for (let x = 0; x < getMapCols(map); x++) {
 
             if (map.tiles[y][x] === "#") {
                 continue;

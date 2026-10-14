@@ -221,8 +221,8 @@ let nextCustomMapNumber = 1;
 
 let map = maps.find(definition => definition.id === activeMapId);
 
-canvas.width = map.tiles[0].length * CELL;
-canvas.height = map.tiles.length * CELL;
+canvas.width = getMapCols(map) * CELL;
+canvas.height = getMapRows(map) * CELL;
 
 
 // ============================================================
