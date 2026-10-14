@@ -100,7 +100,7 @@ function syncEditorDraftMap() {
     }
 
     editorDraftMap.tiles = map.tiles.map(row => row.slice());
-    editorDraftMap.edges = Array.from(MAP_EDGES);
+    editorDraftMap.edges = Array.from(map.edges);
     editorDraftMap.playerStart = {
         x: player.x,
         y: player.y,
@@ -139,10 +139,10 @@ function leaveMapEditor(saveChanges) {
 
 function getEditorPosition(event) {
     const bounds = canvas.getBoundingClientRect();
-    const x = Math.floor((event.clientX - bounds.left) * getMapCols(map) / bounds.width);
-    const y = Math.floor((event.clientY - bounds.top) * getMapRows(map) / bounds.height);
+    const x = Math.floor((event.clientX - bounds.left) * getMapColumnCount(map) / bounds.width);
+    const y = Math.floor((event.clientY - bounds.top) * getMapRowCount(map) / bounds.height);
 
-    if (x < 0 || x >= getMapCols(map) || y < 0 || y >= getMapRows(map)) {
+    if (x < 0 || x >= getMapColumnCount(map) || y < 0 || y >= getMapRowCount(map)) {
         return null;
     }
 
@@ -152,8 +152,8 @@ function getEditorPosition(event) {
 
 function getEditorBoundary(event) {
     const bounds = canvas.getBoundingClientRect();
-    const gridX = (event.clientX - bounds.left) * getMapCols(map) / bounds.width;
-    const gridY = (event.clientY - bounds.top) * getMapRows(map) / bounds.height;
+    const gridX = (event.clientX - bounds.left) * getMapColumnCount(map) / bounds.width;
+    const gridY = (event.clientY - bounds.top) * getMapRowCount(map) / bounds.height;
     const verticalLine = Math.round(gridX);
     const horizontalLine = Math.round(gridY);
     const verticalDistance = Math.abs(gridX - verticalLine);
@@ -168,7 +168,7 @@ function getEditorBoundary(event) {
 
     if (verticalDistance <= horizontalDistance) {
         const y = Math.floor(gridY);
-        const x = wrap(verticalLine - 1, getMapCols(map));
+        const x = wrap(verticalLine - 1, getMapColumnCount(map));
         const direction = DIRECTIONS.right;
 
         return {
@@ -180,7 +180,7 @@ function getEditorBoundary(event) {
     }
 
     const x = Math.floor(gridX);
-    const y = wrap(horizontalLine - 1, getMapRows(map));
+    const y = wrap(horizontalLine - 1, getMapRowCount(map));
     const direction = DIRECTIONS.down;
 
     return {
@@ -205,21 +205,21 @@ function toggleEditorBoundary(boundary) {
         return;
     }
 
-    const wasBlocked = MAP_EDGES.has(boundary.key);
+    const wasBlocked = map.edges.has(boundary.key);
 
     if (wasBlocked) {
-        MAP_EDGES.delete(boundary.key);
+        map.edges.delete(boundary.key);
     } else {
-        MAP_EDGES.add(boundary.key);
+        map.edges.add(boundary.key);
     }
 
     buildGraph();
 
     if (!isEditorMapConnected()) {
         if (wasBlocked) {
-            MAP_EDGES.add(boundary.key);
+            map.edges.add(boundary.key);
         } else {
-            MAP_EDGES.delete(boundary.key);
+            map.edges.delete(boundary.key);
         }
 
         buildGraph();
@@ -376,8 +376,8 @@ function cycleEditorTile(position, count=1) {
         return;
     }
 
-    const previousRow = map.tiles[position.y];
-    const previousEdges = new Set(MAP_EDGES);
+    const previousRow = map.tiles[position.y].slice();
+    const previousEdges = new Set(map.edges);
     const previousHouses = GHOST_HOUSES.map(cloneMapPosition);
 
     if (houseIndex >= 0) {
@@ -395,7 +395,7 @@ function cycleEditorTile(position, count=1) {
 
     if (nextTile === "#") {
         for (const direction of Object.values(DIRECTIONS)) {
-            MAP_EDGES.delete(
+            map.edges.delete(
                 getBoundaryKey(position.x, position.y, direction)
             );
         }
@@ -409,7 +409,7 @@ function cycleEditorTile(position, count=1) {
 
     if (!isEditorMapConnected()) {
         map.tiles[position.y] = previousRow;
-        MAP_EDGES = previousEdges;
+        map.edges = previousEdges;
         GHOST_HOUSES = previousHouses;
         // pellets = MAP.reduce((total, row) =>
         //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,

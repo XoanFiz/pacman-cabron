@@ -153,8 +153,8 @@ function shortestDistance(
 
     const distances =
         Array.from(
-            { length: getMapRows(map) },
-            () => Array(getMapCols(map)).fill(Infinity)
+            { length: getMapRowCount(map) },
+            () => Array(getMapColumnCount(map)).fill(Infinity)
         );
 
 
@@ -294,9 +294,9 @@ function calculateDomain(node, {
             (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
             canMove(ghost.x, ghost.y, ghost.direction);
         const nextX =
-            wrap(ghost.x + ghost.direction.x, getMapCols(map));
+            wrap(ghost.x + ghost.direction.x, getMapColumnCount(map));
         const nextY =
-            wrap(ghost.y + ghost.direction.y, getMapRows(map));
+            wrap(ghost.y + ghost.direction.y, getMapRowCount(map));
 
         for (const house of GHOST_HOUSES) {
             const distance =
@@ -403,9 +403,9 @@ function calculateDomain(node, {
 
     const domain =
         Array.from(
-            { length: getMapRows(map) },
+            { length: getMapRowCount(map) },
             () => Array.from(
-                { length: getMapCols(map) },
+                { length: getMapColumnCount(map) },
                 createDomainCell
             )
         );
@@ -617,9 +617,9 @@ function getRemainingDistanceToPosition(
     }
 
     const nextX =
-        wrap(character.x + character.direction.x, getMapCols(map));
+        wrap(character.x + character.direction.x, getMapColumnCount(map));
     const nextY =
-        wrap(character.y + character.direction.y, getMapRows(map));
+        wrap(character.y + character.direction.y, getMapRowCount(map));
 
     return 1 - character.progress +
         shortestDistance(nextX, nextY, targetX, targetY);
@@ -679,8 +679,8 @@ function calculateNormalAndPelletScore({ pellets, ghosts, gameTime },
     let pelletScore = 0;
 
     let pacmanControlledSquares = 0;
-    for (let y = 0; y < getMapRows(map); y++) {
-        for (let x = 0; x < getMapCols(map); x++) {
+    for (let y = 0; y < getMapRowCount(map); y++) {
+        for (let x = 0; x < getMapColumnCount(map); x++) {
             if (
                 map.tiles[y][x] !== "#" &&
                 domain[y][x].owner === "pacman"
@@ -710,9 +710,9 @@ function calculateNormalAndPelletScore({ pellets, ghosts, gameTime },
             : 0;
 
 
-    for (let y = 0; y < getMapRows(map); y++) {
+    for (let y = 0; y < getMapRowCount(map); y++) {
 
-        for (let x = 0; x < getMapCols(map); x++) {
+        for (let x = 0; x < getMapColumnCount(map); x++) {
 
             const cell =
                 map.tiles[y][x];
@@ -899,8 +899,8 @@ function evaluateSearchState(state) {
 // Checks movement legality against the simulated map and the game's
 // boundary restrictions, independently of the live game state.
 function canMoveInSearchState(state, character, direction) {
-    const x = wrap(character.x + direction.x, getMapCols(map));
-    const y = wrap(character.y + direction.y, getMapRows(map));
+    const x = wrap(character.x + direction.x, getMapColumnCount(map));
+    const y = wrap(character.y + direction.y, getMapRowCount(map));
 
     return map.tiles[y][x] !== "#" &&
         !isBoundaryBlocked(character.x, character.y, direction);
@@ -958,8 +958,8 @@ function getSearchGhostDirections(state, index) {
 // together to preserve its physical location.
 function reverseSearchGhost(ghost) {
     if (ghost.progress > 0) {
-        ghost.x = wrap(ghost.x + ghost.direction.x, getMapCols(map));
-        ghost.y = wrap(ghost.y + ghost.direction.y, getMapRows(map));
+        ghost.x = wrap(ghost.x + ghost.direction.x, getMapColumnCount(map));
+        ghost.y = wrap(ghost.y + ghost.direction.y, getMapRowCount(map));
         ghost.progress = 1 - ghost.progress;
     }
 
@@ -1130,8 +1130,8 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         }
 
         character.progress = Math.max(0, character.progress - 1);
-        character.x = wrap(character.x + character.direction.x, getMapCols(map));
-        character.y = wrap(character.y + character.direction.y, getMapRows(map));
+        character.x = wrap(character.x + character.direction.x, getMapColumnCount(map));
+        character.y = wrap(character.y + character.direction.y, getMapRowCount(map));
 
         return true;
     };

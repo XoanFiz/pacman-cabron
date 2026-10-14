@@ -29,7 +29,7 @@ function resetLevel() {
     const mapDefinition = getCurrentMapDefinition();
 
     // MAP =mapDefinition.tiles;
-    MAP_EDGES = new Set(mapDefinition.edges);
+    map.edges = new Set(mapDefinition.edges);
     GHOST_HOUSES = mapDefinition.ghostHouses.map(cloneMapPosition);
 
     const playerStart = mapDefinition.playerStart;
@@ -119,7 +119,7 @@ function updatePlayer(dt) {
             wrap(
                 player.x +
                 player.direction.x,
-                getMapCols(map)
+                getMapColumnCount(map)
             );
 
 
@@ -127,7 +127,7 @@ function updatePlayer(dt) {
             wrap(
                 player.y +
                 player.direction.y,
-                getMapRows(map)
+                getMapRowCount(map)
             );
 
 
@@ -226,9 +226,9 @@ function eatPellet() {
 
     if (
         x < 0 ||
-        x >= getMapCols(map) ||
+        x >= getMapColumnCount(map) ||
         y < 0 ||
-        y >= getMapRows(map)
+        y >= getMapRowCount(map)
     ) {
         return;
     }
@@ -312,13 +312,13 @@ function reverseGhostDirection(
         ghost.x =
             wrap(
                 ghost.x,
-                getMapCols(map)
+                getMapColumnCount(map)
             );
 
         ghost.y =
             wrap(
                 ghost.y,
-                getMapRows(map)
+                getMapRowCount(map)
             );
 
 
@@ -360,7 +360,7 @@ function updateGhost(
             wrap(
                 ghost.x +
                 ghost.direction.x,
-                getMapCols(map)
+                getMapColumnCount(map)
             );
 
 
@@ -368,7 +368,7 @@ function updateGhost(
             wrap(
                 ghost.y +
                 ghost.direction.y,
-                getMapRows(map)
+                getMapRowCount(map)
             );
 
         if (

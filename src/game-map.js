@@ -221,8 +221,8 @@ let nextCustomMapNumber = 1;
 
 let map = maps.find(definition => definition.id === activeMapId);
 
-canvas.width = getMapCols(map) * CELL;
-canvas.height = getMapRows(map) * CELL;
+canvas.width = getMapColumnCount(map) * CELL;
+canvas.height = getMapRowCount(map) * CELL;
 
 
 // ============================================================
@@ -294,12 +294,12 @@ function getMapLabel(definition) {
 }
 
 
-function getMapRows(definition = map) {
+function getMapRowCount(definition = map) {
     return definition.tiles.length;
 }
 
 
-function getMapCols(definition = map) {
+function getMapColumnCount(definition = map) {
     return definition.tiles[0]?.length ?? 0;
 }
 
@@ -311,12 +311,15 @@ function wrap(value, size) {
 
 function getWrappedPosition(x, y, definition = map) {
     return {
-        x: wrap(x, getMapCols(definition)),
-        y: wrap(y, getMapRows(definition))
+        x: wrap(x, getMapColumnCount(definition)),
+        y: wrap(y, getMapRowCount(definition))
     };
 }
 
 
+// Boundary keys are bidirectional and also wrap around the edges of the map. For example, a boundary between (0, 0) and (1, 0) is 
+// represented as "h:0:0", while a boundary between (19, 0) and (0, 0) is represented as "h:19:0". Similarly, a boundary between (0, 0) 
+// and (0, 1) is represented as "v:0:0", while a boundary between (0, 17) and (0, 0) is represented as "v:0:17".
 function getBoundaryKey(x, y, direction, definition = map) {
     const position = getWrappedPosition(x, y, definition);
 
@@ -325,23 +328,23 @@ function getBoundaryKey(x, y, direction, definition = map) {
     }
 
     if (direction.x === -1) {
-        return `h:${wrap(position.x - 1, getMapCols(definition))}:${position.y}`;
+        return `h:${wrap(position.x - 1, getMapColumnCount(definition))}:${position.y}`;
     }
 
     if (direction.y === 1) {
         return `v:${position.x}:${position.y}`;
     }
 
-    return `v:${position.x}:${wrap(position.y - 1, getMapRows(definition))}`;
+    return `v:${position.x}:${wrap(position.y - 1, getMapRowCount(definition))}`;
 }
 
 
 function isWall(x, y, definition = map) {
     if (
         x < 0 ||
-        x >= getMapCols(definition) ||
+        x >= getMapColumnCount(definition) ||
         y < 0 ||
-        y >= getMapRows(definition)
+        y >= getMapRowCount(definition)
     ) {
         return true;
     }
@@ -376,8 +379,8 @@ function canMove(x, y, direction, definition = map) {
 function buildPellets(definition = map) {
     const result = new Set();
 
-    for (let y = 0; y < getMapRows(definition); y++) {
-        for (let x = 0; x < getMapCols(definition); x++) {
+    for (let y = 0; y < getMapRowCount(definition); y++) {
+        for (let x = 0; x < getMapColumnCount(definition); x++) {
             const tile = definition.tiles[y][x];
 
             if (tile === "." || tile === "o") {
@@ -397,8 +400,8 @@ function buildPellets(definition = map) {
 function buildGhostHouses(definition = map) {
     const ghostHouses = [];
 
-    for (let y = 0; y < getMapRows(definition); y++) {
-        for (let x = 0; x < getMapCols(definition); x++) {
+    for (let y = 0; y < getMapRowCount(definition); y++) {
+        for (let x = 0; x < getMapColumnCount(definition); x++) {
             if (definition.tiles[y][x] === "H") {
                 ghostHouses.push({ x, y });
             }
@@ -607,17 +610,18 @@ function saveEditorMap() {
 // GRAPH
 // ============================================================
 
+// Graph is bidirectional
 function buildGraph(definition = map) {
-    const rows = getMapRows(definition);
-    const cols = getMapCols(definition);
+    const rowCount = getMapRowCount(definition);
+    const colCount = getMapColumnCount(definition);
 
     const result = Array.from(
-        { length: rows },
-        () => Array.from({ length: cols }, () => [])
+        { length: rowCount },
+        () => Array.from({ length: colCount }, () => [])
     );
 
-    for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rowCount; y++) {
+        for (let x = 0; x < colCount; x++) {
             if (isWall(x, y, definition)) {
                 continue;
             }

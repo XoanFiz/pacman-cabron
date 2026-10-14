@@ -19,7 +19,7 @@ function draw() {
 
     for (
         let y = 0;
-        y < getMapRows(map);
+        y < getMapRowCount(map);
         y++
     ) {
 
@@ -113,7 +113,7 @@ function draw() {
 function drawBoundaryWalls() {
     ctx.fillStyle = editorMode ? "#9dbdff" : "#3156a3";
 
-    for (const edgeKey of MAP_EDGES) {
+    for (const edgeKey of map.edges) {
         const [orientation, rawX, rawY] = edgeKey.split(":");
         const x = Number(rawX);
         const y = Number(rawY);
@@ -124,7 +124,7 @@ function drawBoundaryWalls() {
             const edgeY = y * CELL;
             ctx.fillRect(edgeX, edgeY, thickness, CELL);
 
-            if (x === getMapCols(map) - 1) {
+            if (x === getMapColumnCount(map) - 1) {
                 ctx.fillRect(-thickness / 2, edgeY, thickness, CELL);
             }
         } else {
@@ -132,7 +132,7 @@ function drawBoundaryWalls() {
             const edgeY = (y + 1) * CELL - thickness / 2;
             ctx.fillRect(edgeX, edgeY, CELL, thickness);
 
-            if (y === getMapRows(map) - 1) {
+            if (y === getMapRowCount(map) - 1) {
                 ctx.fillRect(edgeX, -thickness / 2, CELL, thickness);
             }
         }
@@ -170,17 +170,17 @@ function drawMapEditorGrid() {
     ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
     ctx.lineWidth = 1;
 
-    for (let x = 0; x <= getMapCols(map); x++) {
+    for (let x = 0; x <= getMapColumnCount(map); x++) {
         ctx.beginPath();
         ctx.moveTo(x * CELL + 0.5, 0);
-        ctx.lineTo(x * CELL + 0.5, getMapRows(map) * CELL);
+        ctx.lineTo(x * CELL + 0.5, getMapRowCount(map) * CELL);
         ctx.stroke();
     }
 
-    for (let y = 0; y <= getMapRows(map); y++) {
+    for (let y = 0; y <= getMapRowCount(map); y++) {
         ctx.beginPath();
         ctx.moveTo(0, y * CELL + 0.5);
-        ctx.lineTo(getMapCols(map) * CELL, y * CELL + 0.5);
+        ctx.lineTo(getMapColumnCount(map) * CELL, y * CELL + 0.5);
         ctx.stroke();
     }
 }
@@ -455,8 +455,8 @@ function drawVoronoiDomains() {
         respectCurrentMovement: running
     });
 
-    for (let y = 0; y < getMapRows(map); y++) {
-        for (let x = 0; x < getMapCols(map); x++) {
+    for (let y = 0; y < getMapRowCount(map); y++) {
+        for (let x = 0; x < getMapColumnCount(map); x++) {
 
             if (map.tiles[y][x] === "#") {
                 continue;
