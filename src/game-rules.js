@@ -524,10 +524,10 @@ function loseLife() {
     deathTimer = 1.0;
 
     for (const ghost of ghosts) {
-        if (!ghost.eaten) {
-            ghost.frightened = false;
-            frightenedTimer = undefined;
-        }
+        ghost.frightened = false;
+        ghost.eaten=false;
+        frightenedTimer = undefined;
+        ghost.speed = GHOST_SPEED
     }
 
 
