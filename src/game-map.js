@@ -316,6 +316,26 @@ function getWrappedPosition(x, y, definition = map) {
     };
 }
 
+// Returns the legal directions available to a character at its
+// current position, using the live game's movement constraints.
+function getPossibleDirections(
+    character
+) {
+
+    return [
+        DIRECTIONS.up,
+        DIRECTIONS.down,
+        DIRECTIONS.left,
+        DIRECTIONS.right
+    ].filter(direction =>
+        canMove(
+            character.x,
+            character.y,
+            direction
+        )
+    );
+}
+
 
 // Boundary keys are bidirectional and also wrap around the edges of the map. For example, a boundary between (0, 0) and (1, 0) is 
 // represented as "h:0:0", while a boundary between (19, 0) and (0, 0) is represented as "h:19:0". Similarly, a boundary between (0, 0) 

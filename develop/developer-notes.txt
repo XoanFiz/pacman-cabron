@@ -26,3 +26,16 @@ Copilot, please take the following points into account when working:
 - Limit Playwright tests to save tokens. Ask developer to either perform the tests by themself or let Copilot do them. If the developer chooses the first option, give them a list of the tests to do.
 - All the useful tools used to make tests and propagate changes, like those to the language files, should be progressively added and updated in the develop directory for any developer to work, with comments detailing what are they used for.
 - Do not automatically pick a TODO or SUGGESTIONS task and engage it. Do it just when a developer asks it to.
+
+
+game-intelligence.js interface: these are the functions that are used outside game-intelligence:
+- calculateDomain: only to calculate Voronoi domain regions in game-renderer to display
+- advanceStrategicSearch: used in game-runtime, but the idea is to be used from an independent thread
+- chooseStrategicGhostDirections, chooseStrategicPacmanDirection: used from game-rules, but game-rules is the most intern part of game-runtime
+
+game-intelligence.js: unwished dependencies: 
+player	state.player	Pac-Man's position, direction, movement progress, and other attributes.
+ghosts	state.ghosts	Position, direction, movement progress, and state of each ghost.
+pellets	state.pellets	Pellets remaining in the game.
+lives	state.lives	Remaining lives; affects transitions and evaluation.
+gameTime	state.time or state.gameTime	Game time, required to evaluate temporal states.

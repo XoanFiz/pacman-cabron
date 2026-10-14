@@ -816,7 +816,7 @@ function createSearchState(readyGhostIndices, readyPlayer = false) {
 // Produces a canonical key for state deduplication. It includes
 // movement progress and decision readiness, distinguishing states
 // whose future transitions may differ despite sharing cell positions.
-function searchStateKey(state) {
+function buildStateKey(state) {
     const characterKey = character => [
         character.x,
         character.y,
@@ -1247,7 +1247,7 @@ function getSearchActionProfiles(state) {
 // states can reuse an existing node, while incoming edges allow value
 // changes to propagate back to every parent that depends on the node.
 function createStrategicSearchNode(state, parent, parentEdge, depth, value) {
-    const key = searchStateKey(state);
+    const key = buildStateKey(state);
     const node = {
         key,
         state,
@@ -1415,13 +1415,13 @@ function hasStrategicSearchPath(start, target) {
 // Evaluates one candidate transition and connects its resulting state
 // to the shared graph when doing so does not introduce an ancestor
 // cycle. Repeated states reuse their existing values and dependencies.
-function processStrategicSearchCandidate(node, candidate) {
-    const childState = candidate.nextState;
-    const childKey = searchStateKey(childState);
+function processStrategicSearchCandidate(node, candidateTransition) {
+    const childState = candidateTransition.nextState;
+    const childKey = buildStateKey(childState);
     const childValue = evaluateSearchState(childState);
 
-    candidate.processed = true;
-    candidate.value = childValue;
+    candidateTransition.processed = true;
+    candidateTransition.value = childValue;
 
     const isAncestor = (() => {
         let ancestor = node;
@@ -1444,18 +1444,18 @@ function processStrategicSearchCandidate(node, candidate) {
             child = createStrategicSearchNode(
                 childState,
                 node,
-                candidate,
+                candidateTransition,
                 node.depth + 1,
                 childValue
             );
-            candidate.child = child;
+            candidateTransition.child = child;
         } else if (child !== node && !hasStrategicSearchPath(child, node)) {
-            candidate.child = child;
+            candidateTransition.child = child;
             child.incomingEdges.push({
                 parent: node,
-                candidate
+                candidate: candidateTransition
             });
-            candidate.value = child.value;
+            candidateTransition.value = child.value;
         }
     }
 
@@ -1711,7 +1711,7 @@ function getStrategicGhostDirection(node, ghostIndex, fallback) {
 function getStrategicSearchRoot(readyGhosts, readyPlayer = false) {
     const readyGhostIndices = readyGhosts.map(ghost => ghosts.indexOf(ghost));
     const state = createSearchState(readyGhostIndices, readyPlayer);
-    const key = searchStateKey(state);
+    const key = buildStateKey(state);
     let root = strategicSearch.nodes.get(key);
 
     if (!root) {
@@ -1815,30 +1815,3 @@ function chooseStrategicPacmanDirection() {
         ? { ...bestDirection }
         : { ...player.direction };
 }
-
-
-// ============================================================
-// GHOST MOVE EVALUATION
-// ============================================================
-
-// Returns the legal directions available to a character at its
-// current position, using the live game's movement constraints.
-function getPossibleDirections(
-    character
-) {
-
-    return [
-        DIRECTIONS.up,
-        DIRECTIONS.down,
-        DIRECTIONS.left,
-        DIRECTIONS.right
-    ].filter(direction =>
-        canMove(
-            character.x,
-            character.y,
-            direction
-        )
-    );
-}
-
-// ============================================================
