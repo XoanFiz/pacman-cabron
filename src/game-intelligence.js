@@ -1178,7 +1178,7 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
             collisionedGhost.frightenedTimer = undefined;
         } else {
             next.lives--;
-            next.player = { ...player }
+            next.player = { ...state.player } // copies player position
             next.ghosts = ghosts.map(cloneSearchCharacter)
             next.readyPlayer = selectedCharacter === "pacman" ? true : false;
             next.readyGhosts = ghosts.map((_, index) => selectedCharacter === `ghost-${index}` ? true : false);
@@ -1813,5 +1813,5 @@ function chooseStrategicPacmanDirection() {
 
     return bestDirection
         ? { ...bestDirection }
-        : { ...player.direction };
+        : { ...root.player.direction };
 }
