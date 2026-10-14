@@ -601,7 +601,7 @@ function getRemainingDistanceToPosition(
 
 // Estimates when a ghost could reach Pac-Man. Eaten ghosts must
 // first return to a house and then resume normal-speed movement.
-function getGhostArrivalTimeToPlayer(ghost) {
+function getGhostArrivalTimeToPlayer(ghost, player) {
     if (!ghost.eaten) {
         return getRemainingDistanceToPosition(
             ghost,
@@ -646,7 +646,7 @@ function getGhostArrivalTimeToPlayer(ghost) {
 // partition. Territory value is normalized by Pac-Man's controlled
 // area, while pellet value is discounted by travel time and shared
 // among ghosts that reach a pellet at the same earliest time.
-function calculateNormalAndPelletScore({ pellets, ghosts, time },
+function calculateNormalAndPelletScore({ pellets, ghosts, player, time },
     domain
 ) {
 
@@ -669,7 +669,7 @@ function calculateNormalAndPelletScore({ pellets, ghosts, time },
         Math.max(1, pacmanControlledSquares);
     const nearestGhostArrivalTime =
         Math.min(
-            ...ghosts.map(getGhostArrivalTimeToPlayer)
+            ...ghosts.map(ghost=>getGhostArrivalTimeToPlayer(ghost, player))
         );
     const normalArrivalMultiplier =
         Number.isFinite(nearestGhostArrivalTime)
@@ -743,12 +743,12 @@ function calculateNormalAndPelletScore({ pellets, ghosts, time },
 // Combines the territory, ordinary-pellet, and frightened-ghost
 // evaluations into a single objective, with a cap on the contribution
 // of ordinary pellets relative to normal territory.
-function evaluateDomain({ pellets, ghosts, time },
+function evaluateDomain({ pellets, ghosts, player, time },
     domain
 ) {
 
     const normal =
-        calculateNormalAndPelletScore({ pellets, ghosts, time },
+        calculateNormalAndPelletScore({ pellets, ghosts, player, time },
             domain
         );
 
@@ -853,7 +853,7 @@ function buildStateKey(state) {
 // if evaluation fails.
 function evaluateSearchState(state) {
     const domainValue =
-        evaluateDomain({ pellets: state.pellets, ghosts: state.ghosts, time: state.time },
+        evaluateDomain({ pellets: state.pellets, ghosts: state.ghosts, player: state.player, time: state.time },
             calculateDomain({
                 pellets: state.pellets,
                 time: state.time,
