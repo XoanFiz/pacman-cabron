@@ -245,10 +245,6 @@ function eatPellet() {
         return;
     }
 
-
-    map.tiles[y][x] = " ";
-
-
     pellets.delete(`${x},${y}`)
 
 
