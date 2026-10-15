@@ -297,7 +297,7 @@ function calculateDomain(
         });
     }
 
-    const propagateFromGhostHouse = (ghostHouses, ghost, ghostIndex, time = 0) => {
+    const propagateFromGhostHouses = (ghostHouses, ghost, ghostIndex, time = 0) => {
         const isMoving =
             ghost.progress > 0 &&
             (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
@@ -446,14 +446,14 @@ function calculateDomain(
         const owner = `ghost${i}`;
 
         if (ghost.eaten) {
-            propagateFromGhostHouse(ghostHouses, ghost, i, time)
+            propagateFromGhostHouses(ghostHouses, ghost, i, time)
         } else {
             if (ghost.frightened) {
                 // Blue territory: starts at the ghost's current position. 
                 pushBlueDomainSeeds(queue, ghost, owner, time);
 
                 // Normal territory: propagates from the ghost's house. 
-                propagateFromGhostHouse(ghostHouses, ghost, i, time)
+                propagateFromGhostHouses(ghostHouses, ghost, i, time)
             }
 
             else {
@@ -1747,9 +1747,8 @@ function advanceStrategicSearch() {
 }
 
 // Selects the ghost's direction from the best available joint ghost
-// action, evaluating each action against Pac-Man's worst response.
-// Unresolved candidates use their parent's static evaluation until
-// further search expansions provide more accurate values.
+// action, evaluating each action against Pac-Man's worst response (best for him but worst for the ghosts).
+// Unresolved candidates use their parent's static evaluation until further search expansions provide more accurate values.
 function getStrategicGhostDirection(node, ghostIndex, fallback) {
     prepareStrategicSearchNode(node);
 
