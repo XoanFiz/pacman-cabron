@@ -32,7 +32,7 @@ function draw() {
             let cell =
                 currentMap.tiles[y][x];
 
-            if ((cell === "." || cell === "o") && ! pellets.has(`${x},${y}`)) {
+            if ((cell === "." || cell === "o") && !pellets.has(`${x},${y}`)) {
                 cell = " "
             }
 
@@ -141,7 +141,7 @@ function drawBoundaryWalls() {
 
 
 function drawGhostHouses() {
-    for (const house of GHOST_HOUSES) {
+    for (const house of ghostHouses) {
         const centerX = house.x * CELL + CELL / 2;
         const centerY = house.y * CELL + CELL / 2;
 
@@ -449,11 +449,9 @@ function drawVoronoiDomains() {
     const getGhostIndex = (owner) => owner.replace("ghost", "");
 
 
-    const domain = calculateDomain({
-        player, gameTime, ghosts, pellets: pellets
-    }, {
-        respectCurrentMovement: true
-    });
+    const domain = calculateDomain(
+        player, ghosts, ghostHouses, pellets, gameTime, true
+    );
 
     for (let y = 0; y < getMapRowCount(currentMap); y++) {
         for (let x = 0; x < getMapColumnCount(currentMap); x++) {

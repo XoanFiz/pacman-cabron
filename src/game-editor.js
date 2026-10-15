@@ -112,7 +112,7 @@ function syncEditorDraftMap() {
         color: ghost.color,
         direction: { ...ghost.direction }
     }));
-    editorDraftMap.ghostHouses = GHOST_HOUSES.map(cloneMapPosition);
+    editorDraftMap.ghostHouses = ghostHouses.map(cloneMapPosition);
 }
 
 
@@ -244,7 +244,7 @@ function getEditorEntity(position) {
 
 
 function getEditorGhostHouse(position) {
-    return GHOST_HOUSES.findIndex(house =>
+    return ghostHouses.findIndex(house =>
         house.x === position.x && house.y === position.y
     );
 }
@@ -325,7 +325,7 @@ function isEditorMapConnected() {
     const targets = [
         { x: player.x, y: player.y },
         ...ghosts.map(ghost => ({ x: ghost.x, y: ghost.y })),
-        ...GHOST_HOUSES,
+        ...ghostHouses,
         ...currentMap.tiles.flatMap((row, y) =>
             Array.from(row, (tile, x) =>
                 tile === "." || tile === "o"
@@ -370,7 +370,7 @@ function cycleEditorTile(position, count = 1) {
     if (
         houseIndex >= 0 &&
         nextTile !== "house" &&
-        GHOST_HOUSES.length <= 1
+        ghostHouses.length <= 1
     ) {
         showEditorToast("mapHouseRequiredError");
         return;
@@ -378,14 +378,14 @@ function cycleEditorTile(position, count = 1) {
 
     const previousRow = currentMap.tiles[position.y].slice();
     const previousEdges = new Set(currentMap.edges);
-    const previousHouses = GHOST_HOUSES.map(cloneMapPosition);
+    const previousHouses = ghostHouses.map(cloneMapPosition);
 
     if (houseIndex >= 0) {
-        GHOST_HOUSES.splice(houseIndex, 1);
+        ghostHouses.splice(houseIndex, 1);
     }
 
     if (nextTile === "house") {
-        GHOST_HOUSES.push({ x: position.x, y: position.y });
+        ghostHouses.push({ x: position.x, y: position.y });
     }
 
     const tile = nextTile;
@@ -411,7 +411,7 @@ function cycleEditorTile(position, count = 1) {
     if (!isEditorMapConnected()) {
         currentMap.tiles[position.y] = previousRow;
         currentMap.edges = previousEdges;
-        GHOST_HOUSES = previousHouses;
+        ghostHouses = previousHouses;
         // pellets = MAP.reduce((total, row) =>
         //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
         // 0);

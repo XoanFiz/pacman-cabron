@@ -247,10 +247,14 @@ function createDomainCell() {
 // Equal-time arrivals preserve shared ownership, while contested
 // cells stop further propagation. Eaten ghosts re-enter the search
 // from their possible return-to-house positions.
-function calculateDomain(node, {
-    respectCurrentMovement = true,
-    includePacman = true
-} = {}) {
+function calculateDomain(
+    player,
+    ghosts,
+    ghostHouses,
+    pellets,
+    time = 0,
+    includePacman = true,
+) {
 
     let queue = new MinHeap();
 
@@ -277,11 +281,11 @@ function calculateDomain(node, {
     };
 
 
-    function pushBlueDomainSeeds(queue, ghost, owner, node) {
+    function pushBlueDomainSeeds(queue, ghost, owner, time) {
         queue.push({
             x: ghost.x,
             y: ghost.y,
-            time: node.time,
+            time,
             frightenedTimer: ghost.frightenedTimer,
             owner,
             domainType: "blue",
@@ -293,7 +297,7 @@ function calculateDomain(node, {
         });
     }
 
-    const propagateFromGhostHouse = (node, ghost, index) => {
+    const propagateFromGhostHouse = (ghostHouses, ghost, ghostIndex, time = 0) => {
         const isMoving =
             ghost.progress > 0 &&
             (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
@@ -303,7 +307,7 @@ function calculateDomain(node, {
         const nextY =
             wrap(ghost.y + ghost.direction.y, getMapRowCount(currentMap));
 
-        for (const house of node.respawnState.houses) {
+        for (const house of ghostHouses) {
             const distance =
                 isMoving
                     ? 1 - ghost.progress +
@@ -319,8 +323,8 @@ function calculateDomain(node, {
             queue.push({
                 x: house.x,
                 y: house.y,
-                time: node.time + distance / speed,
-                owner: `ghost${index}`,
+                time: time + distance / speed,
+                owner: `ghost${ghostIndex}`,
                 domainType: "normal",
                 originX: house.x,
                 originY: house.y,
@@ -418,16 +422,16 @@ function calculateDomain(node, {
 
     if (includePacman) {
         queue.push({
-            x: node.player.x,
-            y: node.player.y,
-            time: node.time,
+            x: player.x,
+            y: player.y,
+            time: time,
             owner: "pacman",
             domainType: "normal",
-            originX: node.player.x,
-            originY: node.player.y,
+            originX: player.x,
+            originY: player.y,
             speed: PACMAN_SPEED,
-            initialProgress: node.player.progress,
-            initialDirection: node.player.direction
+            initialProgress: player.progress,
+            initialDirection: player.direction
         });
     }
 
@@ -436,20 +440,20 @@ function calculateDomain(node, {
     // GHOSTS
     // --------------------------------------------------------
 
-    for (let i = 0; i < node.ghosts.length; i++) {
+    for (let i = 0; i < ghosts.length; i++) {
 
-        const ghost = node.ghosts[i];
+        const ghost = ghosts[i];
         const owner = `ghost${i}`;
 
         if (ghost.eaten) {
-            propagateFromGhostHouse(node, ghost, i)
+            propagateFromGhostHouse(ghostHouses, ghost, i, time)
         } else {
             if (ghost.frightened) {
                 // Blue territory: starts at the ghost's current position. 
-                pushBlueDomainSeeds(queue, ghost, owner, node);
+                pushBlueDomainSeeds(queue, ghost, owner, time);
 
                 // Normal territory: propagates from the ghost's house. 
-                propagateFromGhostHouse(node, ghost, i)
+                propagateFromGhostHouse(ghostHouses, ghost, i, time)
             }
 
             else {
@@ -457,7 +461,7 @@ function calculateDomain(node, {
                 queue.push({
                     x: ghost.x,
                     y: ghost.y,
-                    time: node.time,
+                    time,
                     owner,
                     domainType: "normal",
                     originX: ghost.x,
@@ -519,7 +523,7 @@ function calculateDomain(node, {
             if (
                 assessedDomainFact.owner === "pacman" &&
                 currentMap.tiles[assessedDomainFact.y][assessedDomainFact.x] === "o" &&
-                (node.pellets.has(`${assessedDomainFact.x},${assessedDomainFact.y}`))) {
+                (pellets.has(`${assessedDomainFact.x},${assessedDomainFact.y}`))) {
                 continue;
             }
             // End prepare for propagation
@@ -904,7 +908,7 @@ function evaluateSearchState(state) {
         return lifePenalty;
     }
 
-    const domain = calculateDomain(state);
+    const domain = calculateDomain(state.player, state.ghosts, state.respawnState.houses, state.pellets, state.time, true);
 
     const domainValue = evaluateDomain(
         state,

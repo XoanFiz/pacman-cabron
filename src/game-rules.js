@@ -18,7 +18,7 @@ function resetLevel() {
         getCurrentMapDefinition()
     );
 
-    GHOST_HOUSES = currentMap.ghostHouses.map(cloneMapPosition);
+    ghostHouses = currentMap.ghostHouses.map(cloneMapPosition);
 
     pellets = buildPellets();
 
@@ -366,7 +366,7 @@ function updateGhost(
 
         if (
             ghost.eaten &&
-            GHOST_HOUSES.some(house =>
+            ghostHouses.some(house =>
                 ghost.x === house.x && ghost.y === house.y
             )
         ) {
