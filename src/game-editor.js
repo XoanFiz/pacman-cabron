@@ -40,7 +40,7 @@ function toggleGhostPlacement() {
 function addGhostAt(position) {
     if (
         !position ||
-        map.tiles[position.y][position.x] === "#" ||
+        currentMap.tiles[position.y][position.x] === "#" ||
         getEditorGhostHouse(position) >= 0 ||
         (player.x === position.x && player.y === position.y) ||
         ghosts.some(ghost => ghost.x === position.x && ghost.y === position.y)
@@ -69,15 +69,15 @@ function addGhostAt(position) {
     };
     ghosts.push(newGhost);
 
-    const previousTile = map.tiles[position.y][position.x];
-    if (map.tiles[position.y][position.x] === "." || map.tiles[position.y][position.x] === "o") {
-        map.tiles[position.y][position.x] = " ";
+    const previousTile = currentMap.tiles[position.y][position.x];
+    if (currentMap.tiles[position.y][position.x] === "." || currentMap.tiles[position.y][position.x] === "o") {
+        currentMap.tiles[position.y][position.x] = " ";
     }
 
     if (!isEditorMapConnected()) {
         ghosts.pop();
-        if (previousTile !== map.tiles[position.y][position.x]) {
-            map.tiles[position.y][position.x] = previousTile;
+        if (previousTile !== currentMap.tiles[position.y][position.x]) {
+            currentMap.tiles[position.y][position.x] = previousTile;
         }
         showEditorToast("mapConnectivityError");
         return false;
@@ -99,8 +99,8 @@ function syncEditorDraftMap() {
         return;
     }
 
-    editorDraftMap.tiles = map.tiles.map(row => row.slice());
-    editorDraftMap.edges = Array.from(map.edges);
+    editorDraftMap.tiles = currentMap.tiles.map(row => row.slice());
+    editorDraftMap.edges = Array.from(currentMap.edges);
     editorDraftMap.playerStart = {
         x: player.x,
         y: player.y,
@@ -139,10 +139,10 @@ function leaveMapEditor(saveChanges) {
 
 function getEditorPosition(event) {
     const bounds = canvas.getBoundingClientRect();
-    const x = Math.floor((event.clientX - bounds.left) * getMapColumnCount(map) / bounds.width);
-    const y = Math.floor((event.clientY - bounds.top) * getMapRowCount(map) / bounds.height);
+    const x = Math.floor((event.clientX - bounds.left) * getMapColumnCount(currentMap) / bounds.width);
+    const y = Math.floor((event.clientY - bounds.top) * getMapRowCount(currentMap) / bounds.height);
 
-    if (x < 0 || x >= getMapColumnCount(map) || y < 0 || y >= getMapRowCount(map)) {
+    if (x < 0 || x >= getMapColumnCount(currentMap) || y < 0 || y >= getMapRowCount(currentMap)) {
         return null;
     }
 
@@ -152,8 +152,8 @@ function getEditorPosition(event) {
 
 function getEditorBoundary(event) {
     const bounds = canvas.getBoundingClientRect();
-    const gridX = (event.clientX - bounds.left) * getMapColumnCount(map) / bounds.width;
-    const gridY = (event.clientY - bounds.top) * getMapRowCount(map) / bounds.height;
+    const gridX = (event.clientX - bounds.left) * getMapColumnCount(currentMap) / bounds.width;
+    const gridY = (event.clientY - bounds.top) * getMapRowCount(currentMap) / bounds.height;
     const verticalLine = Math.round(gridX);
     const horizontalLine = Math.round(gridY);
     const verticalDistance = Math.abs(gridX - verticalLine);
@@ -168,7 +168,7 @@ function getEditorBoundary(event) {
 
     if (verticalDistance <= horizontalDistance) {
         const y = Math.floor(gridY);
-        const x = wrap(verticalLine - 1, getMapColumnCount(map));
+        const x = wrap(verticalLine - 1, getMapColumnCount(currentMap));
         const direction = DIRECTIONS.right;
 
         return {
@@ -180,7 +180,7 @@ function getEditorBoundary(event) {
     }
 
     const x = Math.floor(gridX);
-    const y = wrap(horizontalLine - 1, getMapRowCount(map));
+    const y = wrap(horizontalLine - 1, getMapRowCount(currentMap));
     const direction = DIRECTIONS.down;
 
     return {
@@ -205,21 +205,21 @@ function toggleEditorBoundary(boundary) {
         return;
     }
 
-    const wasBlocked = map.edges.has(boundary.key);
+    const wasBlocked = currentMap.edges.has(boundary.key);
 
     if (wasBlocked) {
-        map.edges.delete(boundary.key);
+        currentMap.edges.delete(boundary.key);
     } else {
-        map.edges.add(boundary.key);
+        currentMap.edges.add(boundary.key);
     }
 
     buildGraph();
 
     if (!isEditorMapConnected()) {
         if (wasBlocked) {
-            map.edges.add(boundary.key);
+            currentMap.edges.add(boundary.key);
         } else {
-            map.edges.delete(boundary.key);
+            currentMap.edges.delete(boundary.key);
         }
 
         buildGraph();
@@ -270,7 +270,7 @@ function moveEditorEntity(gesture, position) {
     const { x, y } = position;
 
     if (
-        map.tiles[y][x] === "#" ||
+        currentMap.tiles[y][x] === "#" ||
         getEditorGhostHouse(position) >= 0
     ) {
         return false;
@@ -326,7 +326,7 @@ function isEditorMapConnected() {
         { x: player.x, y: player.y },
         ...ghosts.map(ghost => ({ x: ghost.x, y: ghost.y })),
         ...GHOST_HOUSES,
-        ...map.tiles.flatMap((row, y) =>
+        ...currentMap.tiles.flatMap((row, y) =>
             Array.from(row, (tile, x) =>
                 tile === "." || tile === "o"
                     ? { x, y }
@@ -363,7 +363,7 @@ function cycleEditorTile(position, count = 1) {
     const cycle = [".", "o", " ", "house", "#"];
     const currentTile = houseIndex >= 0
         ? "house"
-        : map.tiles[position.y][position.x];
+        : currentMap.tiles[position.y][position.x];
     const currentIndex = cycle.indexOf(currentTile);
     const nextTile = cycle[(currentIndex + count) % cycle.length];
 
@@ -376,8 +376,8 @@ function cycleEditorTile(position, count = 1) {
         return;
     }
 
-    const previousRow = map.tiles[position.y].slice();
-    const previousEdges = new Set(map.edges);
+    const previousRow = currentMap.tiles[position.y].slice();
+    const previousEdges = new Set(currentMap.edges);
     const previousHouses = GHOST_HOUSES.map(cloneMapPosition);
 
     if (houseIndex >= 0) {
@@ -389,13 +389,13 @@ function cycleEditorTile(position, count = 1) {
     }
 
     const tile = nextTile;
-    const row = map.tiles[position.y];
+    const row = currentMap.tiles[position.y];
 
     row[position.x] = tile;
 
     if (nextTile === "#") {
         for (const direction of Object.values(DIRECTIONS)) {
-            map.edges.delete(
+            currentMap.edges.delete(
                 getBoundaryKey(position.x, position.y, direction)
             );
         }
@@ -409,8 +409,8 @@ function cycleEditorTile(position, count = 1) {
     buildGraph();
 
     if (!isEditorMapConnected()) {
-        map.tiles[position.y] = previousRow;
-        map.edges = previousEdges;
+        currentMap.tiles[position.y] = previousRow;
+        currentMap.edges = previousEdges;
         GHOST_HOUSES = previousHouses;
         // pellets = MAP.reduce((total, row) =>
         //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,

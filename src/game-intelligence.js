@@ -153,8 +153,8 @@ function shortestDistance(
 
     const distances =
         Array.from(
-            { length: getMapRowCount(map) },
-            () => Array(getMapColumnCount(map)).fill(Infinity)
+            { length: getMapRowCount(currentMap) },
+            () => Array(getMapColumnCount(currentMap)).fill(Infinity)
         );
 
 
@@ -299,9 +299,9 @@ function calculateDomain(node, {
             (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
             canMove(ghost.x, ghost.y, ghost.direction);
         const nextX =
-            wrap(ghost.x + ghost.direction.x, getMapColumnCount(map));
+            wrap(ghost.x + ghost.direction.x, getMapColumnCount(currentMap));
         const nextY =
-            wrap(ghost.y + ghost.direction.y, getMapRowCount(map));
+            wrap(ghost.y + ghost.direction.y, getMapRowCount(currentMap));
 
         for (const house of node.respawnState.houses) {
             const distance =
@@ -402,9 +402,9 @@ function calculateDomain(node, {
 
     const domain =
         Array.from(
-            { length: getMapRowCount(map) },
+            { length: getMapRowCount(currentMap) },
             () => Array.from(
-                { length: getMapColumnCount(map) },
+                { length: getMapColumnCount(currentMap) },
                 createDomainCell
             )
         );
@@ -518,7 +518,7 @@ function calculateDomain(node, {
             // Pacman stops expanding as soon as he reaches a power pill.
             if (
                 assessedDomainFact.owner === "pacman" &&
-                map.tiles[assessedDomainFact.y][assessedDomainFact.x] === "o" &&
+                currentMap.tiles[assessedDomainFact.y][assessedDomainFact.x] === "o" &&
                 (node.pellets.has(`${assessedDomainFact.x},${assessedDomainFact.y}`))) {
                 continue;
             }
@@ -601,9 +601,9 @@ function getRemainingDistanceToPosition(
     }
 
     const nextX =
-        wrap(character.x + character.direction.x, getMapColumnCount(map));
+        wrap(character.x + character.direction.x, getMapColumnCount(currentMap));
     const nextY =
-        wrap(character.y + character.direction.y, getMapRowCount(map));
+        wrap(character.y + character.direction.y, getMapRowCount(currentMap));
 
     return 1 - character.progress +
         shortestDistance(nextX, nextY, targetX, targetY);
@@ -667,10 +667,10 @@ function calculateNormalAndPelletScore({ pellets, ghosts, player, time, respawnS
     let pelletScore = 0;
 
     let pacmanControlledSquares = 0;
-    for (let y = 0; y < getMapRowCount(map); y++) {
-        for (let x = 0; x < getMapColumnCount(map); x++) {
+    for (let y = 0; y < getMapRowCount(currentMap); y++) {
+        for (let x = 0; x < getMapColumnCount(currentMap); x++) {
             if (
-                map.tiles[y][x] !== "#" &&
+                currentMap.tiles[y][x] !== "#" &&
                 domain[y][x].owner === "pacman"
             ) {
                 pacmanControlledSquares++;
@@ -703,12 +703,12 @@ function calculateNormalAndPelletScore({ pellets, ghosts, player, time, respawnS
             : 0;
 
 
-    for (let y = 0; y < getMapRowCount(map); y++) {
+    for (let y = 0; y < getMapRowCount(currentMap); y++) {
 
-        for (let x = 0; x < getMapColumnCount(map); x++) {
+        for (let x = 0; x < getMapColumnCount(currentMap); x++) {
 
             const cell =
-                map.tiles[y][x];
+                currentMap.tiles[y][x];
 
 
             if (
@@ -917,10 +917,10 @@ function evaluateSearchState(state) {
 // Checks movement legality against the simulated map and the game's
 // boundary restrictions, independently of the live game state.
 function canMoveInSearchState(state, character, direction) {
-    const x = wrap(character.x + direction.x, getMapColumnCount(map));
-    const y = wrap(character.y + direction.y, getMapRowCount(map));
+    const x = wrap(character.x + direction.x, getMapColumnCount(currentMap));
+    const y = wrap(character.y + direction.y, getMapRowCount(currentMap));
 
-    return map.tiles[y][x] !== "#" &&
+    return currentMap.tiles[y][x] !== "#" &&
         !isBoundaryBlocked(character.x, character.y, direction);
 }
 
@@ -976,8 +976,8 @@ function getSearchGhostDirections(state, index) {
 // together to preserve its physical location.
 function reverseSearchGhost(ghost) {
     if (ghost.progress > 0) {
-        ghost.x = wrap(ghost.x + ghost.direction.x, getMapColumnCount(map));
-        ghost.y = wrap(ghost.y + ghost.direction.y, getMapRowCount(map));
+        ghost.x = wrap(ghost.x + ghost.direction.x, getMapColumnCount(currentMap));
+        ghost.y = wrap(ghost.y + ghost.direction.y, getMapRowCount(currentMap));
         ghost.progress = 1 - ghost.progress;
     }
 
@@ -1148,8 +1148,8 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         }
 
         character.progress = Math.max(0, character.progress - 1);
-        character.x = wrap(character.x + character.direction.x, getMapColumnCount(map));
-        character.y = wrap(character.y + character.direction.y, getMapRowCount(map));
+        character.x = wrap(character.x + character.direction.x, getMapColumnCount(currentMap));
+        character.y = wrap(character.y + character.direction.y, getMapRowCount(currentMap));
 
         return true;
     };
@@ -1198,7 +1198,7 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
     }
 
     if (next.readyPlayer) {
-        const cell = map.tiles[next.player.y][next.player.x];
+        const cell = currentMap.tiles[next.player.y][next.player.x];
 
         if ((cell === "." || cell === "o") && next.pellets.has(`${next.player.x},${next.player.y}`)) {
             next.pellets.delete(`${next.player.x},${next.player.y}`);

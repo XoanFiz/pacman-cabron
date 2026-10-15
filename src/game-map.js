@@ -219,10 +219,10 @@ let activeMapId = "classic";
 let editorDraftMap = null;
 let nextCustomMapNumber = 1;
 
-let map = maps.find(definition => definition.id === activeMapId);
+let currentMap;
 
-canvas.width = getMapColumnCount(map) * CELL;
-canvas.height = getMapRowCount(map) * CELL;
+canvas.width = getMapColumnCount(maps[0]) * CELL;
+canvas.height = getMapRowCount(maps[0]) * CELL;
 
 
 // ============================================================
@@ -294,12 +294,12 @@ function getMapLabel(definition) {
 }
 
 
-function getMapRowCount(definition = map) {
+function getMapRowCount(definition = currentMap) {
     return definition.tiles.length;
 }
 
 
-function getMapColumnCount(definition = map) {
+function getMapColumnCount(definition = currentMap) {
     return definition.tiles[0]?.length ?? 0;
 }
 
@@ -309,7 +309,7 @@ function wrap(value, size) {
 }
 
 
-function getWrappedPosition(x, y, definition = map) {
+function getWrappedPosition(x, y, definition = currentMap) {
     return {
         x: wrap(x, getMapColumnCount(definition)),
         y: wrap(y, getMapRowCount(definition))
@@ -340,7 +340,7 @@ function getPossibleDirections(
 // Boundary keys are bidirectional and also wrap around the edges of the map. For example, a boundary between (0, 0) and (1, 0) is 
 // represented as "h:0:0", while a boundary between (19, 0) and (0, 0) is represented as "h:19:0". Similarly, a boundary between (0, 0) 
 // and (0, 1) is represented as "v:0:0", while a boundary between (0, 17) and (0, 0) is represented as "v:0:17".
-function getBoundaryKey(x, y, direction, definition = map) {
+function getBoundaryKey(x, y, direction, definition = currentMap) {
     const position = getWrappedPosition(x, y, definition);
 
     if (direction.x === 1) {
@@ -359,7 +359,7 @@ function getBoundaryKey(x, y, direction, definition = map) {
 }
 
 
-function isWall(x, y, definition = map) {
+function isWall(x, y, definition = currentMap) {
     if (
         x < 0 ||
         x >= getMapColumnCount(definition) ||
@@ -373,14 +373,14 @@ function isWall(x, y, definition = map) {
 }
 
 
-function isBoundaryBlocked(x, y, direction, definition = map) {
+function isBoundaryBlocked(x, y, direction, definition = currentMap) {
     return definition.edges.has(
         getBoundaryKey(x, y, direction, definition)
     );
 }
 
 
-function canMove(x, y, direction, definition = map) {
+function canMove(x, y, direction, definition = currentMap) {
     const next = getWrappedPosition(
         x + direction.x,
         y + direction.y,
@@ -396,7 +396,7 @@ function canMove(x, y, direction, definition = map) {
 // MAP CONTENT
 // ============================================================
 
-function buildPellets(definition = map) {
+function buildPellets(definition = currentMap) {
     const result = new Set();
 
     for (let y = 0; y < getMapRowCount(definition); y++) {
@@ -409,7 +409,7 @@ function buildPellets(definition = map) {
         }
     }
 
-    if (definition === map) {
+    if (definition === currentMap) {
         pellets = result;
     }
 
@@ -417,7 +417,7 @@ function buildPellets(definition = map) {
 }
 
 
-function buildGhostHouses(definition = map) {
+function buildGhostHouses(definition = currentMap) {
     const ghostHouses = [];
 
     for (let y = 0; y < getMapRowCount(definition); y++) {
@@ -512,7 +512,7 @@ function createGhostIcon(color, className) {
 }
 
 
-function getGhostName(index, ghostStarts = map.ghostStarts) {
+function getGhostName(index, ghostStarts = currentMap.ghostStarts) {
     const standardNames = [
         "redGhost",
         "orangeGhost",
@@ -631,7 +631,7 @@ function saveEditorMap() {
 // ============================================================
 
 // Graph is bidirectional
-function buildGraph(definition = map) {
+function buildGraph(definition = currentMap) {
     const rowCount = getMapRowCount(definition);
     const colCount = getMapColumnCount(definition);
 
@@ -674,7 +674,7 @@ function buildGraph(definition = map) {
         }
     }
 
-    if (definition === map) {
+    if (definition === currentMap) {
         graph = result;
     }
 

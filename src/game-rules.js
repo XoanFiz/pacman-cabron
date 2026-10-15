@@ -14,25 +14,22 @@ function resetGame() {
 
 
 function resetLevel() {
+    currentMap = cloneMapDefinition(
+        getCurrentMapDefinition()
+    );
+
+    GHOST_HOUSES = currentMap.ghostHouses.map(cloneMapPosition);
 
     pellets = buildPellets();
+
     gameTime = 0;
     paused = false;
+
     strategicSearch.nodes.clear();
     strategicSearch.frontier = [];
     strategicSearch.root = null;
 
-
-    /*
-     * Normalize each row to COLS.
-     */
-    const mapDefinition = getCurrentMapDefinition();
-
-    // MAP =mapDefinition.tiles;
-    map.edges = new Set(mapDefinition.edges);
-    GHOST_HOUSES = mapDefinition.ghostHouses.map(cloneMapPosition);
-
-    const playerStart = mapDefinition.playerStart;
+    const playerStart = currentMap.playerStart;
 
     player = {
         x: playerStart.x,
@@ -54,7 +51,7 @@ function resetLevel() {
     };
 
 
-    const ghostStarts = mapDefinition.ghostStarts;
+    const ghostStarts = currentMap.ghostStarts;
 
     ghosts = ghostStarts.map((ghost, index) => ({
         x: ghost.x,
@@ -76,8 +73,6 @@ function resetLevel() {
 
 
     buildGraph();
-    buildPellets();
-
 
     setStatus(
         selectedCharacter === "pacman"
@@ -119,7 +114,7 @@ function updatePlayer(dt) {
             wrap(
                 player.x +
                 player.direction.x,
-                getMapColumnCount(map)
+                getMapColumnCount(currentMap)
             );
 
 
@@ -127,7 +122,7 @@ function updatePlayer(dt) {
             wrap(
                 player.y +
                 player.direction.y,
-                getMapRowCount(map)
+                getMapRowCount(currentMap)
             );
 
 
@@ -228,16 +223,16 @@ function eatPellet() {
 
     if (
         x < 0 ||
-        x >= getMapColumnCount(map) ||
+        x >= getMapColumnCount(currentMap) ||
         y < 0 ||
-        y >= getMapRowCount(map)
+        y >= getMapRowCount(currentMap)
     ) {
         return;
     }
 
 
     const cell =
-        map.tiles[y][x];
+        currentMap.tiles[y][x];
 
 
     if (
@@ -310,13 +305,13 @@ function reverseGhostDirection(
         ghost.x =
             wrap(
                 ghost.x,
-                getMapColumnCount(map)
+                getMapColumnCount(currentMap)
             );
 
         ghost.y =
             wrap(
                 ghost.y,
-                getMapRowCount(map)
+                getMapRowCount(currentMap)
             );
 
 
@@ -358,7 +353,7 @@ function updateGhost(
             wrap(
                 ghost.x +
                 ghost.direction.x,
-                getMapColumnCount(map)
+                getMapColumnCount(currentMap)
             );
 
 
@@ -366,7 +361,7 @@ function updateGhost(
             wrap(
                 ghost.y +
                 ghost.direction.y,
-                getMapRowCount(map)
+                getMapRowCount(currentMap)
             );
 
         if (

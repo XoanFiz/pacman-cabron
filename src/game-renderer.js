@@ -19,18 +19,18 @@ function draw() {
 
     for (
         let y = 0;
-        y < getMapRowCount(map);
+        y < getMapRowCount(currentMap);
         y++
     ) {
 
         for (
             let x = 0;
-            x < map.tiles[y].length;
+            x < currentMap.tiles[y].length;
             x++
         ) {
 
             let cell =
-                map.tiles[y][x];
+                currentMap.tiles[y][x];
 
             if ((cell === "." || cell === "o") && ! pellets.has(`${x},${y}`)) {
                 cell = " "
@@ -113,7 +113,7 @@ function draw() {
 function drawBoundaryWalls() {
     ctx.fillStyle = editorMode ? "#9dbdff" : "#3156a3";
 
-    for (const edgeKey of map.edges) {
+    for (const edgeKey of currentMap.edges) {
         const [orientation, rawX, rawY] = edgeKey.split(":");
         const x = Number(rawX);
         const y = Number(rawY);
@@ -124,7 +124,7 @@ function drawBoundaryWalls() {
             const edgeY = y * CELL;
             ctx.fillRect(edgeX, edgeY, thickness, CELL);
 
-            if (x === getMapColumnCount(map) - 1) {
+            if (x === getMapColumnCount(currentMap) - 1) {
                 ctx.fillRect(-thickness / 2, edgeY, thickness, CELL);
             }
         } else {
@@ -132,7 +132,7 @@ function drawBoundaryWalls() {
             const edgeY = (y + 1) * CELL - thickness / 2;
             ctx.fillRect(edgeX, edgeY, CELL, thickness);
 
-            if (y === getMapRowCount(map) - 1) {
+            if (y === getMapRowCount(currentMap) - 1) {
                 ctx.fillRect(edgeX, -thickness / 2, CELL, thickness);
             }
         }
@@ -170,17 +170,17 @@ function drawMapEditorGrid() {
     ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
     ctx.lineWidth = 1;
 
-    for (let x = 0; x <= getMapColumnCount(map); x++) {
+    for (let x = 0; x <= getMapColumnCount(currentMap); x++) {
         ctx.beginPath();
         ctx.moveTo(x * CELL + 0.5, 0);
-        ctx.lineTo(x * CELL + 0.5, getMapRowCount(map) * CELL);
+        ctx.lineTo(x * CELL + 0.5, getMapRowCount(currentMap) * CELL);
         ctx.stroke();
     }
 
-    for (let y = 0; y <= getMapRowCount(map); y++) {
+    for (let y = 0; y <= getMapRowCount(currentMap); y++) {
         ctx.beginPath();
         ctx.moveTo(0, y * CELL + 0.5);
-        ctx.lineTo(getMapColumnCount(map) * CELL, y * CELL + 0.5);
+        ctx.lineTo(getMapColumnCount(currentMap) * CELL, y * CELL + 0.5);
         ctx.stroke();
     }
 }
@@ -455,10 +455,10 @@ function drawVoronoiDomains() {
         respectCurrentMovement: true
     });
 
-    for (let y = 0; y < getMapRowCount(map); y++) {
-        for (let x = 0; x < getMapColumnCount(map); x++) {
+    for (let y = 0; y < getMapRowCount(currentMap); y++) {
+        for (let x = 0; x < getMapColumnCount(currentMap); x++) {
 
-            if (map.tiles[y][x] === "#") {
+            if (currentMap.tiles[y][x] === "#") {
                 continue;
             }
 
