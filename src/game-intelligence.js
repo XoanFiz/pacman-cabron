@@ -1617,6 +1617,64 @@ function processStrategicSearchCandidate(
     refreshStrategicSearchValues(node);
 }
 
+function connectStrategicSearchCandidate(
+    node,
+    candidateTransition
+) {
+    if (candidateTransition.connected) {
+        return candidateTransition.child;
+    }
+
+    if (!candidateTransition.evaluated) {
+        throw new Error(
+            "Cannot connect an unevaluated strategic candidate."
+        );
+    }
+
+    const childState = candidateTransition.nextState;
+    const childKey = buildStateKey(childState);
+
+    // A self-loop or an edge closing a graph cycle is not connected.
+    if (childKey === node.key) {
+        candidateTransition.cycleBlocked = true;
+        return null;
+    }
+
+    let child = strategicSearch.nodes.get(childKey);
+
+    if (child && hasStrategicSearchPath(child, node)) {
+        candidateTransition.cycleBlocked = true;
+        return null;
+    }
+
+    if (!child) {
+        child = createStrategicSearchNode(
+            childState,
+            candidateTransition.value,
+            node.exploration.discoveryDepth + 1
+        );
+    }
+
+    candidateTransition.child = child;
+    candidateTransition.connected = true;
+
+    // Register this dependency exactly once.
+    const alreadyRegistered = child.incomingEdges.some(
+        edge =>
+            edge.parent === node &&
+            edge.candidate === candidateTransition
+    );
+
+    if (!alreadyRegistered) {
+        child.incomingEdges.push({
+            parent: node,
+            candidate: candidateTransition
+        });
+    }
+
+    return child;
+}
+
 // Defines frontier priority from the current decision-maker's
 // perspective, preferring strategically promising nodes while using
 // depth and improvement over the parent as tie-breakers.
@@ -1858,7 +1916,7 @@ function getStrategicGhostDirection(node, ghostIndex, fallback) {
         }
 
         const group = groups.get(ghostKey);
-        const candidateValue = getStrategicCandidateValue(candidate, node)
+        const candidateValue = getStrategicCandidateValue(node, candidate)
 
         group.value = Math.min(group.value, candidateValue);
     }
@@ -1908,18 +1966,28 @@ function getOrSetStrategicSearchRoot(
         );
     }
 
+    strategicSearch.root = root;
+
     prepareStrategicSearchNode(root);
 
-    while (root.nextCandidate < root.candidates.length) {
-        const candidate = root.candidates[root.nextCandidate++];
+    // Temporary legacy policy: process all root actions immediately.
+    // The next iteration will move root work into the shared budget.
+    while (
+        root.exploration.nextCandidate <
+        root.candidates.length
+    ) {
+        const candidate =
+            root.candidates[root.exploration.nextCandidate];
 
         processStrategicSearchCandidate(root, candidate);
+
+        root.exploration.nextCandidate++;
     }
 
-    root.expanded = true;
-    removeStrategicSearchFrontier(root);
+    root.exploration.expanded = true;
+    root.exploration.phase = "complete";
 
-    strategicSearch.root = root;
+    removeStrategicSearchFrontier(root);
 
     return root;
 }
