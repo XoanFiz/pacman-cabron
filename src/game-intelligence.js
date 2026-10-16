@@ -1399,14 +1399,67 @@ function prepareStrategicSearchNode(node) {
 
     node.candidates = getSearchActionProfiles(node.state).map(profile => ({
         ...profile,
+
+        // Transition lifecycle.
+        evaluated: false,
+        connected: false,
+        cycleBlocked: false,
+
+        // Retained for compatibility with existing consumers.
         processed: false,
+
+        // Meaningful only until a child is connected.
         value: node.staticValue,
+
+        // Canonical successor, when connected.
         child: null
     }));
 
-    if (node.candidates.length === 0) {
-        node.expanded = true;
+    node.exploration.phase =
+        node.candidates.length === 0
+            ? "complete"
+            : "prepared";
+
+    node.exploration.expanded =
+        node.candidates.length === 0;
+}
+
+function evaluateStrategicSearchCandidate(
+    node,
+    candidateTransition
+) {
+    if (candidateTransition.evaluated) {
+        return candidateTransition.value;
     }
+
+    const childState = candidateTransition.nextState;
+
+    candidateTransition.value =
+        evaluateSearchState(childState);
+
+    candidateTransition.evaluated = true;
+    candidateTransition.processed = true;
+
+    return candidateTransition.value;
+}
+
+function evaluateStrategicSearchCandidate(
+    node,
+    candidateTransition
+) {
+    if (candidateTransition.evaluated) {
+        return candidateTransition.value;
+    }
+
+    const childState = candidateTransition.nextState;
+
+    candidateTransition.value =
+        evaluateSearchState(childState);
+
+    candidateTransition.evaluated = true;
+    candidateTransition.processed = true;
+
+    return candidateTransition.value;
 }
 
 // Produces a stable identifier for a joint ghost action.
@@ -1539,47 +1592,19 @@ function hasStrategicSearchPath(start, target) {
 // Evaluates one candidate transition and connects its resulting state
 // to the shared graph when doing so does not introduce an ancestor
 // cycle. Repeated states reuse their existing values and dependencies.
-function processStrategicSearchCandidate(node, candidateTransition) {
-    const childState = candidateTransition.nextState;
-    const childKey = buildStateKey(childState);
-    const childValue = evaluateSearchState(childState);
+function processStrategicSearchCandidate(
+    node,
+    candidateTransition
+) {
+    evaluateStrategicSearchCandidate(
+        node,
+        candidateTransition
+    );
 
-    candidateTransition.processed = true;
-    candidateTransition.value = childValue;
-
-    const isAncestor = (() => {
-        let ancestor = node;
-
-        while (ancestor) {
-            if (ancestor.key === childKey) {
-                return true;
-            }
-
-            ancestor = ancestor.parent;
-        }
-
-        return false;
-    })();
-
-    if (!isAncestor) {
-        let child = strategicSearch.nodes.get(childKey);
-
-        if (!child) {
-            child = createStrategicSearchNode(
-                childState,
-                childValue,
-                node.exploration.discoveryDepth + 1
-            );
-            candidateTransition.child = child;
-        } else if (child !== node && !hasStrategicSearchPath(child, node)) {
-            candidateTransition.child = child;
-            child.incomingEdges.push({
-                parent: node,
-                candidate: candidateTransition
-            });
-            candidateTransition.value = child.value;
-        }
-    }
+    connectStrategicSearchCandidate(
+        node,
+        candidateTransition
+    );
 
     refreshStrategicSearchValues(node);
 }
