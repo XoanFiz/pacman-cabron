@@ -1588,7 +1588,7 @@ function hasStrategicSearchPath(start, target) {
         visited.add(node);
 
         for (const candidate of node.candidates || []) {
-            if (candidate.child) {
+            if (candidate.connected && candidate.child) {
                 pending.push(candidate.child);
             }
         }
