@@ -2031,11 +2031,10 @@ function chooseStrategicPacmanDirection(searchContext) {
 
         const action = actionValues.get(key);
 
-        const value = candidate.child
-            ? candidate.child.value
-            : candidate.processed
-                ? candidate.value
-                : root.staticValue;
+        const value = getStrategicCandidateValue(
+            root,
+            candidate
+        );
 
         action.ghostResponses.set(
             ghostKey,
