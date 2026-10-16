@@ -1621,8 +1621,8 @@ function processStrategicSearchCandidate(
 // perspective, preferring strategically promising nodes while using
 // depth and improvement over the parent as tie-breakers.
 function compareStrategicSearchNodes(a, b) {
-    const aSign = a.readyGhosts ? 1 : -1;
-    const bSign = b.readyGhosts ? 1 : -1;
+    const aSign = a.state.readyGhosts ? 1 : -1;
+    const bSign = b.state.readyGhosts ? 1 : -1;
     const aValue = a.value * aSign;
     const bValue = b.value * bSign;
 
@@ -1630,18 +1630,11 @@ function compareStrategicSearchNodes(a, b) {
         return bValue - aValue;
     }
 
-    if (a.depth !== b.depth) {
-        return a.depth - b.depth;
-    }
-
-    const aImprovement = a.parent
-        ? (a.value - a.parent.staticValue) * (a.parent.readyGhosts ? 1 : -1)
-        : 0;
-    const bImprovement = b.parent
-        ? (b.value - b.parent.staticValue) * (b.parent.readyGhosts ? 1 : -1)
-        : 0;
-
-    return bImprovement - aImprovement;
+    // Retained only as a temporary scheduling hint.
+    return (
+        a.exploration.discoveryDepth -
+        b.exploration.discoveryDepth
+    );
 }
 
 // Swaps two frontier entries while keeping each node's stored heap
@@ -1650,23 +1643,35 @@ function swapStrategicSearchFrontier(a, b) {
     const frontier = strategicSearch.frontier;
 
     [frontier[a], frontier[b]] = [frontier[b], frontier[a]];
-    frontier[a].heapIndex = a;
-    frontier[b].heapIndex = b;
+    frontier[a].exploration.heapIndex = a;
+    frontier[b].exploration.heapIndex = b;
 }
 
 // Inserts a node into the indexed priority queue used to schedule
 // further search expansions.
 function pushStrategicSearchFrontier(node) {
+    const exploration = node.exploration;
+
+    if (exploration.heapIndex >= 0) {
+        updateStrategicSearchFrontier(node);
+        return;
+    }
+
     const frontier = strategicSearch.frontier;
     let index = frontier.length;
 
     frontier.push(node);
-    node.heapIndex = index;
+    exploration.heapIndex = index;
 
     while (index > 0) {
         const parent = Math.floor((index - 1) / 2);
 
-        if (compareStrategicSearchNodes(frontier[index], frontier[parent]) >= 0) {
+        if (
+            compareStrategicSearchNodes(
+                frontier[index],
+                frontier[parent]
+            ) >= 0
+        ) {
             break;
         }
 
@@ -1680,7 +1685,7 @@ function pushStrategicSearchFrontier(node) {
 // Because values can propagate through the graph, frontier priorities
 // must be updated without inserting duplicate entries.
 function updateStrategicSearchFrontier(node) {
-    let index = node.heapIndex;
+    let index = node.exploration.heapIndex;
 
     if (index < 0) {
         return;
@@ -1738,11 +1743,11 @@ function popStrategicSearchFrontier() {
 
     const first = frontier[0];
     const last = frontier.pop();
-    first.heapIndex = -1;
+    first.exploration.heapIndex = -1;
 
     if (frontier.length > 0) {
         frontier[0] = last;
-        last.heapIndex = 0;
+        last.exploration.heapIndex = 0;
         updateStrategicSearchFrontier(last);
     }
 
@@ -1752,7 +1757,7 @@ function popStrategicSearchFrontier() {
 // Removes a specific node from the frontier in logarithmic time,
 // using its stored heap index rather than searching the queue.
 function removeStrategicSearchFrontier(node) {
-    const index = node.heapIndex;
+    const index = node.exploration.heapIndex;
 
     if (index < 0) {
         return;
@@ -1760,11 +1765,13 @@ function removeStrategicSearchFrontier(node) {
 
     const frontier = strategicSearch.frontier;
     const last = frontier.pop();
-    node.heapIndex = -1;
+
+    node.exploration.heapIndex = -1;
 
     if (index < frontier.length) {
         frontier[index] = last;
-        last.heapIndex = index;
+        last.exploration.heapIndex = index;
+
         updateStrategicSearchFrontier(last);
     }
 }
@@ -1774,32 +1781,52 @@ function removeStrategicSearchFrontier(node) {
 // strategic graph to expand incrementally without monopolizing the
 // game loop. Each expansion processes one candidate transition.
 function advanceStrategicSearch() {
-    for (
-        let expansion = 0;
-        expansion < SEARCH_EXPANSIONS_PER_FRAME;
-        expansion++
-    ) {
+    let expansions = 0;
+
+    while (expansions < SEARCH_EXPANSIONS_PER_FRAME) {
         const node = popStrategicSearchFrontier();
 
         if (!node) {
-            return;
+            break;
         }
 
-        if (node.expanded) {
+        const exploration = node.exploration;
+
+        if (exploration.expanded) {
             continue;
         }
 
         prepareStrategicSearchNode(node);
 
-        if (!node.expanded) {
-            const candidate = node.candidates[node.nextCandidate++];
-            processStrategicSearchCandidate(node, candidate);
+        if (exploration.expanded) {
+            continue;
+        }
 
-            if (node.nextCandidate >= node.candidates.length) {
-                node.expanded = true;
-            } else {
-                pushStrategicSearchFrontier(node);
-            }
+        if (
+            exploration.nextCandidate >=
+            node.candidates.length
+        ) {
+            exploration.expanded = true;
+            exploration.phase = "complete";
+            continue;
+        }
+
+        const candidate =
+            node.candidates[exploration.nextCandidate];
+
+        processStrategicSearchCandidate(node, candidate);
+
+        exploration.nextCandidate++;
+        expansions++;
+
+        if (
+            exploration.nextCandidate >=
+            node.candidates.length
+        ) {
+            exploration.expanded = true;
+            exploration.phase = "complete";
+        } else {
+            pushStrategicSearchFrontier(node);
         }
     }
 }

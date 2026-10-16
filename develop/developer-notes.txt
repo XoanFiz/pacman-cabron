@@ -1,4 +1,6 @@
 TODO
+Clarify chat-gpt refactor doubts
+    Why it keeps using, or if, the old frontier to get the next candidates?
 Fix characters traversing walls
 Move many things from game-map to game-rules.
 Correct frontier management to avoid expanding nodes from abandoned branches, while preserving deduplication and valid alternative paths.
