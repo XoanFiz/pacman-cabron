@@ -1343,35 +1343,47 @@ function getSearchActionProfiles(state) {
 // Creates a node in the shared strategic search graph. Identical
 // states can reuse an existing node, while incoming edges allow value
 // changes to propagate back to every parent that depends on the node.
-function createStrategicSearchNode(state, parent, parentEdge, depth, value) {
+function createStrategicSearchNode(
+    state,
+    value,
+    discoveryDepth = 0
+) {
     const key = buildStateKey(state);
+
     const node = {
         key,
         state,
-        parent,
-        parentEdge,
-        depth,
-        staticValue: value,
-        value,
-        candidates: null,
-        nextCandidate: 0,
-        incomingEdges: [],
-        expanded: state.terminal,
-        heapIndex: -1,
-        readyGhosts: state.readyGhosts.some(Boolean),
-        readyPlayer: state.readyPlayer
-    };
 
-    if (parent && parentEdge) {
-        node.incomingEdges.push({
-            parent,
-            candidate: parentEdge
-        });
-    }
+        // Immutable baseline for this canonical state.
+        staticValue: value,
+
+        // Revisable strategic estimate.
+        value,
+
+        // Generated transitions and reverse graph dependencies.
+        candidates: null,
+        incomingEdges: [],
+
+        // Mutable search progress, separate from state identity.
+        exploration: {
+            phase: state.terminal
+                ? "complete"
+                : "unprepared",
+
+            nextCandidate: 0,
+            expanded: state.terminal,
+
+            // Scheduling hint only; not a canonical depth.
+            discoveryDepth,
+
+            // Temporary compatibility with the indexed frontier.
+            heapIndex: -1
+        }
+    };
 
     strategicSearch.nodes.set(key, node);
 
-    if (!node.expanded) {
+    if (!node.exploration.expanded) {
         pushStrategicSearchFrontier(node);
     }
 
@@ -1397,6 +1409,29 @@ function prepareStrategicSearchNode(node) {
     }
 }
 
+// Produces a stable identifier for a joint ghost action.
+function getStrategicGhostActionKey(candidate) {
+    return candidate.ghostDirections
+        .map(([index, direction]) =>
+            `${index}:${direction.x},${direction.y}`
+        )
+        .join("|");
+}
+
+// Returns the best currently available estimate for a candidate
+// transition, whether or not its successor has been expanded.
+function getStrategicCandidateValue(node, candidate) {
+    if (candidate.child) {
+        return candidate.child.value;
+    }
+
+    if (candidate.processed) {
+        return candidate.value;
+    }
+
+    return node.staticValue;
+}
+
 // Aggregates action values according to the decision-maker at the
 // current event. Ghosts maximize their outcome; Pac-Man minimizes it.
 // When both sides can act, the value follows a maximin interpretation:
@@ -1411,16 +1446,8 @@ function getStrategicSearchNodeValue(node) {
     const ghostGroups = new Map();
 
     for (const candidate of node.candidates) {
-        const ghostKey = candidate.ghostDirections
-            .map(([index, direction]) =>
-                `${index}:${direction.x},${direction.y}`
-            )
-            .join("|");
-        const value = candidate.child
-            ? candidate.child.value
-            : candidate.processed
-                ? candidate.value
-                : node.staticValue;
+        const ghostKey = getStrategicGhostActionKey(candidate)
+        const value = getStrategicCandidateValue(node, candidate)
 
         if (!ghostGroups.has(ghostKey)) {
             ghostGroups.set(ghostKey, []);
@@ -1540,10 +1567,8 @@ function processStrategicSearchCandidate(node, candidateTransition) {
         if (!child) {
             child = createStrategicSearchNode(
                 childState,
-                node,
-                candidateTransition,
-                node.depth + 1,
-                childValue
+                childValue,
+                node.exploration.discoveryDepth + 1
             );
             candidateTransition.child = child;
         } else if (child !== node && !hasStrategicSearchPath(child, node)) {
@@ -1773,11 +1798,7 @@ function getStrategicGhostDirection(node, ghostIndex, fallback) {
         }
 
         const group = groups.get(ghostKey);
-        const candidateValue = candidate.child
-            ? candidate.child.value
-            : candidate.processed
-                ? candidate.value
-                : node.staticValue;
+        const candidateValue = getStrategicCandidateValue(candidate, node)
 
         group.value = Math.min(group.value, candidateValue);
     }
@@ -1822,10 +1843,8 @@ function getOrSetStrategicSearchRoot(
     if (!root) {
         root = createStrategicSearchNode(
             provisionalState,
-            null,
-            null,
-            0,
-            evaluateSearchState(provisionalState)
+            evaluateSearchState(provisionalState),
+            0
         );
     }
 

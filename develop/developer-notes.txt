@@ -39,3 +39,4 @@ ghosts	state.ghosts	Position, direction, movement progress, and state of each gh
 pellets	state.pellets	Pellets remaining in the game.
 lives	state.lives	Remaining lives; affects transitions and evaluation.
 gameTime	state.time or state.gameTime	Game time, required to evaluate temporal states.
+

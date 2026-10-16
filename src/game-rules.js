@@ -25,7 +25,7 @@ function resetLevel() {
     gameTime = 0;
     paused = false;
 
-    strategicSearch.nodes.clear();
+    // strategicSearch.nodes.clear();
     strategicSearch.frontier = [];
     strategicSearch.root = null;
 
