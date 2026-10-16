@@ -1478,7 +1478,7 @@ function getStrategicCandidateValue(node, candidate) {
         return candidate.child.value;
     }
 
-    if (candidate.processed) {
+    if (candidate.evaluated) {
         return candidate.value;
     }
 
@@ -1494,8 +1494,8 @@ function getStrategicSearchNodeValue(node) {
         return node.staticValue;
     }
 
-    const hasGhostMove = node.readyGhosts;
-    const hasPlayerMove = node.readyPlayer;
+    const hasGhostMove = node.state.readyGhosts.some(Boolean);
+    const hasPlayerMove = node.state.readyPlayer;
     const ghostGroups = new Map();
 
     for (const candidate of node.candidates) {
@@ -1510,8 +1510,10 @@ function getStrategicSearchNodeValue(node) {
     }
 
     if (hasGhostMove && hasPlayerMove) {
-        const worstResponses = Array.from(ghostGroups.values())
-            .map(values => Math.min(...values));
+        const worstResponses = Array.from(
+            ghostGroups.values(),
+            values => Math.min(...values)
+        );
 
         return Math.max(...worstResponses);
     }
@@ -1539,21 +1541,27 @@ function refreshStrategicSearchValues(node) {
     while (pending.length > 0) {
         const current = pending.pop();
         queued.delete(current);
-        const nextValue = getStrategicSearchNodeValue(current);
 
-        if (Math.abs(nextValue - current.value) <= EPSILON) {
+        const nextValue =
+            getStrategicSearchNodeValue(current);
+
+        if (
+            Math.abs(nextValue - current.value) <= EPSILON
+        ) {
             continue;
         }
 
         current.value = nextValue;
+
+        // The frontier is still used in this iteration.
         updateStrategicSearchFrontier(current);
 
         for (const edge of current.incomingEdges) {
-            edge.candidate.value = nextValue;
+            const parent = edge.parent;
 
-            if (!queued.has(edge.parent)) {
-                pending.push(edge.parent);
-                queued.add(edge.parent);
+            if (!queued.has(parent)) {
+                pending.push(parent);
+                queued.add(parent);
             }
         }
     }
