@@ -1425,26 +1425,6 @@ function prepareStrategicSearchNode(node) {
 }
 
 function evaluateStrategicSearchCandidate(
-    node,
-    candidateTransition
-) {
-    if (candidateTransition.evaluated) {
-        return candidateTransition.value;
-    }
-
-    const childState = candidateTransition.nextState;
-
-    candidateTransition.value =
-        evaluateSearchState(childState);
-
-    candidateTransition.evaluated = true;
-    candidateTransition.processed = true;
-
-    return candidateTransition.value;
-}
-
-function evaluateStrategicSearchCandidate(
-    node,
     candidateTransition
 ) {
     if (candidateTransition.evaluated) {
@@ -1605,7 +1585,6 @@ function processStrategicSearchCandidate(
     candidateTransition
 ) {
     evaluateStrategicSearchCandidate(
-        node,
         candidateTransition
     );
 
@@ -1679,8 +1658,15 @@ function connectStrategicSearchCandidate(
 // perspective, preferring strategically promising nodes while using
 // depth and improvement over the parent as tie-breakers.
 function compareStrategicSearchNodes(a, b) {
-    const aSign = a.state.readyGhosts ? 1 : -1;
-    const bSign = b.state.readyGhosts ? 1 : -1;
+    const aHasGhostMove =
+        a.state.readyGhosts.some(Boolean);
+
+    const bHasGhostMove =
+        b.state.readyGhosts.some(Boolean);
+
+    const aSign = aHasGhostMove ? 1 : -1;
+    const bSign = bHasGhostMove ? 1 : -1;
+
     const aValue = a.value * aSign;
     const bValue = b.value * bSign;
 
@@ -1688,7 +1674,6 @@ function compareStrategicSearchNodes(a, b) {
         return bValue - aValue;
     }
 
-    // Retained only as a temporary scheduling hint.
     return (
         a.exploration.discoveryDepth -
         b.exploration.discoveryDepth
