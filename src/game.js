@@ -1,5 +1,6 @@
 (() => {
     const scripts = [
+        "locales.js",
         "game-state.js",
         "game-map.js",
         "game-intelligence.js",
