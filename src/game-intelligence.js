@@ -1660,13 +1660,13 @@ function prepareStrategicSearchNode(node) {
         node.candidates.length === 0;
 }
 
-function evaluateStrategicSearchCandidate(candidateTransition) {
-    if (candidateTransition.evaluated) {
-        return getStrategicCandidateValue(candidateTransition);
-    }
+// function evaluateStrategicSearchCandidate(candidateTransition) {
+//     if (candidateTransition.evaluated) {
+//         return getStrategicCandidateValue(candidateTransition);
+//     }
 
-    return evaluateSearchState(candidateTransition.nextState);
-}
+//     return evaluateSearchState(candidateTransition.nextState);
+// }
 
 // Produces a stable identifier for a joint ghost action.
 function getStrategicGhostActionKey(candidate) {
