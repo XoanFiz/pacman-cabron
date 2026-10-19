@@ -824,7 +824,7 @@ function createCurrentGameSearchState(
 ) {
     const readyGhostSet = new Set(readyGhostIndices);
 
-    return {
+    const state = {
         pellets: new Set(searchContext.pellets),
         lives: searchContext.lives,
         time: searchContext.time,
@@ -852,8 +852,11 @@ function createCurrentGameSearchState(
 
         readyGhosts: searchContext.ghosts.map(
             (_, index) => readyGhostSet.has(index)
-        )
-    };
+        ),
+    }
+
+    state.firstActor = getDeterministicTurnOrder(state)
+    return state;
 }
 
 
@@ -893,6 +896,34 @@ function buildStateKey(state) {
         state.readyPlayer,
         state.readyGhosts
     ]);
+}
+
+function getDeterministicTurnOrder(state) {
+    const hasGhostMove = state.readyGhosts.some(Boolean);
+    const hasPlayerMove = state.readyPlayer;
+
+    if (hasGhostMove && !hasPlayerMove) {
+        return "ghosts";
+    }
+
+    if (hasPlayerMove && !hasGhostMove) {
+        return "player";
+    }
+
+    if (!hasGhostMove && !hasPlayerMove) {
+        return null;
+    }
+
+    const key = buildStateKey(state);
+    let hash = 0;
+
+    for (let i = 0; i < key.length; i++) {
+        hash = (Math.imul(hash, 31) + key.charCodeAt(i)) | 0;
+    }
+
+    return (hash >>> 0) % 2 === 0
+        ? "ghosts"
+        : "player";
 }
 
 // Evaluates a hypothetical state using the domain objective and
@@ -989,11 +1020,307 @@ function reverseSearchGhost(ghost) {
     ghost.direction.y *= -1;
 }
 
-// Advances the simulation to the next relevant event rather than by
-// a fixed time step. Events include cell arrivals, frightened-mode
-// expiration, pellet collection, and continuous player-ghost collision.
-// Returns a new state without modifying the input state.
-function advanceSearchState(state, ghostDirections, playerDirection) {
+function finalizeSearchState(state) {
+    state.firstActor = getDeterministicTurnOrder(state);
+    return state;
+}
+
+// This funcion needs to be used upon every character individually
+function moveSearchCharacterToEvent(character, speed, elapsedTime) {
+    if (character.direction.x === 0 && character.direction.y === 0) {
+        return false;
+    }
+
+    character.progress += speed * elapsedTime;
+
+    if (character.progress < 1 - SEARCH_EPSILON) {
+        return false;
+    }
+
+    character.progress = Math.max(0, character.progress - 1);
+
+    character.x = wrap(
+        character.x + character.direction.x,
+        getMapColumnCount(currentMap)
+    );
+
+    character.y = wrap(
+        character.y + character.direction.y,
+        getMapRowCount(currentMap)
+    );
+
+    return true;
+}
+
+function collectSearchPellet(state) {
+    if (!state.readyPlayer) {
+        return;
+    }
+
+    const cell = currentMap.tiles[state.player.y][state.player.x];
+    const key = `${state.player.x},${state.player.y}`;
+
+    if (
+        (cell !== "." && cell !== "o") ||
+        !state.pellets.has(key)
+    ) {
+        return;
+    }
+
+    state.pellets.delete(key);
+
+    if (cell !== "o") {
+        return;
+    }
+
+    for (let ghostIndex = 0; ghostIndex < state.ghosts.length; ghostIndex++) {
+        const ghost = state.ghosts[ghostIndex];
+
+        if (ghost.eaten) {
+            continue;
+        }
+
+        setSearchGhostState(ghost, "frightened");
+        state.readyGhosts[ghostIndex] = true;
+    }
+}
+
+function resolveSearchCollision(state, next, ghostIndex) {
+    if (ghostIndex < 0) {
+        return false;
+    }
+
+    const ghost = next.ghosts[ghostIndex];
+
+    if (ghost.frightened) {
+        setSearchGhostState(ghost, "eaten");
+
+        return false;
+    }
+
+    next.lives--;
+
+    if (next.lives <= 0) {
+        next.terminal = true;
+        next.readyPlayer = false;
+        next.readyGhosts = next.ghosts.map(() => false);
+
+        return true;
+    }
+
+    const playerStart = state.respawnState.player;
+
+    next.player.x = playerStart.x;
+    next.player.y = playerStart.y;
+    next.player.px = playerStart.x;
+    next.player.py = playerStart.y;
+    next.player.progress = 0;
+    next.player.direction = { x: 0, y: 0 };
+    next.player.nextDirection = { x: 0, y: 0 };
+
+    next.ghosts = state.ghosts.map((ghost, index) => {
+        const start = state.respawnState.ghosts[index];
+
+        const restoredGhost = {
+            ...cloneSearchCharacter(ghost),
+            x: start.x,
+            y: start.y,
+            px: start.x,
+            py: start.y,
+            direction: { ...start.direction },
+            nextDirection: { ...start.direction },
+            progress: 0,
+            needsDirection: false,
+            eaten: false,
+            frightened: false,
+            frightenedTimer: undefined,
+            speed: start.speed
+        };
+
+        setSearchGhostState(restoredGhost, "normal");
+
+        return restoredGhost;
+    });
+
+    next.readyPlayer = state.controlledGhostIndex === -1;
+
+    next.readyGhosts = next.ghosts.map(
+        (_, index) => index === state.controlledGhostIndex
+    );
+
+    return false;
+}
+
+function getSearchCollisionTime(
+    player,
+    ghost,
+    playerVelocityX,
+    playerVelocityY
+) {
+    if (ghost.eaten) {
+        return Infinity;
+    }
+
+    const relativeX =
+        ghost.x +
+        ghost.direction.x * ghost.progress -
+        (player.x + player.direction.x * player.progress);
+
+    const relativeY =
+        ghost.y +
+        ghost.direction.y * ghost.progress -
+        (player.y + player.direction.y * player.progress);
+
+    const ghostSpeed = ghost.speed;
+
+    const relativeVelocityX =
+        ghost.direction.x * ghostSpeed - playerVelocityX;
+
+    const relativeVelocityY =
+        ghost.direction.y * ghostSpeed - playerVelocityY;
+
+    const relativeVelocitySquared =
+        relativeVelocityX * relativeVelocityX +
+        relativeVelocityY * relativeVelocityY;
+
+    const distanceSquared =
+        relativeX * relativeX +
+        relativeY * relativeY;
+
+    if (distanceSquared <= GHOST_COLLISION_DISTANCE ** 2) {
+        return 0;
+    }
+
+    if (relativeVelocitySquared === 0) {
+        return Infinity;
+    }
+
+    const linear =
+        2 * (
+            relativeX * relativeVelocityX +
+            relativeY * relativeVelocityY
+        );
+
+    const discriminant =
+        linear * linear -
+        4 * relativeVelocitySquared *
+        (distanceSquared - GHOST_COLLISION_DISTANCE ** 2);
+
+    if (discriminant < 0) {
+        return Infinity;
+    }
+
+    const collisionTime =
+        (-linear - Math.sqrt(discriminant)) /
+        (2 * relativeVelocitySquared);
+
+    return collisionTime >= 0 ? collisionTime : Infinity;
+}
+
+
+
+function getSearchNextEvent(state) {
+    let timeToNextEvent = Infinity;
+    let collisionedGhostIndex = -1;
+
+    const considerEvent = (time, ghostIndex = -1) => {
+        if (time < timeToNextEvent) {
+            timeToNextEvent = time;
+            collisionedGhostIndex = ghostIndex;
+            return;
+        }
+
+        if (
+            time === timeToNextEvent &&
+            ghostIndex >= 0 &&
+            collisionedGhostIndex < 0
+        ) {
+            collisionedGhostIndex = ghostIndex;
+        }
+    };
+
+    const considerArrival = (character, speed) => {
+        if (character.direction.x === 0 && character.direction.y === 0) {
+            return;
+        }
+
+        const timeToCenter =
+            Math.max(0, 1 - character.progress) / speed;
+
+        considerEvent(timeToCenter);
+    };
+
+    considerArrival(state.player, PACMAN_SPEED);
+
+    const playerVelocityX =
+        state.player.direction.x * PACMAN_SPEED;
+
+    const playerVelocityY =
+        state.player.direction.y * PACMAN_SPEED;
+
+    for (let index = 0; index < state.ghosts.length; index++) {
+        const ghost = state.ghosts[index];
+
+        if (ghost.frightened) {
+            considerEvent(ghost.frightenedTimer);
+        }
+
+        considerArrival(ghost, ghost.speed);
+
+        const collisionTime = getSearchCollisionTime(
+            state.player,
+            ghost,
+            playerVelocityX,
+            playerVelocityY
+        );
+
+        if (Number.isFinite(collisionTime)) {
+            considerEvent(collisionTime, index);
+        }
+    }
+
+    return {
+        timeToNextEvent,
+        collisionedGhostIndex
+    };
+}
+
+/*
+setSearchGhostState(ghost, "frightened");
+setSearchGhostState(ghost, "eaten");
+setSearchGhostState(ghost, "normal");
+*/
+function setSearchGhostState(ghost, state) {
+    switch (state) {
+        case "normal":
+            ghost.eaten = false;
+            ghost.frightened = false;
+            ghost.frightenedTimer = undefined;
+            ghost.speed = GHOST_SPEED;
+            break;
+
+        case "frightened":
+            if (ghost.eaten) return;
+
+            ghost.eaten = false;
+            ghost.frightened = true;
+            ghost.frightenedTimer = FRIGHTENED_DURATION;
+            ghost.speed = FRIGHTENED_GHOST_SPEED;
+            break;
+
+        case "eaten":
+            ghost.eaten = true;
+            ghost.frightened = false;
+            ghost.frightenedTimer = undefined;
+            ghost.speed = EATEN_GHOST_SPEED;
+            break;
+
+        default:
+            throw new Error(`Unknown search ghost state: ${state}`);
+    }
+}
+
+function applySearchActions(state, ghostDirections, playerDirection) {
     const next = {
         ...state,
         pellets: new Set(state.pellets),
@@ -1011,152 +1338,109 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         next.ghosts[index].direction = { ...direction };
     }
 
-    let timeToNextEvent = Infinity;
+    return next;
+}
 
-    const computeCentreArrivalCandidate = (character, speed) => {
-        if (character.direction.x === 0 && character.direction.y === 0) {
-            return;
-        }
+function advanceSearchCharactersToEvent(state, elapsedTime) {
+    state.time += elapsedTime;
 
-        const timeToCenter =
-            Math.max(0, 1 - character.progress) / speed;
+    state.readyPlayer = moveSearchCharacterToEvent(
+        state.player,
+        PACMAN_SPEED,
+        elapsedTime
+    );
 
-        timeToNextEvent = Math.min(timeToNextEvent, timeToCenter);
-    };
+    for (
+        let ghostIndex = 0; ghostIndex < state.ghosts.length; ghostIndex++) {
+        const ghost = state.ghosts[ghostIndex];
 
-    // Pac-man
-    computeCentreArrivalCandidate(next.player, PACMAN_SPEED);
-
-    const playerX =
-        next.player.x +
-        next.player.direction.x *
-        next.player.progress;
-    const playerY =
-        next.player.y +
-        next.player.direction.y *
-        next.player.progress;
-    const playerVelocityX =
-        next.player.direction.x * PACMAN_SPEED;
-    const playerVelocityY =
-        next.player.direction.y * PACMAN_SPEED;
-
-
-    let collisionedGhostIndex = -1;
-    // Ghosts 
-    for (let ghostIndex = 0; ghostIndex < next.ghosts.length; ghostIndex++) {
-        const ghost = next.ghosts[ghostIndex];
-        if (ghost.frightened) {
-            // Frightened expirancy
-            timeToNextEvent = Math.min(
-                timeToNextEvent,
-                ghost.frightenedTimer
-            );
-        }
-
-        computeCentreArrivalCandidate(
+        const arrived = moveSearchCharacterToEvent(
             ghost,
-            ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED
+            ghost.speed,
+            elapsedTime
         );
 
-        if (ghost.eaten) {
-            continue;
-        }
+        state.readyGhosts[ghostIndex] = arrived;
 
-        // Begin considering a current collision
-        const relativeX =
-            ghost.x +
-            ghost.direction.x * ghost.progress -
-            playerX;
-        const relativeY =
-            ghost.y +
-            ghost.direction.y * ghost.progress -
-            playerY;
-        const relativeVelocityX =
-            ghost.direction.x *
-            (ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED) -
-            playerVelocityX;
-        const relativeVelocityY =
-            ghost.direction.y *
-            (ghost.eaten ? EATEN_GHOST_SPEED : GHOST_SPEED) -
-            playerVelocityY;
-        const relativeVelocitySquared =
-            relativeVelocityX * relativeVelocityX +
-            relativeVelocityY * relativeVelocityY;
-        const distanceSquared =
-            relativeX * relativeX +
-            relativeY * relativeY;
+        updateSearchGhostFrightenedTimer(ghost, elapsedTime);
 
-        if (distanceSquared <= GHOST_COLLISION_DISTANCE ** 2) {
-            timeToNextEvent = 0;
-            collisionedGhostIndex = ghostIndex;
-            continue;
-        }
-        // End considering a current collision
-
-        // Begin considering a future collision
-        if (relativeVelocitySquared === 0) {
-            collisionedGhostIndex = ghostIndex;
-            continue;
-        }
-
-        const linear =
-            2 * (
-                relativeX * relativeVelocityX +
-                relativeY * relativeVelocityY
-            );
-        const discriminant =
-            linear * linear -
-            4 * relativeVelocitySquared *
-            (distanceSquared - GHOST_COLLISION_DISTANCE ** 2);
-
-        if (discriminant < 0) {
-            collisionedGhostIndex = ghostIndex;
-            continue;
-        }
-
-        const collisionTime =
-            (-linear - Math.sqrt(discriminant)) /
-            (2 * relativeVelocitySquared);
-
-        if (collisionTime >= 0) {
-            timeToNextEvent = Math.min(
-                timeToNextEvent,
-                collisionTime
-            );
-            if (timeToNextEvent == timeToNextEvent) {
-                collisionedGhostIndex = ghostIndex;
-            }
-        }
-        // End considering a future collision
+        recoverSearchGhostAtHouse(state, ghostIndex, arrived);
     }
+}
+
+
+function resolveSearchEvent(
+    previousState,
+    nextState,
+    collisionedGhostIndex
+) {
+    if (nextState.readyPlayer) {
+        collectSearchPellet(nextState);
+    }
+
+    resolveSearchCollision(
+        previousState,
+        nextState,
+        collisionedGhostIndex
+    );
+
+    return nextState;
+}
+
+// Advances a frightened ghost's timer and restores its normal state
+// when the frightened period expires.
+function updateSearchGhostFrightenedTimer(ghost, elapsedTime) {
+    if (!ghost.frightened) return;
+
+    ghost.frightenedTimer -= elapsedTime;
+
+    if (ghost.frightenedTimer <= 0) {
+        setSearchGhostState(ghost, "normal");
+    }
+}
+
+// Restores an eaten ghost when it reaches one of its respawn houses.
+function recoverSearchGhostAtHouse(state, ghostIndex, arrived) {
+    if (!arrived) return;
+
+    const ghost = state.ghosts[ghostIndex];
+
+    if (!ghost.eaten) return;
+
+    const reachedHouse = state.respawnState.houses.some(house =>
+        ghost.x === house.x && ghost.y === house.y
+    );
+
+    if (!reachedHouse) return;
+
+    setSearchGhostState(ghost, "normal");
+    state.readyGhosts[ghostIndex] = true;
+}
+
+
+
+// Advances the simulation to the next relevant event rather than by
+// a fixed time step. Events include cell arrivals, frightened-mode
+// expiration, pellet collection, and continuous player-ghost collision.
+// Returns a new state without modifying the input state.
+function advanceSearchState(state, ghostDirections, playerDirection) {
+    const next = applySearchActions(
+        state,
+        ghostDirections,
+        playerDirection
+    );
+
+    const {
+        timeToNextEvent,
+        collisionedGhostIndex
+    } = getSearchNextEvent(next);
 
     if (!Number.isFinite(timeToNextEvent)) {
-        return next;
+        return finalizeSearchState(next);
     }
 
 
-    next.time += timeToNextEvent;
-
-    // Update the next state with timeToNextEvent calculated
-
-    // This funcion need to be used upon every character individually
-    const moveToEvent = (character, speed) => {
-        if (character.direction.x === 0 && character.direction.y === 0) {
-            return false;
-        }
-
-        character.progress += speed * timeToNextEvent;
-
-        if (character.progress < 1 - SEARCH_EPSILON) {
-            return false;
-        }
-
-        character.progress = Math.max(0, character.progress - 1);
-        character.x = wrap(character.x + character.direction.x, getMapColumnCount(currentMap));
-        character.y = wrap(character.y + character.direction.y, getMapRowCount(currentMap));
-
-        return true;
-    };
+    // Next update the next state with timeToNextEvent calculated
 
     // Movement to the new state is done progressively. Changes in order here might have some collateral effect but should not usually.
     // Many conditions are checked here but it will be usual that only one, the originator of the event, has to do things. 
@@ -1164,125 +1448,55 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
     // the new state. But since only the first event is the originator of the state (the first thing to happen), only the check to see if frightened timer reaches 0 for a 
     // ghost will happen, and the pill will be reached in another subsequent state.
 
-    next.readyPlayer = moveToEvent(next.player, PACMAN_SPEED);
+    advanceSearchCharactersToEvent(
+        next,
+        timeToNextEvent
+    );
 
-    for (let ghostIndex = 0; ghostIndex < next.ghosts.length; ghostIndex++) {
-        const ghost = next.ghosts[ghostIndex];
+    resolveSearchEvent(
+        state,
+        next,
+        collisionedGhostIndex
+    );
 
-        const ghostSpeed = ghost.eaten
-            ? EATEN_GHOST_SPEED
-            : ghost.frightened
-                ? FRIGHTENED_GHOST_SPEED
-                : GHOST_SPEED;
+    return finalizeSearchState(next);
+}
 
-        const arrived = moveToEvent(ghost, ghostSpeed);
 
-        next.readyGhosts[ghostIndex] = arrived;
 
-        if (ghost.frightened) {
-            ghost.frightenedTimer -= timeToNextEvent;
+function getSearchGhostActionProfiles(state) {
+    const readyGhosts = state.readyGhosts
+        .map((ready, index) => ready ? index : -1)
+        .filter(index => index >= 0);
 
-            if (ghost.frightenedTimer <= 0) {
-                ghost.frightened = false;
-                ghost.frightenedTimer = undefined;
-            }
+    const profiles = [];
+
+    const addProfiles = (position, directions) => {
+        if (position === readyGhosts.length) {
+            profiles.push(directions.slice());
+            return;
         }
-        if (arrived) {
-            if (ghost.eaten) {
-                if (state.respawnState.houses.some(house =>
-                    ghost.x === house.x && ghost.y === house.y
-                )
-                ) {
-                    ghost.eaten = false;
-                    ghost.frightened = false;
-                    next.readyGhosts[ghostIndex] = true;
-                }
-            }
+
+        const index = readyGhosts[position];
+
+        for (const direction of getSearchGhostDirections(state, index)) {
+            directions.push([index, { ...direction }]);
+            addProfiles(position + 1, directions);
+            directions.pop();
         }
+    };
+
+    addProfiles(0, []);
+
+    return profiles;
+}
+
+function getSearchPlayerActionProfiles(state) {
+    if (!state.readyPlayer) {
+        return [null];
     }
 
-    if (next.readyPlayer) {
-        const cell = currentMap.tiles[next.player.y][next.player.x];
-
-        if ((cell === "." || cell === "o") && next.pellets.has(`${next.player.x},${next.player.y}`)) {
-            next.pellets.delete(`${next.player.x},${next.player.y}`);
-
-            if (cell === "o") {
-                for (let ghostIndex = 0; ghostIndex < next.ghosts.length; ghostIndex++) {
-                    const ghost = next.ghosts[ghostIndex];
-                    if (ghost.eaten) {
-                        continue;
-                    }
-
-                    ghost.frightened = true;
-                    ghost.frightenedTimer = FRIGHTENED_GHOST_SPEED;
-                    // reverseSearchGhost(ghost);
-                    next.readyGhosts[ghostIndex] = true;
-                }
-            }
-        }
-    }
-
-    if (collisionedGhostIndex >= 0) {
-        const collisionedGhost =
-            next.ghosts[collisionedGhostIndex];
-
-        if (collisionedGhost.frightened) {
-            collisionedGhost.eaten = true;
-            collisionedGhost.frightened = false;
-            collisionedGhost.frightenedTimer = undefined;
-        } else {
-            next.lives--;
-
-            if (next.lives <= 0) {
-                next.terminal = true;
-                next.readyPlayer = false;
-                next.readyGhosts = next.ghosts.map(() => false);
-
-                return next;
-            }
-
-            const playerStart = state.respawnState.player;
-
-            next.player.x = playerStart.x;
-            next.player.y = playerStart.y;
-            next.player.px = playerStart.x;
-            next.player.py = playerStart.y;
-            next.player.progress = 0;
-            next.player.direction = { x: 0, y: 0 };
-            next.player.nextDirection = { x: 0, y: 0 };
-
-            next.ghosts = state.ghosts.map((ghost, index) => {
-                const start = state.respawnState.ghosts[index];
-
-                return {
-                    ...cloneSearchCharacter(ghost),
-                    x: start.x,
-                    y: start.y,
-                    px: start.x,
-                    py: start.y,
-                    direction: { ...start.direction },
-                    nextDirection: { ...start.direction },
-                    progress: 0,
-                    needsDirection: false,
-                    eaten: false,
-                    frightened: false,
-                    frightenedTimer: undefined,
-                    speed: start.speed
-                };
-            });
-
-            next.readyPlayer =
-                state.controlledGhostIndex === -1;
-
-            next.readyGhosts = next.ghosts.map(
-                (_, index) =>
-                    index === state.controlledGhostIndex
-            );
-        }
-    }
-
-    return next;
+    return getSearchDirections(state, state.player, false);
 }
 
 
@@ -1294,32 +1508,9 @@ function getSearchActionProfiles(state) {
         return [];
     }
 
-    const readyGhosts = state.readyGhosts
-        .map((ready, index) => ready ? index : -1)
-        .filter(index => index >= 0);
+    const ghostProfiles = getSearchGhostActionProfiles(state);
 
-    const ghostProfiles = [];
-
-    const addGhostProfiles = (position, directions) => {
-        if (position === readyGhosts.length) {
-            ghostProfiles.push(directions.slice());
-            return;
-        }
-
-        const index = readyGhosts[position];
-
-        for (const direction of getSearchGhostDirections(state, index)) {
-            directions.push([index, { ...direction }]);
-            addGhostProfiles(position + 1, directions);
-            directions.pop();
-        }
-    };
-
-    addGhostProfiles(0, []);
-
-    const playerDirections = state.readyPlayer
-        ? getSearchDirections(state, state.player, false)
-        : [null];
+    const playerDirections = getSearchPlayerActionProfiles(state);
 
     const profiles = [];
 
@@ -1334,6 +1525,53 @@ function getSearchActionProfiles(state) {
                     playerDirection
                 )
             });
+        }
+    }
+
+    return profiles;
+}
+
+function getStrategicDecisionProfiles(state) {
+    if (state.terminal) {
+        return [];
+    }
+
+    const firstActor = getDeterministicTurnOrder(state);
+
+    const ghostProfiles = getSearchGhostActionProfiles(state);
+    const playerDirections = getSearchPlayerActionProfiles(state);
+
+    const profiles = [];
+
+    if (firstActor === "ghosts") {
+        for (const ghostDirections of ghostProfiles) {
+            for (const playerDirection of playerDirections) {
+                profiles.push({
+                    firstActor,
+                    ghostDirections,
+                    playerDirection,
+                    nextState: advanceSearchState(
+                        state,
+                        ghostDirections,
+                        playerDirection
+                    )
+                });
+            }
+        }
+    } else if (firstActor === "player") {
+        for (const playerDirection of playerDirections) {
+            for (const ghostDirections of ghostProfiles) {
+                profiles.push({
+                    firstActor,
+                    ghostDirections,
+                    playerDirection,
+                    nextState: advanceSearchState(
+                        state,
+                        ghostDirections,
+                        playerDirection
+                    )
+                });
+            }
         }
     }
 
