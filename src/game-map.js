@@ -22,14 +22,19 @@ function cloneMapPosition(position) {
 }
 
 
-function cloneMapDefinition(definition) {
+function cloneMapDefinition(definition,
+    { includeCalibration = false } = {}) {
     return {
         ...definition,
         tiles: definition.tiles.map(row => [...row]),
         edges: new Set(definition.edges),
         ghostHouses: definition.ghostHouses.map(cloneMapPosition),
         playerStart: cloneMapPosition(definition.playerStart),
-        ghostStarts: definition.ghostStarts.map(cloneMapPosition)
+        ghostStarts: definition.ghostStarts.map(cloneMapPosition),
+
+        ...(includeCalibration && definition.calibration !== undefined
+            ? { calibration: definition.calibration }
+            : { calibration: undefined })
     };
 }
 

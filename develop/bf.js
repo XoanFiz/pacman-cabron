@@ -1,49 +1,194 @@
-// Best-first minimax pseudocode
+const MAX = "max";
+const MIN = "min";
 
-function explore() {
+function hasActiveWindow(node) {
+    return node.alfa !== undefined &&
+           node.beta !== undefined;
+}
 
+function clearActiveWindow(node) {
+    delete node.alfa;
+    delete node.beta;
+}
+
+
+// Creates the children on first visit.
+// expandNode must return canonical graph nodes.
+function prepareNode(node, expandNode, evaluate) {
+
+    if (node.children !== null)
+        return;
+
+    if (node.terminal) {
+        node.children = [];
+        node.solved = true;
+        node.value = node.staticValue ?? evaluate(node);
+        return;
+    }
+
+    node.children = expandNode(node);
+
+    if (node.children.length === 0) {
+        node.terminal = true;
+        node.solved = true;
+        node.value = node.staticValue ?? evaluate(node);
+        return;
+    }
+
+    for (const child of node.children) {
+        if (child.value === undefined)
+            child.value = child.staticValue ?? evaluate(child);
+
+        if (child.solved === undefined)
+            child.solved = false;
+    }
+}
+
+
+// Updates the provisional minimax value and child ordering.
+function backupNode(node) {
+
+    if (node.children === null)
+        return;
+
+    if (node.children.length === 0)
+        return;
+
+    node.children.sort((a, b) =>
+        node.type === MAX
+            ? b.value - a.value
+            : a.value - b.value
+    );
+
+    node.value = node.children[0].value;
+
+    node.solved = node.children.every(child => child.solved);
+}
+
+
+// Reconstructs the currently active line from the root.
+// No explicit call stack or global parent pointer is needed.
+function getActiveLine(root) {
+
+    const line = [];
+    const seen = new Set();
     let node = root;
+
+    while (node && !seen.has(node)) {
+        line.push(node);
+        seen.add(node);
+
+        const child = node.activeChild;
+
+        if (!child || !hasActiveWindow(child))
+            break;
+
+        node = child;
+    }
+
+    return line;
+}
+
+
+function explore(root, expandNode, evaluate, maxSteps = 1000) {
+
+    // The root is always evaluated with a full window.
     root.alfa = -Infinity;
     root.beta = +Infinity;
 
-    let value;
-    let best;
-    let bestNotExpanded;
+    for (let step = 0; step < maxSteps; step++) {
 
+        const line = getActiveLine(root);
+        const node = line[line.length - 1];
+        const ancestors = new Set(line);
 
-    while (true) {
+        // The previously selected child has returned.
+        if (
+            node.activeChild &&
+            !hasActiveWindow(node.activeChild)
+        ) {
+            node.activeChild = null;
+        }
+
+        // Refresh provisional values from the bottom upwards.
+        for (let i = line.length - 1; i >= 0; i--)
+            backupNode(line[i]);
+
+        prepareNode(node, expandNode, evaluate);
+        backupNode(node);
+
+        // A terminal or completely resolved node returns to its parent.
+        if (node.solved) {
+            clearActiveWindow(node);
+
+            if (node === root)
+                return root.value;
+
+            continue;
+        }
+
+        // The current line no longer merits further expansion
+        // within the window supplied by its parent.
         if (node.value < node.alfa || node.value > node.beta) {
-            delete node.alfa;
-            delete node.beta;
-            value = node.value;
-            node = node.parent;
-        } else {
-            if (node.type = max) {
-                best = max(node.children.filter(n => n.value))
-                bestNotExpanded = max(node.children.filter(n => n.children.isEmpty()).map(n => n.value))
-            } else {
-                best = min(node.children.filter(n => n.value))
-                bestNotExpanded = min(node.children.filter(n => n.children.isEmpty()).map(n => n.value))
-            }
+            clearActiveWindow(node);
+
+            if (node === root)
+                return root.value;
+
+            continue;
         }
 
-        if (!best || !bestNotExpanded) {
-            node = node.parent;
-            value = node.value;
-        } else {
-            if (node.type = max) {
-                bestNotExpanded.alfa=best.value
-                bestNotExpanded.beta=node.beta
-                node = bestNotExpanded;
-                value = best ? best.value : -Infinity
-            } else {
-                bestNotExpanded.alfa=node.alfa
-                bestNotExpanded.beta=best.value
-                node = bestNotExpanded;
-                value = best ? best.value : +Infinity
-            }
+        // Select the most promising child that still has work.
+        const candidate = node.children.find(child =>
+            !child.solved && !ancestors.has(child)
+        );
+
+        // Every remaining continuation would revisit this line.
+        if (!candidate) {
+            clearActiveWindow(node);
+
+            if (node === root)
+                return root.value;
+
+            continue;
         }
+
+        // The best competing value defines the candidate's window.
+        const competitors = node.children.filter(
+            child => child !== candidate
+        );
+
+        let competitorValue;
+
+        if (competitors.length === 0) {
+            competitorValue =
+                node.type === MAX ? -Infinity : +Infinity;
+        } else if (node.type === MAX) {
+            competitorValue = Math.max(
+                ...competitors.map(child => child.value)
+            );
+        } else {
+            competitorValue = Math.min(
+                ...competitors.map(child => child.value)
+            );
+        }
+
+        if (node.type === MAX) {
+            candidate.alfa = Math.max(
+                node.alfa,
+                competitorValue
+            );
+            candidate.beta = node.beta;
+        } else {
+            candidate.alfa = node.alfa;
+            candidate.beta = Math.min(
+                node.beta,
+                competitorValue
+            );
+        }
+
+        node.activeChild = candidate;
     }
 
-    return value; // por devolver algo
+    return root.value;
 }
