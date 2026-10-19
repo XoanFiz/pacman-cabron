@@ -28,7 +28,6 @@ function cloneMapDefinition(definition,
         ...definition,
         tiles: definition.tiles.map(row => [...row]),
         edges: new Set(definition.edges),
-        ghostHouses: definition.ghostHouses.map(cloneMapPosition),
         playerStart: cloneMapPosition(definition.playerStart),
         ghostStarts: definition.ghostStarts.map(cloneMapPosition),
 
@@ -75,10 +74,6 @@ const PREDEFINED_MAPS = [
         ]),
 
         edges: new Set(),
-
-        ghostHouses: [
-            { x: 10, y: 8 }
-        ],
 
         playerStart: {
             x: 10,
@@ -194,10 +189,6 @@ const PREDEFINED_MAPS = [
             "h:15:8", "h:15:9", "h:15:11", "h:15:14",
             "h:15:16", "h:15:17"
         ]),
-
-        ghostHouses: [
-            { x: 10, y: 8 }
-        ],
 
         playerStart: {
             x: 10,
@@ -404,19 +395,13 @@ function canMove(x, y, direction, definition = currentMap) {
 function buildPellets(definition = currentMap) {
     const result = new Set();
 
-    for (let y = 0; y < getMapRowCount(definition); y++) {
-        for (let x = 0; x < getMapColumnCount(definition); x++) {
-            const tile = definition.tiles[y][x];
-
+    definition.tiles.forEach((row, y) => {
+        row.forEach((tile, x) => {
             if (tile === "." || tile === "o") {
                 result.add(`${x},${y}`);
             }
-        }
-    }
-
-    if (definition === currentMap) {
-        pellets = result;
-    }
+        });
+    });
 
     return result;
 }
@@ -434,6 +419,13 @@ function buildGhostHouses(definition = currentMap) {
     }
 
     return ghostHouses;
+}
+
+function buildMapData(definition) {
+    return {
+        graph: buildGraph(definition),
+        pellets: buildPellets(definition)
+    };
 }
 
 
@@ -576,7 +568,7 @@ function updateCharacterChoices() {
 
 
 function updateAddGhostButton() {
-    const existingColors = ghosts.map((ghost, index) =>
+    const existingColors = gameState.ghosts.map((ghost, index) =>
         ghost.color || getGhostColor(index)
     );
 
@@ -677,10 +669,6 @@ function buildGraph(definition = currentMap) {
                 });
             }
         }
-    }
-
-    if (definition === currentMap) {
-        graph = result;
     }
 
     return result;

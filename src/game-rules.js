@@ -3,8 +3,8 @@
 
 function resetGame() {
 
-    score = 0;
-    lives = INITIAL_LIVES;
+    gameState.score = 0;
+    gameState.lives = INITIAL_LIVES;
 
     resetLevel();
     gameWon = false;
@@ -17,12 +17,12 @@ function resetLevel() {
     currentMap = cloneMapDefinition(
         getCurrentMapDefinition()
     );
+    const mapData = buildMapData(currentMap);
 
-    ghostHouses = currentMap.ghostHouses.map(cloneMapPosition);
+    graph = mapData.graph;
+    gameState.pellets = mapData.pellets;
 
-    pellets = buildPellets();
-
-    gameTime = 0;
+    gameState.time = 0;
     paused = false;
 
     // strategicSearch.nodes.clear();
@@ -31,7 +31,7 @@ function resetLevel() {
 
     const playerStart = currentMap.playerStart;
 
-    player = {
+    gameState.player = {
         x: playerStart.x,
         y: playerStart.y,
         px: playerStart.x,
@@ -53,7 +53,7 @@ function resetLevel() {
 
     const ghostStarts = currentMap.ghostStarts;
 
-    ghosts = ghostStarts.map((ghost, index) => ({
+    gameState.ghosts = ghostStarts.map((ghost, index) => ({
         x: ghost.x,
         y: ghost.y,
         px: ghost.x,
@@ -72,7 +72,7 @@ function resetLevel() {
     deathTimer = 0
 
 
-    buildGraph();
+    graph = buildGraph(currentMap);
 
     setStatus(
         selectedCharacter === "pacman"
@@ -89,8 +89,8 @@ function resetLevel() {
 function updatePlayer(dt) {
 
     if (
-        player.direction.x === 0 &&
-        player.direction.y === 0
+        gameState.player.direction.x === 0 &&
+        gameState.player.direction.y === 0
     ) {
 
         tryChangeDirection();
@@ -99,44 +99,44 @@ function updatePlayer(dt) {
     }
 
 
-    player.progress +=
+    gameState.player.progress +=
         PACMAN_SPEED * dt;
 
 
     while (
-        player.progress >= 1
+        gameState.player.progress >= 1
     ) {
 
-        player.progress -= 1;
+        gameState.player.progress -= 1;
 
 
-        player.x =
+        gameState.player.x =
             wrap(
-                player.x +
-                player.direction.x,
+                gameState.player.x +
+                gameState.player.direction.x,
                 getMapColumnCount(currentMap)
             );
 
 
-        player.y =
+        gameState.player.y =
             wrap(
-                player.y +
-                player.direction.y,
+                gameState.player.y +
+                gameState.player.direction.y,
                 getMapRowCount(currentMap)
             );
 
 
-        player.px =
-            player.x;
+        gameState.player.px =
+            gameState.player.x;
 
-        player.py =
-            player.y;
+        gameState.player.py =
+            gameState.player.y;
 
 
         eatPellet();
 
         if (selectedCharacter !== "pacman" && running) {
-            player.nextDirection =
+            gameState.player.nextDirection =
                 chooseStrategicPacmanDirection(
                     getCurrentSearchContext()
                 );
@@ -145,50 +145,50 @@ function updatePlayer(dt) {
 
         if (
             canMove(
-                player.x,
-                player.y,
-                player.nextDirection
+                gameState.player.x,
+                gameState.player.y,
+                gameState.player.nextDirection
             )
         ) {
 
-            setPlayerDirection(player.nextDirection);
+            setPlayerDirection(gameState.player.nextDirection);
         }
 
 
         if (
             !canMove(
-                player.x,
-                player.y,
-                player.direction
+                gameState.player.x,
+                gameState.player.y,
+                gameState.player.direction
             )
         ) {
 
             setPlayerDirection({ x: 0, y: 0 });
-            player.progress = 0;
+            gameState.player.progress = 0;
 
             break;
         }
     }
 
 
-    player.px =
-        player.x +
-        player.direction.x *
-        player.progress;
+    gameState.player.px =
+        gameState.player.x +
+        gameState.player.direction.x *
+        gameState.player.progress;
 
 
-    player.py =
-        player.y +
-        player.direction.y *
-        player.progress;
+    gameState.player.py =
+        gameState.player.y +
+        gameState.player.direction.y *
+        gameState.player.progress;
 }
 
 
 function setPlayerDirection(direction) {
-    player.direction = { ...direction };
+    gameState.player.direction = { ...direction };
 
     if (direction.x !== 0 || direction.y !== 0) {
-        player.facingDirection = { ...direction };
+        gameState.player.facingDirection = { ...direction };
     }
 }
 
@@ -197,13 +197,13 @@ function tryChangeDirection() {
 
     if (
         canMove(
-            player.x,
-            player.y,
-            player.nextDirection
+            gameState.player.x,
+            gameState.player.y,
+            gameState.player.nextDirection
         )
     ) {
 
-        setPlayerDirection(player.nextDirection);
+        setPlayerDirection(gameState.player.nextDirection);
     }
 }
 
@@ -215,10 +215,10 @@ function tryChangeDirection() {
 function eatPellet() {
 
     const x =
-        player.x;
+        gameState.player.x;
 
     const y =
-        player.y;
+        gameState.player.y;
 
 
     if (
@@ -237,17 +237,17 @@ function eatPellet() {
 
     if (
         (cell !== "." &&
-            cell !== "o") || !pellets.has(`${x},${y}`)
+            cell !== "o") || !gameState.pellets.has(`${x},${y}`)
     ) {
         return;
     }
 
-    pellets.delete(`${x},${y}`)
+    gameState.pellets.delete(`${x},${y}`)
 
 
     if (cell === "o") {
 
-        score += 50;
+        gameState.score += 50;
 
         activateFrightenedMode();
 
@@ -255,11 +255,11 @@ function eatPellet() {
 
     else {
 
-        score += 10;
+        gameState.score += 10;
     }
 
 
-    if (pellets.size === 0) {
+    if (gameState.pellets.size === 0) {
 
         running = false;
         gameWon = true;
@@ -396,7 +396,7 @@ function updateGhost(
         if (ghost.eaten) {
             ghost.needsDirection = true;
             ghost.pendingDecisionTime =
-                gameTime -
+                gameState.time -
                 ghost.progress / EATEN_GHOST_SPEED;
             break;
         }
@@ -422,7 +422,7 @@ function updateGhost(
         } else {
             ghost.needsDirection = true;
             ghost.pendingDecisionTime =
-                gameTime -
+                gameState.time -
                 ghost.progress / ghost.speed;
         }
 
@@ -502,7 +502,7 @@ function eatGhost(ghost) {
     ghost.frightened = false;
     ghost.speed = EATEN_GHOST_SPEED;
 
-    score += 200;
+    gameState.score += 200;
 
     updateUI();
 }
@@ -514,7 +514,7 @@ function loseLife() {
         return;
 
 
-    lives--;
+    gameState.lives--;
 
     running = false;
 
@@ -529,7 +529,7 @@ function loseLife() {
 
 
     setStatus(
-        lives > 0
+        gameState.lives > 0
             ? "lifeLost"
             : "gameOver"
     );
@@ -553,7 +553,7 @@ function update(dt) {
 
         if (
             deathTimer <= 0 &&
-            lives > 0
+            gameState.lives > 0
         ) {
 
             resetPositions();
@@ -570,10 +570,10 @@ function update(dt) {
     if (!running)
         return;
 
-    gameTime += dt;
+    gameState.time += dt;
 
     for (
-        const ghost of ghosts
+        const ghost of gameState.ghosts
     ) {
         if (ghost.frightened) {
             ghost.frightenedTimer -= dt;
@@ -590,7 +590,7 @@ function update(dt) {
 
 
     for (
-        const ghost of ghosts
+        const ghost of gameState.ghosts
     ) {
 
         updateGhost(
@@ -599,7 +599,7 @@ function update(dt) {
         );
     }
 
-    const pendingGhosts = ghosts
+    const pendingGhosts = gameState.ghosts
         .filter(ghost => ghost.needsDirection)
         .sort((a, b) =>
             a.pendingDecisionTime - b.pendingDecisionTime
@@ -627,7 +627,7 @@ function update(dt) {
 
     for (const group of decisionGroups) {
         const readyGhostIndices = group.ghosts.map(
-            ghost => ghosts.indexOf(ghost)
+            ghost => gameState.ghosts.indexOf(ghost)
         );
 
         const directions = chooseStrategicGhostDirections(
@@ -637,7 +637,7 @@ function update(dt) {
 
 
         for (const ghost of group.ghosts) {
-            const ghostIndex = ghosts.indexOf(ghost);
+            const ghostIndex = gameState.ghosts.indexOf(ghost);
             ghost.direction = directions.get(ghostIndex);
             ghost.needsDirection = false;
             ghost.px =
@@ -652,7 +652,7 @@ function update(dt) {
     }
 
 
-    checkGhostCollisions(ghosts, player);
+    checkGhostCollisions(gameState.ghosts, gameState.player);
 }
 
 
@@ -665,22 +665,22 @@ function resetPositions() {
     const mapDefinition = getCurrentMapDefinition();
     const playerStart = mapDefinition.playerStart;
 
-    player.x = playerStart.x;
-    player.y = playerStart.y;
+    gameState.player.x = playerStart.x;
+    gameState.player.y = playerStart.y;
 
-    player.px = playerStart.x;
-    player.py = playerStart.y;
+    gameState.player.px = playerStart.x;
+    gameState.player.py = playerStart.y;
 
-    player.progress = 0;
+    gameState.player.progress = 0;
 
 
-    player.direction = {
+    gameState.player.direction = {
         x: 0,
         y: 0
     };
 
 
-    player.nextDirection = {
+    gameState.player.nextDirection = {
         x: 0,
         y: 0
     };
@@ -711,12 +711,12 @@ function getCurrentSearchContext() {
     const mapDefinition = getCurrentMapDefinition();
 
     return {
-        player: cloneSearchCharacter(player),
-        ghosts: ghosts.map(cloneSearchCharacter),
+        player: cloneSearchCharacter(gameState.player),
+        ghosts: gameState.ghosts.map(cloneSearchCharacter),
 
-        pellets: new Set(pellets),
+        pellets: new Set(gameState.pellets),
         lives,
-        time: gameTime,
+        time: gameState.time,
 
         controlledGhostIndex: selectedCharacter.startsWith("ghost-")
             ? Number(selectedCharacter.slice("ghost-".length))
@@ -734,7 +734,7 @@ function getCurrentSearchContext() {
                 speed: GHOST_SPEED
             })),
 
-            houses: mapDefinition.ghostHouses.map(cloneMapPosition)
+            houses: buildGhostHouses(mapDefinition)
         }
     };
 }
@@ -753,13 +753,13 @@ function setDirection(
     if (controlledGhost) {
         controlledGhost.nextDirection = { ...direction };
     } else {
-        player.nextDirection = { ...direction };
+        gameState.player.nextDirection = { ...direction };
     }
 
     if (
         !running &&
         deathTimer <= 0 &&
-        lives > 0
+        gameState.lives > 0
     ) {
 
         running = true;
@@ -772,7 +772,7 @@ function setDirection(
                 controlledGhost.direction = { ...direction };
             }
 
-            player.nextDirection =
+            gameState.nextDirection =
                 chooseStrategicPacmanDirection(getCurrentSearchContext());
             tryChangeDirection();
         } else {

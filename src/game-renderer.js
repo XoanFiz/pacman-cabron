@@ -32,7 +32,7 @@ function draw() {
             let cell =
                 currentMap.tiles[y][x];
 
-            if ((cell === "." || cell === "o") && !pellets.has(`${x},${y}`)) {
+            if ((cell === "." || cell === "o") && !gameState.pellets.has(`${x},${y}`)) {
                 cell = " "
             }
 
@@ -98,12 +98,12 @@ function draw() {
 
     for (
         let i = 0;
-        i < ghosts.length;
+        i < gameState.ghosts.length;
         i++
     ) {
 
         drawGhost(
-            ghosts[i],
+            gameState.ghosts[i],
             i
         );
     }
@@ -141,27 +141,33 @@ function drawBoundaryWalls() {
 
 
 function drawGhostHouses() {
-    for (const house of ghostHouses) {
-        const centerX = house.x * CELL + CELL / 2;
-        const centerY = house.y * CELL + CELL / 2;
+    for (let y = 0; y < getMapRowCount(currentMap); y++) {
+        for (let x = 0; x < getMapColumnCount(currentMap); x++) {
+            if (currentMap.tiles[y][x] !== "H") {
+                continue;
+            }
 
-        ctx.fillStyle = "#8b5cf6";
-        ctx.strokeStyle = "#e9d5ff";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(centerX - 9, centerY - 1);
-        ctx.lineTo(centerX, centerY - 9);
-        ctx.lineTo(centerX + 9, centerY - 1);
-        ctx.lineTo(centerX + 7, centerY - 1);
-        ctx.lineTo(centerX + 7, centerY + 8);
-        ctx.lineTo(centerX - 7, centerY + 8);
-        ctx.lineTo(centerX - 7, centerY - 1);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+            const centerX = x * CELL + CELL / 2;
+            const centerY = y * CELL + CELL / 2;
 
-        ctx.fillStyle = "#090b12";
-        ctx.fillRect(centerX - 2, centerY + 2, 4, 6);
+            ctx.fillStyle = "#8b5cf6";
+            ctx.strokeStyle = "#e9d5ff";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX - 9, centerY - 1);
+            ctx.lineTo(centerX, centerY - 9);
+            ctx.lineTo(centerX + 9, centerY - 1);
+            ctx.lineTo(centerX + 7, centerY - 1);
+            ctx.lineTo(centerX + 7, centerY + 8);
+            ctx.lineTo(centerX - 7, centerY + 8);
+            ctx.lineTo(centerX - 7, centerY - 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#090b12";
+            ctx.fillRect(centerX - 2, centerY + 2, 4, 6);
+        }
     }
 }
 
@@ -189,16 +195,16 @@ function drawMapEditorGrid() {
 function drawPlayer() {
 
     const cx =
-        player.px * CELL +
+        gameState.player.px * CELL +
         CELL / 2;
 
 
     const cy =
-        player.py * CELL +
+        gameState.player.py * CELL +
         CELL / 2;
 
 
-    const facingDirection = player.facingDirection || player.direction;
+    const facingDirection = gameState.player.facingDirection || player.direction;
     let angle = 0;
 
 
@@ -293,7 +299,7 @@ function drawGhost(
 
         const blinking =
             ghost.frightenedTimer <= FRIGHTENED_BLINK_TIME &&
-            Math.floor(gameTime * FRIGHTENED_BLINK_FREQUENCY) % 2 === 0;
+            Math.floor(gameState.time * FRIGHTENED_BLINK_FREQUENCY) % 2 === 0;
 
         ctx.fillStyle = blinking
             ? getGhostColor(index)
@@ -450,7 +456,7 @@ function drawVoronoiDomains() {
 
 
     const domain = calculateDomain(
-        player, ghosts, ghostHouses, pellets, gameTime, true
+        gameState.player, gameState.ghosts, buildGhostHouses(getCurrentMapDefinition()), gameState.pellets, gameState.time, true
     );
 
     for (let y = 0; y < getMapRowCount(currentMap); y++) {

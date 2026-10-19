@@ -42,14 +42,14 @@ function addGhostAt(position) {
         !position ||
         currentMap.tiles[position.y][position.x] === "#" ||
         getEditorGhostHouse(position) >= 0 ||
-        (player.x === position.x && player.y === position.y) ||
-        ghosts.some(ghost => ghost.x === position.x && ghost.y === position.y)
+        (gameState.player.x === position.x && gameState.gameState.player.y === position.y) ||
+        gameState.ghosts.some(ghost => ghost.x === position.x && ghost.y === position.y)
     ) {
         showEditorToast("ghostPlacementError");
         return false;
     }
 
-    const existingColors = ghosts.map((ghost, index) =>
+    const existingColors = gameState.ghosts.map((ghost, index) =>
         ghost.color || getGhostColor(index)
     );
     const color = existingColors.length < BASE_GHOST_COLORS.length
@@ -67,7 +67,7 @@ function addGhostAt(position) {
         direction: { ...DIRECTIONS.left },
         nextDirection: { ...DIRECTIONS.left }
     };
-    ghosts.push(newGhost);
+    gameState.ghosts.push(newGhost);
 
     const previousTile = currentMap.tiles[position.y][position.x];
     if (currentMap.tiles[position.y][position.x] === "." || currentMap.tiles[position.y][position.x] === "o") {
@@ -75,7 +75,7 @@ function addGhostAt(position) {
     }
 
     if (!isEditorMapConnected()) {
-        ghosts.pop();
+        gameState.ghosts.pop();
         if (previousTile !== currentMap.tiles[position.y][position.x]) {
             currentMap.tiles[position.y][position.x] = previousTile;
         }
@@ -102,17 +102,16 @@ function syncEditorDraftMap() {
     editorDraftMap.tiles = currentMap.tiles.map(row => row.slice());
     editorDraftMap.edges = Array.from(currentMap.edges);
     editorDraftMap.playerStart = {
-        x: player.x,
-        y: player.y,
-        direction: { ...player.facingDirection }
+        x: gameState.player.x,
+        y: gameState.player.y,
+        direction: { ...gameState.player.facingDirection }
     };
-    editorDraftMap.ghostStarts = ghosts.map(ghost => ({
+    editorDraftMap.ghostStarts = gameState.ghosts.map(ghost => ({
         x: ghost.x,
         y: ghost.y,
         color: ghost.color,
         direction: { ...ghost.direction }
     }));
-    editorDraftMap.ghostHouses = ghostHouses.map(cloneMapPosition);
 }
 
 
@@ -213,7 +212,7 @@ function toggleEditorBoundary(boundary) {
         currentMap.edges.add(boundary.key);
     }
 
-    buildGraph();
+    graph = buildGraph(currentMap);
 
     if (!isEditorMapConnected()) {
         if (wasBlocked) {
@@ -222,31 +221,24 @@ function toggleEditorBoundary(boundary) {
             currentMap.edges.delete(boundary.key);
         }
 
-        buildGraph();
+        graph = buildGraph(currentMap);
         showEditorToast("mapConnectivityError");
     }
 }
 
 
 function getEditorEntity(position) {
-    if (player.x === position.x && player.y === position.y) {
-        return { type: "player", entity: player };
+    if (gameState.player.x === position.x && gameState.player.y === position.y) {
+        return { type: "player", entity: gameState.player };
     }
 
-    const ghostIndex = ghosts.findIndex(ghost =>
+    const ghostIndex = gameState.ghosts.findIndex(ghost =>
         ghost.x === position.x && ghost.y === position.y
     );
 
     return ghostIndex < 0
         ? null
-        : { type: "ghost", index: ghostIndex, entity: ghosts[ghostIndex] };
-}
-
-
-function getEditorGhostHouse(position) {
-    return ghostHouses.findIndex(house =>
-        house.x === position.x && house.y === position.y
-    );
+        : { type: "ghost", index: ghostIndex, entity: gameState.ghosts[ghostIndex] };
 }
 
 
@@ -270,20 +262,19 @@ function moveEditorEntity(gesture, position) {
     const { x, y } = position;
 
     if (
-        currentMap.tiles[y][x] === "#" ||
-        getEditorGhostHouse(position) >= 0
+        currentMap.tiles[y][x] === "#" || currentMap.tiles[y][x] === "H"
     ) {
         return false;
     }
 
     if (
         gesture.type !== "player" &&
-        player.x === x && player.y === y
+        gameState.player.x === x && gameState.player.y === y
     ) {
         return false;
     }
 
-    if (ghosts.some((ghost, index) =>
+    if (gameState.ghosts.some((ghost, index) =>
         ghost.x === x &&
         ghost.y === y &&
         !(gesture.type === "ghost" && index === gesture.index)
@@ -323,9 +314,9 @@ function moveEditorEntity(gesture, position) {
 
 function isEditorMapConnected() {
     const targets = [
-        { x: player.x, y: player.y },
-        ...ghosts.map(ghost => ({ x: ghost.x, y: ghost.y })),
-        ...ghostHouses,
+        { x: gameState.player.x, y: gameState.player.y },
+        ...gameState.ghosts.map(ghost => ({ x: ghost.x, y: ghost.y })),
+        ...buildGhostHouses(currentMap),
         ...currentMap.tiles.flatMap((row, y) =>
             Array.from(row, (tile, x) =>
                 tile === "." || tile === "o"
@@ -334,8 +325,8 @@ function isEditorMapConnected() {
             ).filter(Boolean)
         )
     ];
-    const reached = new Set([`${player.x},${player.y}`]);
-    const queue = [{ x: player.x, y: player.y }];
+    const reached = new Set([`${gameState.player.x},${gameState.player.y}`]);
+    const queue = [{ x: gameState.player.x, y: gameState.player.y }];
 
     for (let index = 0; index < queue.length; index++) {
         const current = queue[index];
@@ -359,17 +350,15 @@ function isEditorMapConnected() {
 
 
 function cycleEditorTile(position, count = 1) {
-    const houseIndex = getEditorGhostHouse(position);
-    const cycle = [".", "o", " ", "house", "#"];
-    const currentTile = houseIndex >= 0
-        ? "house"
-        : currentMap.tiles[position.y][position.x];
+    const cycle = [".", "o", " ", "H", "#"];
+    const ghostHouses = buildGhostHouses(currentMap);
+    const currentTile = currentMap.tiles[position.y][position.x];
     const currentIndex = cycle.indexOf(currentTile);
+    const oldTile = cycle[currentIndex];
     const nextTile = cycle[(currentIndex + count) % cycle.length];
 
-    if (
-        houseIndex >= 0 &&
-        nextTile !== "house" &&
+    if (oldTile == "H" &&
+        nextTile !== "H" &&
         ghostHouses.length <= 1
     ) {
         showEditorToast("mapHouseRequiredError");
@@ -378,15 +367,6 @@ function cycleEditorTile(position, count = 1) {
 
     const previousRow = currentMap.tiles[position.y].slice();
     const previousEdges = new Set(currentMap.edges);
-    const previousHouses = ghostHouses.map(cloneMapPosition);
-
-    if (houseIndex >= 0) {
-        ghostHouses.splice(houseIndex, 1);
-    }
-
-    if (nextTile === "house") {
-        ghostHouses.push({ x: position.x, y: position.y });
-    }
 
     const tile = nextTile;
     const row = currentMap.tiles[position.y];
@@ -405,18 +385,17 @@ function cycleEditorTile(position, count = 1) {
     // pellets = MAP.reduce((total, row) =>
     //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
     // 0);
-    pellets = buildPellets();
-    buildGraph();
+    gameState.pellets = buildPellets();
+    graph = buildGraph(currentMap);
 
     if (!isEditorMapConnected()) {
         currentMap.tiles[position.y] = previousRow;
         currentMap.edges = previousEdges;
-        ghostHouses = previousHouses;
         // pellets = MAP.reduce((total, row) =>
         //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
         // 0);
-        pellets = buildPellets();
-        buildGraph();
+        gameState.pellets = buildPellets();
+        graph = buildGraph(currentMap);
         showEditorToast("mapConnectivityError");
 
         cycleEditorTile(position, count + 1);

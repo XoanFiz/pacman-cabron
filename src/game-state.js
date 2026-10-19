@@ -24,12 +24,20 @@ const contentLanguage = window.PACMAN_LOCALE;
 // STATE
 // ============================================================
 
-let score;
-let lives;
-let pellets;
+const gameState = {
+    score: 0,
+    lives: 3,
+    pellets: new Set(),
 
-let player;
-let ghosts;
+    player: null,
+    ghosts: [],
+
+    running: false,
+    paused: false,
+    gameWon: false,
+    deathTimer: 0,
+    time: 0
+};
 
 let selectedCharacter = "pacman";
 
@@ -38,12 +46,7 @@ let editorGesture = null;
 let editorToastTimer = 0;
 let addingGhost = false;
 
-let running = false;
-let paused = false;
-let gameWon = false;
-let deathTimer = 0;
 let currentTime = 0;
-let gameTime = 0;
 
 const FRIGHTENED_DURATION = 7;
 const FRIGHTENED_BLINK_TIME = 2;

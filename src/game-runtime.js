@@ -3,7 +3,7 @@ function getControlledGhost() {
         return null;
     }
 
-    return ghosts[Number(selectedCharacter.slice("ghost-".length))] || null;
+    return gameState.ghosts[Number(selectedCharacter.slice("ghost-".length))] || null;
 }
 
 
@@ -225,10 +225,10 @@ function updatePauseButton() {
 function updateUI() {
 
     scoreElement.textContent =
-        score;
+        gameState.score;
 
     livesElement.textContent =
-        lives;
+        gameState.lives;
 
     updatePauseButton();
 }

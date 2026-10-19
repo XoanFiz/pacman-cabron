@@ -2102,25 +2102,25 @@ function removeStrategicSearchFrontier(node) {
 // strategic graph to expand incrementally without monopolizing the
 // game loop. Each expansion processes one candidate transition.
 function advanceStrategicSearch() {
-    console.log("ADVANCE SEARCH", {
-        frontierSize: strategicSearch.frontier.length,
-        rootKey: strategicSearch.root?.key,
-        rootHeapIndex: strategicSearch.root?.exploration.heapIndex,
-        rootExpanded: strategicSearch.root?.exploration.expanded
-    });
+    // console.log("ADVANCE SEARCH", {
+    //     frontierSize: strategicSearch.frontier.length,
+    //     rootKey: strategicSearch.root?.key,
+    //     rootHeapIndex: strategicSearch.root?.exploration.heapIndex,
+    //     rootExpanded: strategicSearch.root?.exploration.expanded
+    // });
 
     let expansions = 0;
 
     while (expansions < SEARCH_EXPANSIONS_PER_FRAME) {
         const node = popStrategicSearchFrontier();
 
-        if (node && node === strategicSearch.root) {
-            console.log("ROOT POPPED", {
-                nextCandidate: node.exploration.nextCandidate,
-                candidateCount: node.candidates?.length,
-                expanded: node.exploration.expanded
-            });
-        }
+        // if (node && node === strategicSearch.root) {
+        //     console.log("ROOT POPPED", {
+        //         nextCandidate: node.exploration.nextCandidate,
+        //         candidateCount: node.candidates?.length,
+        //         expanded: node.exploration.expanded
+        //     });
+        // }
 
         if (!node) {
             break;
@@ -2218,16 +2218,16 @@ function getOrSetStrategicSearchRoot(
     // advanceStrategicSearch() and its per-frame expansion budget.
     prepareStrategicSearchNode(root);
 
-    console.log("STRATEGIC ROOT", {
-        firstActor: root.state.firstActor,
-        phase: root.exploration.phase,
-        expanded: root.exploration.expanded,
-        nextCandidate: root.exploration.nextCandidate,
-        candidateCount: root.candidates?.length,
-        processedCount: root.candidates?.filter(c => c.processed).length,
-        heapIndex: root.exploration.heapIndex,
-        frontierSize: strategicSearch.frontier.length
-    });
+    // console.log("STRATEGIC ROOT", {
+    //     firstActor: root.state.firstActor,
+    //     phase: root.exploration.phase,
+    //     expanded: root.exploration.expanded,
+    //     nextCandidate: root.exploration.nextCandidate,
+    //     candidateCount: root.candidates?.length,
+    //     processedCount: root.candidates?.filter(c => c.processed).length,
+    //     heapIndex: root.exploration.heapIndex,
+    //     frontierSize: strategicSearch.frontier.length
+    // });
 
     return root;
 }
