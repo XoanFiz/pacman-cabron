@@ -1643,7 +1643,6 @@ function prepareStrategicSearchNode(node) {
         // Transition lifecycle.
         evaluated: false,
         connected: false,
-        cycleBlocked: false,
 
         // Retained for compatibility with existing consumers.
         processed: false,
@@ -1824,35 +1823,37 @@ function refreshStrategicSearchValues(node) {
     }
 }
 
+// This logic is discarded. 
+
 // Detects whether adding a search-graph edge would create a cycle,
 // allowing repeated states to be shared without introducing cyclic
 // dependencies into the graph.
-function hasStrategicSearchPath(start, target) {
-    const pending = [start];
-    const visited = new Set();
+// function hasStrategicSearchPath(start, target) {
+//     const pending = [start];
+//     const visited = new Set();
 
-    while (pending.length > 0) {
-        const node = pending.pop();
+//     while (pending.length > 0) {
+//         const node = pending.pop();
 
-        if (node === target) {
-            return true;
-        }
+//         if (node === target) {
+//             return true;
+//         }
 
-        if (visited.has(node)) {
-            continue;
-        }
+//         if (visited.has(node)) {
+//             continue;
+//         }
 
-        visited.add(node);
+//         visited.add(node);
 
-        for (const candidate of node.candidates || []) {
-            if (candidate.connected && candidate.child) {
-                pending.push(candidate.child);
-            }
-        }
-    }
+//         for (const candidate of node.candidates || []) {
+//             if (candidate.connected && candidate.child) {
+//                 pending.push(candidate.child);
+//             }
+//         }
+//     }
 
-    return false;
-}
+//     return false;
+// }
 
 // Evaluates one candidate transition and connects its resulting state
 // to the shared graph when doing so does not introduce an ancestor
@@ -1894,17 +1895,17 @@ function connectStrategicSearchCandidate(
     const childKey = buildStateKey(childState);
 
     // A self-loop or an edge closing a graph cycle is not connected.
-    if (childKey === node.key) {
-        candidateTransition.cycleBlocked = true;
-        return null;
-    }
+    // if (childKey === node.key) {
+    //     candidateTransition.cycleBlocked = true;
+    //     return null;
+    // }
 
     let child = strategicSearch.nodes.get(childKey);
 
-    if (child && hasStrategicSearchPath(child, node)) {
-        candidateTransition.cycleBlocked = true;
-        return null;
-    }
+    // if (child && hasStrategicSearchPath(child, node)) {
+    //     candidateTransition.cycleBlocked = true;
+    //     return null;
+    // }
 
     if (!child) {
         child = createStrategicSearchNode(
