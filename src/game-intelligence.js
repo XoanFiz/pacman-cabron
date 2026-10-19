@@ -1320,22 +1320,51 @@ function setSearchGhostState(ghost, state) {
     }
 }
 
+// Applies the current actor's decision without advancing simulation time.
 function applySearchActions(state, ghostDirections, playerDirection) {
     const next = {
         ...state,
         pellets: new Set(state.pellets),
         player: cloneSearchCharacter(state.player),
         ghosts: state.ghosts.map(cloneSearchCharacter),
-        readyPlayer: false,
-        readyGhosts: state.readyGhosts.map(() => false)
+        readyPlayer: state.readyPlayer,
+        readyGhosts: [...state.readyGhosts]
     };
 
-    if (playerDirection) {
-        next.player.direction = { ...playerDirection };
-    }
+    if (state.firstActor === "ghosts") {
+        if (playerDirection !== null) {
+            throw new Error(
+                "Pac-Man cannot act before the ghosts in this state."
+            );
+        }
 
-    for (const [index, direction] of ghostDirections) {
-        next.ghosts[index].direction = { ...direction };
+        for (const [index, direction] of ghostDirections) {
+            if (!state.readyGhosts[index]) {
+                throw new Error(
+                    `Ghost ${index} is not ready to act.`
+                );
+            }
+
+            next.ghosts[index].direction = { ...direction };
+            next.readyGhosts[index] = false;
+        }
+    } else if (state.firstActor === "player") {
+        if (ghostDirections.length > 0) {
+            throw new Error(
+                "Ghosts cannot act before Pac-Man in this state."
+            );
+        }
+
+        if (!state.readyPlayer || !playerDirection) {
+            throw new Error(
+                "Pac-Man must provide an action in this state."
+            );
+        }
+
+        next.player.direction = { ...playerDirection };
+        next.readyPlayer = false;
+    } else {
+        throw new Error("No valid actor is available to decide.");
     }
 
     return next;
@@ -1430,6 +1459,10 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
         playerDirection
     );
 
+    if (next.readyPlayer || next.readyGhosts.some(Boolean)) {
+        return finalizeSearchState(next);
+    }
+
     const {
         timeToNextEvent,
         collisionedGhostIndex
@@ -1463,40 +1496,53 @@ function advanceSearchState(state, ghostDirections, playerDirection) {
 }
 
 
-
+// Enumerates joint actions for all ghosts currently ready to decide.
 function getSearchGhostActionProfiles(state) {
-    const readyGhosts = state.readyGhosts
-        .map((ready, index) => ready ? index : -1)
-        .filter(index => index >= 0);
+    const readyGhostIndices = [];
 
-    const profiles = [];
+    for (let i = 0; i < state.ghosts.length; i++) {
+        if (state.readyGhosts[i]) {
+            readyGhostIndices.push(i);
+        }
+    }
 
-    const addProfiles = (position, directions) => {
-        if (position === readyGhosts.length) {
-            profiles.push(directions.slice());
-            return;
+    if (readyGhostIndices.length === 0) {
+        return [];
+    }
+
+    let profiles = [[]];
+
+    for (const ghostIndex of readyGhostIndices) {
+        const ghost = state.ghosts[ghostIndex];
+        const directions = getSearchGhostDirections(state, ghostIndex);
+
+        const nextProfiles = [];
+
+        for (const profile of profiles) {
+            for (const direction of directions) {
+                nextProfiles.push([
+                    ...profile,
+                    [ghostIndex, direction]
+                ]);
+            }
         }
 
-        const index = readyGhosts[position];
-
-        for (const direction of getSearchGhostDirections(state, index)) {
-            directions.push([index, { ...direction }]);
-            addProfiles(position + 1, directions);
-            directions.pop();
-        }
-    };
-
-    addProfiles(0, []);
+        profiles = nextProfiles;
+    }
 
     return profiles;
 }
 
 function getSearchPlayerActionProfiles(state) {
     if (!state.readyPlayer) {
-        return [null];
+        return [];
     }
 
-    return getSearchDirections(state, state.player, false);
+    return getSearchDirections(
+        state,
+        state.player,
+        false
+    );
 }
 
 
@@ -1504,78 +1550,37 @@ function getSearchPlayerActionProfiles(state) {
 // Only characters whose readiness flags are set choose new directions;
 // all other characters continue their existing movement.
 function getSearchActionProfiles(state) {
-    if (state.terminal) {
-        return [];
-    }
+    if (state.terminal) return [];
 
-    const ghostProfiles = getSearchGhostActionProfiles(state);
-
-    const playerDirections = getSearchPlayerActionProfiles(state);
-
-    const profiles = [];
-
-    for (const ghostDirections of ghostProfiles) {
-        for (const playerDirection of playerDirections) {
-            profiles.push({
+    if (state.firstActor === "ghosts") {
+        return getSearchGhostActionProfiles(state).map(
+            ghostDirections => ({
                 ghostDirections,
-                playerDirection,
+                playerDirection: null,
                 nextState: advanceSearchState(
                     state,
                     ghostDirections,
+                    null
+                )
+            })
+        );
+    }
+
+    if (state.firstActor === "player") {
+        return getSearchPlayerActionProfiles(state)
+            .filter(Boolean)
+            .map(playerDirection => ({
+                ghostDirections: [],
+                playerDirection,
+                nextState: advanceSearchState(
+                    state,
+                    [],
                     playerDirection
                 )
-            });
-        }
+            }));
     }
 
-    return profiles;
-}
-
-function getStrategicDecisionProfiles(state) {
-    if (state.terminal) {
-        return [];
-    }
-
-    const firstActor = getDeterministicTurnOrder(state);
-
-    const ghostProfiles = getSearchGhostActionProfiles(state);
-    const playerDirections = getSearchPlayerActionProfiles(state);
-
-    const profiles = [];
-
-    if (firstActor === "ghosts") {
-        for (const ghostDirections of ghostProfiles) {
-            for (const playerDirection of playerDirections) {
-                profiles.push({
-                    firstActor,
-                    ghostDirections,
-                    playerDirection,
-                    nextState: advanceSearchState(
-                        state,
-                        ghostDirections,
-                        playerDirection
-                    )
-                });
-            }
-        }
-    } else if (firstActor === "player") {
-        for (const playerDirection of playerDirections) {
-            for (const ghostDirections of ghostProfiles) {
-                profiles.push({
-                    firstActor,
-                    ghostDirections,
-                    playerDirection,
-                    nextState: advanceSearchState(
-                        state,
-                        ghostDirections,
-                        playerDirection
-                    )
-                });
-            }
-        }
-    }
-
-    return profiles;
+    return [];
 }
 
 // Creates a node in the shared strategic search graph. Identical
@@ -1591,9 +1596,6 @@ function createStrategicSearchNode(
     const node = {
         key,
         state,
-
-        // Immutable baseline for this canonical state.
-        staticValue: value,
 
         // Revisable strategic estimate.
         value,
@@ -1646,9 +1648,6 @@ function prepareStrategicSearchNode(node) {
         // Retained for compatibility with existing consumers.
         processed: false,
 
-        // Meaningful only until a child is connected.
-        value: node.staticValue,
-
         // Canonical successor, when connected.
         child: null
     }));
@@ -1662,22 +1661,12 @@ function prepareStrategicSearchNode(node) {
         node.candidates.length === 0;
 }
 
-function evaluateStrategicSearchCandidate(
-    candidateTransition
-) {
+function evaluateStrategicSearchCandidate(candidateTransition) {
     if (candidateTransition.evaluated) {
-        return candidateTransition.value;
+        return getStrategicCandidateValue(candidateTransition);
     }
 
-    const childState = candidateTransition.nextState;
-
-    candidateTransition.value =
-        evaluateSearchState(childState);
-
-    candidateTransition.evaluated = true;
-    candidateTransition.processed = true;
-
-    return candidateTransition.value;
+    return evaluateSearchState(candidateTransition.nextState);
 }
 
 // Produces a stable identifier for a joint ghost action.
@@ -1691,62 +1680,112 @@ function getStrategicGhostActionKey(candidate) {
 
 // Returns the best currently available estimate for a candidate
 // transition, whether or not its successor has been expanded.
-function getStrategicCandidateValue(node, candidate) {
+function getStrategicCandidateValue(candidate) {
     if (candidate.child) {
         return candidate.child.value;
     }
 
-    if (candidate.evaluated) {
-        return candidate.value;
-    }
-
-    return node.staticValue;
+    return evaluateSearchState(candidate.nextState);
 }
 
-// Aggregates action values according to the decision-maker at the
-// current event. Ghosts maximize their outcome; Pac-Man minimizes it.
-// When both sides can act, the value follows a maximin interpretation:
-// the ghosts choose a move and Pac-Man chooses the best response.
+// Evaluates a decision node using the value of its available successors.
 function getStrategicSearchNodeValue(node) {
-    if (!node.candidates || node.candidates.length === 0) {
-        return node.staticValue;
+    if (node.state.terminal) {
+        return node.value;
     }
 
-    const hasGhostMove = node.state.readyGhosts.some(Boolean);
-    const hasPlayerMove = node.state.readyPlayer;
-    const ghostGroups = new Map();
+    if (!node.candidates || node.candidates.length === 0) {
+        return node.value;
+    }
+
+    const maximizing = node.state.firstActor === "ghosts";
+    const minimizing = node.state.firstActor === "player";
+
+    if (!maximizing && !minimizing) {
+        return node.value;
+    }
+
+    let bestValue = maximizing ? -Infinity : Infinity;
+    let hasEvaluatedCandidate = false;
 
     for (const candidate of node.candidates) {
-        const ghostKey = getStrategicGhostActionKey(candidate)
-        const value = getStrategicCandidateValue(node, candidate)
-
-        if (!ghostGroups.has(ghostKey)) {
-            ghostGroups.set(ghostKey, []);
+        if (!candidate.evaluated) {
+            continue;
         }
 
-        ghostGroups.get(ghostKey).push(value);
+        const value = getStrategicCandidateValue(candidate);
+
+        hasEvaluatedCandidate = true;
+
+        if (maximizing) {
+            bestValue = Math.max(bestValue, value);
+        } else {
+            bestValue = Math.min(bestValue, value);
+        }
     }
 
-    if (hasGhostMove && hasPlayerMove) {
-        const worstResponses = Array.from(
-            ghostGroups.values(),
-            values => Math.min(...values)
-        );
+    return hasEvaluatedCandidate ? bestValue : node.value;
+}
 
-        return Math.max(...worstResponses);
+function getBestStrategicSearchCandidate(node) {
+    prepareStrategicSearchNode(node);
+
+    if (node.candidates.length === 0) {
+        return null;
     }
 
-    const values = Array.from(ghostGroups.values()).flat();
+    // Never treat an unprocessed candidate as a searched result.
+    const evaluatedCandidates = node.candidates.filter(
+        candidate => candidate.processed
+    );
 
-    if (hasGhostMove) {
-        return Math.max(...values);
+    // The search may not have processed any candidate yet.
+    // Use a deterministic legal action until results are available.
+    if (evaluatedCandidates.length === 0) {
+        return node.candidates[0];
     }
 
-    if (hasPlayerMove) {
-        return Math.min(...values);
+    const maximizing = node.state.firstActor === "ghosts";
+    const minimizing = node.state.firstActor === "player";
+
+    if (!maximizing && !minimizing) {
+        return node.candidates[0];
     }
 
-    return node.staticValue;
+    let bestCandidate = evaluatedCandidates[0];
+    let bestValue = getStrategicCandidateValue(bestCandidate);
+
+    for (let i = 1; i < evaluatedCandidates.length; i++) {
+        const candidate = evaluatedCandidates[i];
+        const value = getStrategicCandidateValue(candidate);
+
+        if (
+            (maximizing && value > bestValue) ||
+            (minimizing && value < bestValue)
+        ) {
+            bestCandidate = candidate;
+            bestValue = value;
+        }
+    }
+
+    return bestCandidate;
+}
+
+function getStrategicResponseCandidate(candidate) {
+    if (!candidate) {
+        return null;
+    }
+
+    // A processed, connected transition already has its canonical node.
+    if (candidate.child) {
+        return getBestStrategicSearchCandidate(candidate.child);
+    }
+
+    // Before the transition is connected, use its simulated successor
+    // to obtain a legal fallback response without expanding the graph.
+    const profiles = getSearchActionProfiles(candidate.nextState);
+
+    return profiles.length > 0 ? profiles[0] : null;
 }
 
 // Propagates changed values through the reverse dependency graph.
@@ -1822,9 +1861,12 @@ function processStrategicSearchCandidate(
     node,
     candidateTransition
 ) {
-    evaluateStrategicSearchCandidate(
-        candidateTransition
-    );
+    if (candidateTransition.processed) {
+        return;
+    }
+
+    candidateTransition.evaluated = true;
+    candidateTransition.processed = true;
 
     connectStrategicSearchCandidate(
         node,
@@ -1867,7 +1909,7 @@ function connectStrategicSearchCandidate(
     if (!child) {
         child = createStrategicSearchNode(
             childState,
-            candidateTransition.value,
+            evaluateSearchState(childState),
             node.exploration.discoveryDepth + 1
         );
     }
@@ -1896,17 +1938,14 @@ function connectStrategicSearchCandidate(
 // perspective, preferring strategically promising nodes while using
 // depth and improvement over the parent as tie-breakers.
 function compareStrategicSearchNodes(a, b) {
-    const aHasGhostMove =
-        a.state.readyGhosts.some(Boolean);
+    const sign = node => {
+        if (node.state.firstActor === "ghosts") return 1;
+        if (node.state.firstActor === "player") return -1;
+        return 0;
+    };
 
-    const bHasGhostMove =
-        b.state.readyGhosts.some(Boolean);
-
-    const aSign = aHasGhostMove ? 1 : -1;
-    const bSign = bHasGhostMove ? 1 : -1;
-
-    const aValue = a.value * aSign;
-    const bValue = b.value * bSign;
+    const aValue = a.value * sign(a);
+    const bValue = b.value * sign(b);
 
     if (Math.abs(aValue - bValue) > EPSILON) {
         return bValue - aValue;
@@ -2062,10 +2101,25 @@ function removeStrategicSearchFrontier(node) {
 // strategic graph to expand incrementally without monopolizing the
 // game loop. Each expansion processes one candidate transition.
 function advanceStrategicSearch() {
+    console.log("ADVANCE SEARCH", {
+        frontierSize: strategicSearch.frontier.length,
+        rootKey: strategicSearch.root?.key,
+        rootHeapIndex: strategicSearch.root?.exploration.heapIndex,
+        rootExpanded: strategicSearch.root?.exploration.expanded
+    });
+
     let expansions = 0;
 
     while (expansions < SEARCH_EXPANSIONS_PER_FRAME) {
         const node = popStrategicSearchFrontier();
+
+        if (node && node === strategicSearch.root) {
+            console.log("ROOT POPPED", {
+                nextCandidate: node.exploration.nextCandidate,
+                candidateCount: node.candidates?.length,
+                expanded: node.exploration.expanded
+            });
+        }
 
         if (!node) {
             break;
@@ -2116,47 +2170,15 @@ function advanceStrategicSearch() {
 // action, evaluating each action against Pac-Man's worst response (best for him but worst for the ghosts).
 // Unresolved candidates use their parent's static evaluation until further search expansions provide more accurate values.
 function getStrategicGhostDirection(node, ghostIndex, fallback) {
-    prepareStrategicSearchNode(node);
-
-    if (!node.candidates || node.candidates.length === 0) {
+    if (node.state.firstActor !== "ghosts") {
         return { ...fallback };
     }
 
-    const groups = new Map();
+    const candidate = getBestStrategicSearchCandidate(node);
 
-    for (const candidate of node.candidates) {
-        const ghostKey = candidate.ghostDirections
-            .map(([index, direction]) =>
-                `${index}:${direction.x},${direction.y}`
-            )
-            .join("|");
-
-        if (!groups.has(ghostKey)) {
-            groups.set(ghostKey, {
-                value: Infinity,
-                directions: candidate.ghostDirections
-            });
-        }
-
-        const group = groups.get(ghostKey);
-        const candidateValue = getStrategicCandidateValue(node, candidate)
-
-        group.value = Math.min(group.value, candidateValue);
-    }
-
-    let best = null;
-
-    for (const group of groups.values()) {
-        if (
-            !best ||
-            group.value > best.value
-        ) {
-            best = group;
-        }
-    }
-
-    const selected = best &&
-        best.directions.find(([index]) => index === ghostIndex);
+    const selected = candidate?.ghostDirections.find(
+        ([index]) => index === ghostIndex
+    );
 
     return selected
         ? { ...selected[1] }
@@ -2191,26 +2213,20 @@ function getOrSetStrategicSearchRoot(
 
     strategicSearch.root = root;
 
+    // Generate the root's candidate list, but leave processing to
+    // advanceStrategicSearch() and its per-frame expansion budget.
     prepareStrategicSearchNode(root);
 
-    // Temporary legacy policy: process all root actions immediately.
-    // The next iteration will move root work into the shared budget.
-    while (
-        root.exploration.nextCandidate <
-        root.candidates.length
-    ) {
-        const candidate =
-            root.candidates[root.exploration.nextCandidate];
-
-        processStrategicSearchCandidate(root, candidate);
-
-        root.exploration.nextCandidate++;
-    }
-
-    root.exploration.expanded = true;
-    root.exploration.phase = "complete";
-
-    removeStrategicSearchFrontier(root);
+    console.log("STRATEGIC ROOT", {
+        firstActor: root.state.firstActor,
+        phase: root.exploration.phase,
+        expanded: root.exploration.expanded,
+        nextCandidate: root.exploration.nextCandidate,
+        candidateCount: root.candidates?.length,
+        processedCount: root.candidates?.filter(c => c.processed).length,
+        heapIndex: root.exploration.heapIndex,
+        frontierSize: strategicSearch.frontier.length
+    });
 
     return root;
 }
@@ -2220,18 +2236,57 @@ function getOrSetStrategicSearchRoot(
 // move, treating their simultaneous decisions as a joint action.
 function chooseStrategicGhostDirections(
     searchContext,
-    readyGhostIndices
+    readyGhostIndices,
+    readyPlayer = false
 ) {
     const root = getOrSetStrategicSearchRoot(
         searchContext,
-        readyGhostIndices
+        readyGhostIndices,
+        readyPlayer
     );
+
+    let decisionNode = root;
+
+    // If Pac-Man decides first, select his move and then obtain
+    // the ghost response from the resulting intermediate state.
+    if (root.state.firstActor === "player") {
+        const playerCandidate =
+            getBestStrategicSearchCandidate(root);
+
+        const response =
+            getStrategicResponseCandidate(playerCandidate);
+
+        if (!response) {
+            return new Map(
+                readyGhostIndices.map(index => [
+                    index,
+                    { ...searchContext.ghosts[index].direction }
+                ])
+            );
+        }
+
+        return new Map(
+            response.ghostDirections.map(([index, direction]) => [
+                index,
+                { ...direction }
+            ])
+        );
+    }
+
+    if (root.state.firstActor !== "ghosts") {
+        return new Map(
+            readyGhostIndices.map(index => [
+                index,
+                { ...searchContext.ghosts[index].direction }
+            ])
+        );
+    }
 
     return new Map(
         readyGhostIndices.map(index => [
             index,
             getStrategicGhostDirection(
-                root,
+                decisionNode,
                 index,
                 searchContext.ghosts[index].direction
             )
@@ -2241,63 +2296,39 @@ function chooseStrategicGhostDirections(
 
 // Chooses Pac-Man's move by minimizing the worst outcome across
 // the ghost responses represented in the root's candidate actions.
-function chooseStrategicPacmanDirection(searchContext) {
+function chooseStrategicPacmanDirection(
+    searchContext,
+    readyGhostIndices = []
+) {
     const root = getOrSetStrategicSearchRoot(
         searchContext,
-        [],
+        readyGhostIndices,
         true
     );
 
-    const actionValues = new Map();
+    // If Pac-Man decides first, select directly from the root.
+    if (root.state.firstActor === "player") {
+        const candidate =
+            getBestStrategicSearchCandidate(root);
 
-    for (const candidate of root.candidates) {
-        const direction = candidate.playerDirection;
-        const key = `${direction.x},${direction.y}`;
-
-        const ghostKey = candidate.ghostDirections
-            .map(([index, ghostDirection]) =>
-                `${index}:${ghostDirection.x},${ghostDirection.y}`
-            )
-            .join("|");
-
-        if (!actionValues.has(key)) {
-            actionValues.set(key, {
-                direction,
-                ghostResponses: new Map()
-            });
-        }
-
-        const action = actionValues.get(key);
-
-        const value = getStrategicCandidateValue(
-            root,
-            candidate
-        );
-
-        action.ghostResponses.set(
-            ghostKey,
-            Math.max(
-                action.ghostResponses.get(ghostKey) ?? -Infinity,
-                value
-            )
-        );
+        return candidate?.playerDirection
+            ? { ...candidate.playerDirection }
+            : { ...root.state.player.direction };
     }
 
-    let bestDirection = null;
-    let bestValue = Infinity;
+    // If ghosts decide first, Pac-Man responds in the intermediate
+    // state reached after the selected joint ghost action.
+    if (root.state.firstActor === "ghosts") {
+        const ghostCandidate =
+            getBestStrategicSearchCandidate(root);
 
-    for (const action of actionValues.values()) {
-        const worstGhostResponse = Math.max(
-            ...action.ghostResponses.values()
-        );
+        const response =
+            getStrategicResponseCandidate(ghostCandidate);
 
-        if (worstGhostResponse < bestValue) {
-            bestValue = worstGhostResponse;
-            bestDirection = action.direction;
-        }
+        return response?.playerDirection
+            ? { ...response.playerDirection }
+            : { ...root.state.player.direction };
     }
 
-    return bestDirection
-        ? { ...bestDirection }
-        : { ...root.state.player.direction };
+    return { ...root.state.player.direction };
 }
