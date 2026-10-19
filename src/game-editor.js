@@ -41,7 +41,7 @@ function addGhostAt(position) {
     if (
         !position ||
         currentMap.tiles[position.y][position.x] === "#" ||
-        getEditorGhostHouse(position) >= 0 ||
+        currentMap.tiles[position.y][position.x] === "H" ||
         (gameState.player.x === position.x && gameState.gameState.player.y === position.y) ||
         gameState.ghosts.some(ghost => ghost.x === position.x && ghost.y === position.y)
     ) {

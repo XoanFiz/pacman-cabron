@@ -272,7 +272,7 @@ function eatPellet() {
 
 
 function activateFrightenedMode() {
-    for (const ghost of ghosts) {
+    for (const ghost of gameState.ghosts) {
 
         if (ghost.eaten)
             continue;
@@ -340,6 +340,8 @@ function updateGhost(
 
     ghost.progress +=
         ghost.speed * dt;
+
+    const ghostHouses = buildGhostHouses(getCurrentMapDefinition())
 
 
     while (
@@ -520,7 +522,7 @@ function loseLife() {
 
     deathTimer = 1.0;
 
-    for (const ghost of ghosts) {
+    for (const ghost of gameState.ghosts) {
         ghost.frightened = false;
         ghost.frightenedTimer = undefined;
         ghost.eaten = false;
@@ -688,7 +690,7 @@ function resetPositions() {
 
     const ghostStarts = mapDefinition.ghostStarts;
 
-    ghosts.forEach((ghost, index) => {
+    gameState.ghosts.forEach((ghost, index) => {
         const start = ghostStarts[index];
 
         ghost.x = start.x;

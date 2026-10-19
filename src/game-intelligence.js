@@ -563,24 +563,6 @@ function calculateDomain(
     return domain;
 }
 
-// Extracts ghost ownership identifiers from a cell's complete
-// ownership set, including ghosts represented by recovered states.
-// function getGhostOwners(owners) {
-
-//     return owners.filter(
-//         owner =>
-//             owner.startsWith("ghost") || owner.startsWith("recoveredGhost")
-//     );
-// }
-
-// Resolves a ghost ownership identifier to the corresponding index
-// in the global ghosts array.
-// function getGhostIndex(owner) {
-
-//     return Number(
-//         owner.replace("recoveredGhost", "").replace("ghost", "")
-//     );
-// }
 
 // Calculates the remaining grid distance while accounting for an
 // already-started movement segment, so arrival estimates remain
@@ -1513,7 +1495,7 @@ function getSearchGhostActionProfiles(state) {
     let profiles = [[]];
 
     for (const ghostIndex of readyGhostIndices) {
-        const ghost = state.ghosts[ghostIndex];
+        // const ghost = state.ghosts[ghostIndex];
         const directions = getSearchGhostDirections(state, ghostIndex);
 
         const nextProfiles = [];
@@ -1557,11 +1539,7 @@ function getSearchActionProfiles(state) {
             ghostDirections => ({
                 ghostDirections,
                 playerDirection: null,
-                nextState: advanceSearchState(
-                    state,
-                    ghostDirections,
-                    null
-                )
+                child: null
             })
         );
     }
@@ -1572,11 +1550,7 @@ function getSearchActionProfiles(state) {
             .map(playerDirection => ({
                 ghostDirections: [],
                 playerDirection,
-                nextState: advanceSearchState(
-                    state,
-                    [],
-                    playerDirection
-                )
+                child: null
             }));
     }
 
@@ -1606,10 +1580,6 @@ function createStrategicSearchNode(
 
         // Mutable search progress, separate from state identity.
         exploration: {
-            phase: state.terminal
-                ? "complete"
-                : "unprepared",
-
             nextCandidate: 0,
             expanded: state.terminal,
 
@@ -1630,44 +1600,6 @@ function createStrategicSearchNode(
     return node;
 }
 
-// Lazily generates the node's possible joint actions, postponing
-// branching work until the search actually reaches that node.
-function prepareStrategicSearchNode(node) {
-    if (node.candidates !== null) {
-        return;
-    }
-
-    node.candidates = getSearchActionProfiles(node.state).map(profile => ({
-        ...profile,
-
-        // Transition lifecycle.
-        evaluated: false,
-        connected: false,
-
-        // Retained for compatibility with existing consumers.
-        processed: false,
-
-        // Canonical successor, when connected.
-        child: null
-    }));
-
-    node.exploration.phase =
-        node.candidates.length === 0
-            ? "complete"
-            : "prepared";
-
-    node.exploration.expanded =
-        node.candidates.length === 0;
-}
-
-// function evaluateStrategicSearchCandidate(candidateTransition) {
-//     if (candidateTransition.evaluated) {
-//         return getStrategicCandidateValue(candidateTransition);
-//     }
-
-//     return evaluateSearchState(candidateTransition.nextState);
-// }
-
 // Produces a stable identifier for a joint ghost action.
 function getStrategicGhostActionKey(candidate) {
     return candidate.ghostDirections
@@ -1680,111 +1612,64 @@ function getStrategicGhostActionKey(candidate) {
 // Returns the best currently available estimate for a candidate
 // transition, whether or not its successor has been expanded.
 function getStrategicCandidateValue(candidate) {
-    if (candidate.child) {
-        return candidate.child.value;
-    }
-
-    return evaluateSearchState(candidate.nextState);
+    return candidate.child
+        ? candidate.child.value
+        : -Infinity;
 }
 
 // Evaluates a decision node using the value of its available successors.
 function getStrategicSearchNodeValue(node) {
-    if (node.state.terminal) {
+    const candidates = (node.candidates ?? [])
+        .filter(candidate => candidate.child !== null);
+
+    if (candidates.length === 0) {
         return node.value;
     }
 
-    if (!node.candidates || node.candidates.length === 0) {
-        return node.value;
-    }
+    const values = candidates.map(
+        candidate => candidate.child.value
+    );
 
-    const maximizing = node.state.firstActor === "ghosts";
-    const minimizing = node.state.firstActor === "player";
-
-    if (!maximizing && !minimizing) {
-        return node.value;
-    }
-
-    let bestValue = maximizing ? -Infinity : Infinity;
-    let hasEvaluatedCandidate = false;
-
-    for (const candidate of node.candidates) {
-        if (!candidate.evaluated) {
-            continue;
-        }
-
-        const value = getStrategicCandidateValue(candidate);
-
-        hasEvaluatedCandidate = true;
-
-        if (maximizing) {
-            bestValue = Math.max(bestValue, value);
-        } else {
-            bestValue = Math.min(bestValue, value);
-        }
-    }
-
-    return hasEvaluatedCandidate ? bestValue : node.value;
+    return node.state.firstActor === "ghosts"
+        ? Math.max(...values)
+        : Math.min(...values);
 }
 
 function getBestStrategicSearchCandidate(node) {
-    prepareStrategicSearchNode(node);
+    if (node.candidates === null) {
+        node.candidates = getSearchActionProfiles(node.state);
+    }
 
     if (node.candidates.length === 0) {
         return null;
     }
 
-    // Never treat an unprocessed candidate as a searched result.
-    const evaluatedCandidates = node.candidates.filter(
-        candidate => candidate.processed
+    const candidates = node.candidates.filter(
+        candidate => candidate.child !== null
     );
 
-    // The search may not have processed any candidate yet.
-    // Use a deterministic legal action until results are available.
-    if (evaluatedCandidates.length === 0) {
+    if (candidates.length === 0) {
         return node.candidates[0];
     }
 
-    const maximizing = node.state.firstActor === "ghosts";
-    const minimizing = node.state.firstActor === "player";
-
-    if (!maximizing && !minimizing) {
-        return node.candidates[0];
-    }
-
-    let bestCandidate = evaluatedCandidates[0];
-    let bestValue = getStrategicCandidateValue(bestCandidate);
-
-    for (let i = 1; i < evaluatedCandidates.length; i++) {
-        const candidate = evaluatedCandidates[i];
+    return candidates.reduce((best, candidate) => {
         const value = getStrategicCandidateValue(candidate);
+        const bestValue = getStrategicCandidateValue(best);
 
-        if (
-            (maximizing && value > bestValue) ||
-            (minimizing && value < bestValue)
-        ) {
-            bestCandidate = candidate;
-            bestValue = value;
+        if (node.state.firstActor === "ghosts") {
+            return value > bestValue ? candidate : best;
         }
-    }
 
-    return bestCandidate;
+        return value < bestValue ? candidate : best;
+    });
 }
 
 function getStrategicResponseCandidate(candidate) {
-    if (!candidate) {
+    if (!candidate.child) {
         return null;
     }
 
-    // A processed, connected transition already has its canonical node.
-    if (candidate.child) {
-        return getBestStrategicSearchCandidate(candidate.child);
-    }
-
-    // Before the transition is connected, use its simulated successor
-    // to obtain a legal fallback response without expanding the graph.
-    const profiles = getSearchActionProfiles(candidate.nextState);
-
-    return profiles.length > 0 ? profiles[0] : null;
+    return getBestStrategicSearchCandidate(candidate.child);
 }
 
 // Propagates changed values through the reverse dependency graph.
@@ -1823,113 +1708,37 @@ function refreshStrategicSearchValues(node) {
     }
 }
 
-// This logic is discarded. 
-
-// Detects whether adding a search-graph edge would create a cycle,
-// allowing repeated states to be shared without introducing cyclic
-// dependencies into the graph.
-// function hasStrategicSearchPath(start, target) {
-//     const pending = [start];
-//     const visited = new Set();
-
-//     while (pending.length > 0) {
-//         const node = pending.pop();
-
-//         if (node === target) {
-//             return true;
-//         }
-
-//         if (visited.has(node)) {
-//             continue;
-//         }
-
-//         visited.add(node);
-
-//         for (const candidate of node.candidates || []) {
-//             if (candidate.connected && candidate.child) {
-//                 pending.push(candidate.child);
-//             }
-//         }
-//     }
-
-//     return false;
-// }
-
 // Evaluates one candidate transition and connects its resulting state
 // to the shared graph when doing so does not introduce an ancestor
 // cycle. Repeated states reuse their existing values and dependencies.
-function processStrategicSearchCandidate(
-    node,
-    candidateTransition
-) {
-    if (candidateTransition.processed) {
-        return;
+function expandStrategicSearchCandidate(node, candidate) {
+    if (candidate.child) {
+        return candidate.child;
     }
 
-    candidateTransition.evaluated = true;
-    candidateTransition.processed = true;
-
-    connectStrategicSearchCandidate(
-        node,
-        candidateTransition
+    const nextState = advanceSearchState(
+        node.state,
+        candidate.ghostDirections,
+        candidate.playerDirection
     );
 
-    refreshStrategicSearchValues(node);
-}
-
-function connectStrategicSearchCandidate(
-    node,
-    candidateTransition
-) {
-    if (candidateTransition.connected) {
-        return candidateTransition.child;
-    }
-
-    if (!candidateTransition.evaluated) {
-        throw new Error(
-            "Cannot connect an unevaluated strategic candidate."
-        );
-    }
-
-    const childState = candidateTransition.nextState;
-    const childKey = buildStateKey(childState);
-
-    // A self-loop or an edge closing a graph cycle is not connected.
-    // if (childKey === node.key) {
-    //     candidateTransition.cycleBlocked = true;
-    //     return null;
-    // }
-
+    const childKey = buildStateKey(nextState);
     let child = strategicSearch.nodes.get(childKey);
-
-    // if (child && hasStrategicSearchPath(child, node)) {
-    //     candidateTransition.cycleBlocked = true;
-    //     return null;
-    // }
 
     if (!child) {
         child = createStrategicSearchNode(
-            childState,
-            evaluateSearchState(childState),
+            nextState,
+            evaluateSearchState(nextState),
             node.exploration.discoveryDepth + 1
         );
     }
 
-    candidateTransition.child = child;
-    candidateTransition.connected = true;
+    candidate.child = child;
 
-    // Register this dependency exactly once.
-    const alreadyRegistered = child.incomingEdges.some(
-        edge =>
-            edge.parent === node &&
-            edge.candidate === candidateTransition
-    );
-
-    if (!alreadyRegistered) {
-        child.incomingEdges.push({
-            parent: node,
-            candidate: candidateTransition
-        });
+    if (!child.incomingEdges.some(
+        edge => edge.parent === node && edge.candidate === candidate
+    )) {
+        child.incomingEdges.push({ parent: node, candidate });
     }
 
     return child;
@@ -2113,7 +1922,6 @@ function advanceStrategicSearch() {
 
     while (expansions < SEARCH_EXPANSIONS_PER_FRAME) {
         const node = popStrategicSearchFrontier();
-
         // if (node && node === strategicSearch.root) {
         //     console.log("ROOT POPPED", {
         //         nextCandidate: node.exploration.nextCandidate,
@@ -2132,9 +1940,12 @@ function advanceStrategicSearch() {
             continue;
         }
 
-        prepareStrategicSearchNode(node);
+        if (node.candidates === null) {
+            node.candidates = getSearchActionProfiles(node.state);
+        }
 
-        if (exploration.expanded) {
+        if (node.candidates.length === 0) {
+            exploration.expanded = true;
             continue;
         }
 
@@ -2143,14 +1954,13 @@ function advanceStrategicSearch() {
             node.candidates.length
         ) {
             exploration.expanded = true;
-            exploration.phase = "complete";
             continue;
         }
 
         const candidate =
             node.candidates[exploration.nextCandidate];
 
-        processStrategicSearchCandidate(node, candidate);
+        expandStrategicSearchCandidate(node, candidate);
 
         exploration.nextCandidate++;
         expansions++;
@@ -2160,7 +1970,6 @@ function advanceStrategicSearch() {
             node.candidates.length
         ) {
             exploration.expanded = true;
-            exploration.phase = "complete";
         } else {
             pushStrategicSearchFrontier(node);
         }
@@ -2213,21 +2022,6 @@ function getOrSetStrategicSearchRoot(
     }
 
     strategicSearch.root = root;
-
-    // Generate the root's candidate list, but leave processing to
-    // advanceStrategicSearch() and its per-frame expansion budget.
-    prepareStrategicSearchNode(root);
-
-    // console.log("STRATEGIC ROOT", {
-    //     firstActor: root.state.firstActor,
-    //     phase: root.exploration.phase,
-    //     expanded: root.exploration.expanded,
-    //     nextCandidate: root.exploration.nextCandidate,
-    //     candidateCount: root.candidates?.length,
-    //     processedCount: root.candidates?.filter(c => c.processed).length,
-    //     heapIndex: root.exploration.heapIndex,
-    //     frontierSize: strategicSearch.frontier.length
-    // });
 
     return root;
 }
