@@ -210,7 +210,82 @@ function createGameMap(context) {
     // MAP STATE
     // ============================================================
 
+    const mapStorage = createGameMapStorage();
+
     context.maps = PREDEFINED_MAPS.map(cloneMapDefinition);
+    context.mapStorageReady = false;
+
+    function syncMapStateBindings() {
+        globalThis.maps = context.maps;
+        globalThis.activeMapId = context.activeMapId;
+        globalThis.nextCustomMapNumber = context.nextCustomMapNumber;
+        globalThis.currentMap = context.currentMap;
+    }
+
+    async function loadPersistedMaps() {
+        try {
+            const persisted = await mapStorage.load();
+
+            if (!persisted) {
+                context.mapStorageReady = true;
+                return;
+            }
+
+            const definitionsById = new Map(
+                PREDEFINED_MAPS.map(definition => [
+                    definition.id,
+                    cloneMapDefinition(definition)
+                ])
+            );
+
+            for (const persistedDefinition of persisted.maps || []) {
+                if (!persistedDefinition?.id || !persistedDefinition.tiles) {
+                    continue;
+                }
+
+                definitionsById.set(
+                    persistedDefinition.id,
+                    cloneMapDefinition(persistedDefinition)
+                );
+            }
+
+            context.maps = Array.from(definitionsById.values());
+
+            if (context.maps.some(definition => definition.id === persisted.activeMapId)) {
+                context.activeMapId = persisted.activeMapId;
+            }
+
+            const customNumbers = context.maps
+                .map(definition => definition.customNumber)
+                .filter(Number.isFinite);
+            const nextAvailableNumber = customNumbers.length > 0
+                ? Math.max(...customNumbers) + 1
+                : 1;
+
+            context.nextCustomMapNumber = Math.max(
+                nextAvailableNumber,
+                Number(persisted.nextCustomMapNumber) || 1
+            );
+            context.currentMap = cloneMapDefinition(
+                context.maps.find(definition => definition.id === context.activeMapId) || context.maps[0]
+            );
+            syncMapStateBindings();
+        } catch (error) {
+            console.warn("Unable to load saved maps from IndexedDB.", error);
+        } finally {
+            context.mapStorageReady = true;
+        }
+    }
+
+    function persistMaps() {
+        return mapStorage.save(maps, {
+            activeMapId,
+            nextCustomMapNumber
+        }).catch(error => {
+            console.warn("Unable to save maps in IndexedDB.", error);
+            return false;
+        });
+    }
     context.activeMapId = "classic";
     context.editorDraftMap = null;
     context.nextCustomMapNumber = 1;
@@ -558,6 +633,7 @@ function createGameMap(context) {
         activeMapId = savedMap.id;
 
         updateMapSelector();
+        void persistMaps();
     }
 
 
@@ -629,6 +705,7 @@ function createGameMap(context) {
         buildPellets,
         buildGhostHouses,
         buildMapData,
+        loadPersistedMaps,
         updateMapSelector,
         selectCharacter,
         updateCharacterChoices,

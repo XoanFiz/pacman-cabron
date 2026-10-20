@@ -30,7 +30,8 @@ function createGameRuntime(context) {
     }
 
 
-    function start() {
+    async function start() {
+        await loadPersistedMaps();
         updateMapSelector();
         resetGame();
         updateCharacterChoices();
