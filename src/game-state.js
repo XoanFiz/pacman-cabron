@@ -1,4 +1,12 @@
-function createGameState(context) {
+function createGameState(parameters = {}) {
+    const {
+        config
+    } = parameters;
+
+    const {
+        INITIAL_LIVES
+    } = config;
+
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
@@ -20,7 +28,6 @@ function createGameState(context) {
     const messages = window.PACMAN_TRANSLATIONS;
     const contentLanguage = window.PACMAN_LOCALE;
 
-
     // ============================================================
     // STATE
     // ============================================================
@@ -40,72 +47,9 @@ function createGameState(context) {
         time: 0
     };
 
-    let selectedCharacter = "pacman";
-
-    let editorMode = false;
-    let editorGesture = null;
-    let editorToastTimer = 0;
-    let addingGhost = false;
-
-    let currentTime = 0;
-
-    function localizeContent() {
-        document.documentElement.lang = contentLanguage;
-        document.documentElement.dir =
-            ["ar", "fa", "he", "ps", "ur"].includes(contentLanguage)
-                ? "rtl"
-                : "ltr";
-
-        document
-            .querySelectorAll("[data-i18n]")
-            .forEach(element => {
-                element.textContent = messages[element.dataset.i18n];
-            });
-
-        document
-            .querySelectorAll("[data-i18n-aria-label]")
-            .forEach(element => {
-                element.setAttribute(
-                    "aria-label",
-                    messages[element.dataset.i18nAriaLabel]
-                );
-            });
-
-        document
-            .querySelectorAll("[data-dir]")
-            .forEach(button => {
-                button.setAttribute(
-                    "aria-label",
-                    messages.directions[button.dataset.dir]
-                );
-            });
-    }
-
-    function setStatus(messageKey) {
-        statusElement.textContent = messages[messageKey];
-    }
-
-    function showEditorToast(messageKey) {
-        editorToastElement.textContent = messages[messageKey];
-        editorToastElement.hidden = false;
-        window.clearTimeout(editorToastTimer);
-        editorToastTimer = window.setTimeout(() => {
-            editorToastElement.hidden = true;
-        }, 2600);
-    }
-
-    function setMapEditorInstructions() {
-        statusElement.textContent =
-            `${messages.mapEditorInstructions} ${messages.mapEditorHouseInstructions} ${messages.addGhostInstructions}`;
-    }
-
-    localizeContent();
-
     // ============================================================
     // DEBUG
     // ============================================================
-    let showVoronoiDomains = false;
-
     const DOMAIN_COLORS = {
         pacman: [255, 212, 59]
     };
@@ -194,25 +138,114 @@ function createGameState(context) {
     function getGhostColorRgb(index) {
         return hexToRgb(getGhostColor(index));
     }
-    Object.assign(context, {
-        canvas, ctx, scoreElement, livesElement, pauseButton, statusElement,
-        editorToastElement, startScreenElement, editorToolbarElement,
-        editorBackButton, editorSaveButton, mapSelectElement, newMapButton,
-        addGhostButton, ghostCharacterChoicesElement, pressedDirectionKeys,
-        messages, contentLanguage, currentGameState
-    });
 
-    return {
+    // ============================================================
+    // UI HELPERS
+    // ============================================================
+
+    function localizeContent() {
+        document.documentElement.lang = contentLanguage;
+        document.documentElement.dir =
+            ["ar", "fa", "he", "ps", "ur"].includes(contentLanguage)
+                ? "rtl"
+                : "ltr";
+
+        document
+            .querySelectorAll("[data-i18n]")
+            .forEach(element => {
+                element.textContent = messages[element.dataset.i18n];
+            });
+
+        document
+            .querySelectorAll("[data-i18n-aria-label]")
+            .forEach(element => {
+                element.setAttribute(
+                    "aria-label",
+                    messages[element.dataset.i18nAriaLabel]
+                );
+            });
+
+        document
+            .querySelectorAll("[data-dir]")
+            .forEach(button => {
+                button.setAttribute(
+                    "aria-label",
+                    messages.directions[button.dataset.dir]
+                );
+            });
+    }
+
+    function setStatus(messageKey) {
+        statusElement.textContent = messages[messageKey];
+    }
+
+    function showEditorToast(messageKey) {
+        editorToastElement.textContent = messages[messageKey];
+        editorToastElement.hidden = false;
+        window.clearTimeout(state.editorToastTimer);
+        state.editorToastTimer = window.setTimeout(() => {
+            editorToastElement.hidden = true;
+        }, 2600);
+    }
+
+    function setMapEditorInstructions() {
+        statusElement.textContent =
+            `${messages.mapEditorInstructions} ${messages.mapEditorHouseInstructions} ${messages.addGhostInstructions}`;
+    }
+
+    localizeContent();
+
+    // Shared mutable state. Everything that other modules read or write
+    // lives on this object so the coordinator can wire it by reference.
+    const state = {
+        // DOM references.
+        canvas,
+        ctx,
+        scoreElement,
+        livesElement,
+        pauseButton,
+        statusElement,
+        editorToastElement,
+        startScreenElement,
+        editorToolbarElement,
+        editorBackButton,
+        editorSaveButton,
+        mapSelectElement,
+        newMapButton,
+        addGhostButton,
+        ghostCharacterChoicesElement,
+        pressedDirectionKeys,
+
+        // Localization.
+        messages,
+        contentLanguage,
+
+        // Game state.
+        currentGameState,
+
+        // Mutable UI / editor flags.
+        selectedCharacter: "pacman",
+        editorMode: false,
+        editorGesture: null,
+        editorToastTimer: 0,
+        addingGhost: false,
+        currentTime: 0,
+        showVoronoiDomains: false,
+
+        // Debug.
+        DOMAIN_COLORS,
+        BASE_GHOST_COLORS,
+
+        // Helpers.
+        localizeContent,
         setStatus,
         showEditorToast,
         setMapEditorInstructions,
-        showVoronoiDomains,
-        DOMAIN_COLORS,
         hexToRgb,
         getMostDistinctGhostColor,
         getGhostColor,
-        getGhostColorRgb,
-        currentGameState
-    }
+        getGhostColorRgb
+    };
 
+    return state;
 }

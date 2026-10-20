@@ -1,62 +1,76 @@
-function createGameEditor(context) {
+function createGameEditor(parameters = {}) {
+    const {
+        state,
+        map,
+        rules
+    } = parameters;
+
+    const DIRECTIONS = map.DIRECTIONS;
+    const EDITOR_DIRECTIONS = [
+        DIRECTIONS.up,
+        DIRECTIONS.right,
+        DIRECTIONS.down,
+        DIRECTIONS.left
+    ];
+    const gameState = () => state.currentGameState;
 
     function enterMapEditor() {
-        editorDraftMap = cloneMapDefinition(
-            maps.find(map => map.id === activeMapId) || maps[0]
+        map.editorDraftMap = map.cloneMapDefinition(
+            map.maps.find(definition => definition.id === map.activeMapId) || map.maps[0]
         );
-        editorMode = true;
-        editorGesture = null;
-        addingGhost = false;
-        window.clearTimeout(editorToastTimer);
-        editorToastElement.hidden = true;
-        resetGame();
+        state.editorMode = true;
+        state.editorGesture = null;
+        state.addingGhost = false;
+        window.clearTimeout(state.editorToastTimer);
+        state.editorToastElement.hidden = true;
+        rules.resetGame();
         updateAddGhostButton();
         document.body.classList.add("map-editor-active");
-        editorToolbarElement.hidden = false;
-        startScreenElement.hidden = true;
-        setMapEditorInstructions();
+        state.editorToolbarElement.hidden = false;
+        state.startScreenElement.hidden = true;
+        state.setMapEditorInstructions();
     }
-
 
     function createNewMap() {
         syncEditorDraftMap();
-        const sourceMap = editorDraftMap || getCurrentMapDefinition();
+        const sourceMap = map.editorDraftMap || map.getCurrentMapDefinition();
 
-        editorDraftMap = cloneMapDefinition(sourceMap);
-        editorDraftMap.id = `custom-${nextCustomMapNumber}`;
-        editorDraftMap.nameKey = null;
-        editorDraftMap.customNumber = nextCustomMapNumber++;
-        addingGhost = false;
-        resetGame();
+        map.editorDraftMap = map.cloneMapDefinition(sourceMap);
+        map.editorDraftMap.id = `custom-${map.nextCustomMapNumber}`;
+        map.editorDraftMap.nameKey = null;
+        map.editorDraftMap.customNumber = map.nextCustomMapNumber++;
+        state.addingGhost = false;
+        rules.resetGame();
         updateAddGhostButton();
-        setMapEditorInstructions();
+        state.setMapEditorInstructions();
     }
-
 
     function toggleGhostPlacement() {
-        addingGhost = !addingGhost;
+        state.addingGhost = !state.addingGhost;
         updateAddGhostButton();
     }
 
-
     function addGhostAt(position) {
+        const gs = gameState();
+        const currentMap = map.currentMap;
+
         if (
             !position ||
             currentMap.tiles[position.y][position.x] === "#" ||
             currentMap.tiles[position.y][position.x] === "H" ||
-            (currentGameState.player.x === position.x && currentGameState.player.y === position.y) ||
-            currentGameState.ghosts.some(ghost => ghost.x === position.x && ghost.y === position.y)
+            (gs.player.x === position.x && gs.player.y === position.y) ||
+            gs.ghosts.some(ghost => ghost.x === position.x && ghost.y === position.y)
         ) {
-            showEditorToast("ghostPlacementError");
+            state.showEditorToast("ghostPlacementError");
             return false;
         }
 
-        const existingColors = currentGameState.ghosts.map((ghost, index) =>
-            ghost.color || getGhostColor(index)
+        const existingColors = gs.ghosts.map((ghost, index) =>
+            ghost.color || state.getGhostColor(index)
         );
-        const color = existingColors.length < BASE_GHOST_COLORS.length
-            ? BASE_GHOST_COLORS[existingColors.length]
-            : getMostDistinctGhostColor(existingColors);
+        const color = existingColors.length < state.BASE_GHOST_COLORS.length
+            ? state.BASE_GHOST_COLORS[existingColors.length]
+            : state.getMostDistinctGhostColor(existingColors);
         const newGhost = {
             x: position.x,
             y: position.y,
@@ -69,7 +83,7 @@ function createGameEditor(context) {
             direction: { ...DIRECTIONS.left },
             nextDirection: { ...DIRECTIONS.left }
         };
-        currentGameState.ghosts.push(newGhost);
+        gs.ghosts.push(newGhost);
 
         const previousTile = currentMap.tiles[position.y][position.x];
         if (currentMap.tiles[position.y][position.x] === "." || currentMap.tiles[position.y][position.x] === "o") {
@@ -77,38 +91,40 @@ function createGameEditor(context) {
         }
 
         if (!isEditorMapConnected()) {
-            currentGameState.ghosts.pop();
+            gs.ghosts.pop();
             if (previousTile !== currentMap.tiles[position.y][position.x]) {
                 currentMap.tiles[position.y][position.x] = previousTile;
             }
-            showEditorToast("mapConnectivityError");
+            state.showEditorToast("mapConnectivityError");
             return false;
         }
 
-        strategicSearch.nodes.clear();
-        strategicSearch.frontier = [];
-        strategicSearch.root = null;
+        map.strategicSearch.nodes.clear();
+        map.strategicSearch.frontier = [];
+        map.strategicSearch.root = null;
         syncEditorDraftMap();
         updateAddGhostButton();
-        setMapEditorInstructions();
+        state.setMapEditorInstructions();
 
         return true;
     }
 
-
     function syncEditorDraftMap() {
-        if (!editorDraftMap) {
+        const gs = gameState();
+        const currentMap = map.currentMap;
+
+        if (!map.editorDraftMap) {
             return;
         }
 
-        editorDraftMap.tiles = currentMap.tiles.map(row => row.slice());
-        editorDraftMap.edges = Array.from(currentMap.edges);
-        editorDraftMap.playerStart = {
-            x: currentGameState.player.x,
-            y: currentGameState.player.y,
-            direction: { ...currentGameState.player.facingDirection }
+        map.editorDraftMap.tiles = currentMap.tiles.map(row => row.slice());
+        map.editorDraftMap.edges = Array.from(currentMap.edges);
+        map.editorDraftMap.playerStart = {
+            x: gs.player.x,
+            y: gs.player.y,
+            direction: { ...gs.player.facingDirection }
         };
-        editorDraftMap.ghostStarts = currentGameState.ghosts.map(ghost => ({
+        map.editorDraftMap.ghostStarts = gs.ghosts.map(ghost => ({
             x: ghost.x,
             y: ghost.y,
             color: ghost.color,
@@ -116,45 +132,44 @@ function createGameEditor(context) {
         }));
     }
 
-
     function leaveMapEditor(saveChanges) {
         if (saveChanges) {
             syncEditorDraftMap();
-            saveEditorMap();
+            map.saveEditorMap();
         }
 
-        editorDraftMap = null;
-        editorMode = false;
-        editorGesture = null;
-        addingGhost = false;
-        updateCharacterChoices();
-        window.clearTimeout(editorToastTimer);
-        editorToastElement.hidden = true;
+        map.editorDraftMap = null;
+        state.editorMode = false;
+        state.editorGesture = null;
+        state.addingGhost = false;
+        map.updateCharacterChoices();
+        window.clearTimeout(state.editorToastTimer);
+        state.editorToastElement.hidden = true;
         document.body.classList.remove("map-editor-active");
-        editorToolbarElement.hidden = true;
-        resetGame();
-        updateCharacterChoices();
-        startScreenElement.hidden = false;
+        state.editorToolbarElement.hidden = true;
+        rules.resetGame();
+        map.updateCharacterChoices();
+        state.startScreenElement.hidden = false;
     }
 
-
     function getEditorPosition(event) {
-        const bounds = canvas.getBoundingClientRect();
-        const x = Math.floor((event.clientX - bounds.left) * getMapColumnCount(currentMap) / bounds.width);
-        const y = Math.floor((event.clientY - bounds.top) * getMapRowCount(currentMap) / bounds.height);
+        const currentMap = map.currentMap;
+        const bounds = state.canvas.getBoundingClientRect();
+        const x = Math.floor((event.clientX - bounds.left) * map.getMapColumnCount(currentMap) / bounds.width);
+        const y = Math.floor((event.clientY - bounds.top) * map.getMapRowCount(currentMap) / bounds.height);
 
-        if (x < 0 || x >= getMapColumnCount(currentMap) || y < 0 || y >= getMapRowCount(currentMap)) {
+        if (x < 0 || x >= map.getMapColumnCount(currentMap) || y < 0 || y >= map.getMapRowCount(currentMap)) {
             return null;
         }
 
         return { x, y };
     }
 
-
     function getEditorBoundary(event) {
-        const bounds = canvas.getBoundingClientRect();
-        const gridX = (event.clientX - bounds.left) * getMapColumnCount(currentMap) / bounds.width;
-        const gridY = (event.clientY - bounds.top) * getMapRowCount(currentMap) / bounds.height;
+        const currentMap = map.currentMap;
+        const bounds = state.canvas.getBoundingClientRect();
+        const gridX = (event.clientX - bounds.left) * map.getMapColumnCount(currentMap) / bounds.width;
+        const gridY = (event.clientY - bounds.top) * map.getMapRowCount(currentMap) / bounds.height;
         const verticalLine = Math.round(gridX);
         const horizontalLine = Math.round(gridY);
         const verticalDistance = Math.abs(gridX - verticalLine);
@@ -169,11 +184,11 @@ function createGameEditor(context) {
 
         if (verticalDistance <= horizontalDistance) {
             const y = Math.floor(gridY);
-            const x = wrap(verticalLine - 1, getMapColumnCount(currentMap));
+            const x = map.wrap(verticalLine - 1, map.getMapColumnCount(currentMap));
             const direction = DIRECTIONS.right;
 
             return {
-                key: getBoundaryKey(x, y, direction),
+                key: map.getBoundaryKey(x, y, direction),
                 x,
                 y,
                 direction
@@ -181,27 +196,27 @@ function createGameEditor(context) {
         }
 
         const x = Math.floor(gridX);
-        const y = wrap(horizontalLine - 1, getMapRowCount(currentMap));
+        const y = map.wrap(horizontalLine - 1, map.getMapRowCount(currentMap));
         const direction = DIRECTIONS.down;
 
         return {
-            key: getBoundaryKey(x, y, direction),
+            key: map.getBoundaryKey(x, y, direction),
             x,
             y,
             direction
         };
     }
 
-
     function toggleEditorBoundary(boundary) {
-        const next = getWrappedPosition(
+        const currentMap = map.currentMap;
+        const next = map.getWrappedPosition(
             boundary.x + boundary.direction.x,
             boundary.y + boundary.direction.y
         );
 
         if (
-            isWall(boundary.x, boundary.y) ||
-            isWall(next.x, next.y)
+            map.isWall(boundary.x, boundary.y) ||
+            map.isWall(next.x, next.y)
         ) {
             return;
         }
@@ -214,7 +229,7 @@ function createGameEditor(context) {
             currentMap.edges.add(boundary.key);
         }
 
-        graph = buildGraph(currentMap);
+        map.graph = map.buildGraph(currentMap);
 
         if (!isEditorMapConnected()) {
             if (wasBlocked) {
@@ -223,26 +238,26 @@ function createGameEditor(context) {
                 currentMap.edges.delete(boundary.key);
             }
 
-            graph = buildGraph(currentMap);
-            showEditorToast("mapConnectivityError");
+            map.graph = map.buildGraph(currentMap);
+            state.showEditorToast("mapConnectivityError");
         }
     }
 
-
     function getEditorEntity(position) {
-        if (currentGameState.player.x === position.x && currentGameState.player.y === position.y) {
-            return { type: "player", entity: currentGameState.player };
+        const gs = gameState();
+
+        if (gs.player.x === position.x && gs.player.y === position.y) {
+            return { type: "player", entity: gs.player };
         }
 
-        const ghostIndex = currentGameState.ghosts.findIndex(ghost =>
+        const ghostIndex = gs.ghosts.findIndex(ghost =>
             ghost.x === position.x && ghost.y === position.y
         );
 
         return ghostIndex < 0
             ? null
-            : { type: "ghost", index: ghostIndex, entity: currentGameState.ghosts[ghostIndex] };
+            : { type: "ghost", index: ghostIndex, entity: gs.ghosts[ghostIndex] };
     }
-
 
     function rotateEditorEntity(entity, type) {
         const currentIndex = EDITOR_DIRECTIONS.findIndex(direction =>
@@ -259,8 +274,9 @@ function createGameEditor(context) {
         }
     }
 
-
     function moveEditorEntity(gesture, position) {
+        const gs = gameState();
+        const currentMap = map.currentMap;
         const { x, y } = position;
 
         if (
@@ -271,12 +287,12 @@ function createGameEditor(context) {
 
         if (
             gesture.type !== "player" &&
-            currentGameState.player.x === x && currentGameState.player.y === y
+            gs.player.x === x && gs.player.y === y
         ) {
             return false;
         }
 
-        if (currentGameState.ghosts.some((ghost, index) =>
+        if (gs.ghosts.some((ghost, index) =>
             ghost.x === x &&
             ghost.y === y &&
             !(gesture.type === "ghost" && index === gesture.index)
@@ -300,7 +316,7 @@ function createGameEditor(context) {
 
         if (!isEditorMapConnected()) {
             Object.assign(entity, previousPosition);
-            showEditorToast("mapConnectivityError");
+            state.showEditorToast("mapConnectivityError");
             return false;
         }
 
@@ -313,12 +329,14 @@ function createGameEditor(context) {
         return true;
     }
 
-
     function isEditorMapConnected() {
+        const gs = gameState();
+        const currentMap = map.currentMap;
+
         const targets = [
-            { x: currentGameState.player.x, y: currentGameState.player.y },
-            ...currentGameState.ghosts.map(ghost => ({ x: ghost.x, y: ghost.y })),
-            ...buildGhostHouses(currentMap),
+            { x: gs.player.x, y: gs.player.y },
+            ...gs.ghosts.map(ghost => ({ x: ghost.x, y: ghost.y })),
+            ...map.buildGhostHouses(currentMap),
             ...currentMap.tiles.flatMap((row, y) =>
                 Array.from(row, (tile, x) =>
                     tile === "." || tile === "o"
@@ -327,13 +345,13 @@ function createGameEditor(context) {
                 ).filter(Boolean)
             )
         ];
-        const reached = new Set([`${currentGameState.player.x},${currentGameState.player.y}`]);
-        const queue = [{ x: currentGameState.player.x, y: currentGameState.player.y }];
+        const reached = new Set([`${gs.player.x},${gs.player.y}`]);
+        const queue = [{ x: gs.player.x, y: gs.player.y }];
 
         for (let index = 0; index < queue.length; index++) {
             const current = queue[index];
 
-            for (const next of graph[current.y][current.x]) {
+            for (const next of map.graph[current.y][current.x]) {
                 const key = `${next.x},${next.y}`;
 
                 if (reached.has(key)) {
@@ -350,10 +368,12 @@ function createGameEditor(context) {
         );
     }
 
-
     function cycleEditorTile(position, count = 1) {
+        const gs = gameState();
+        const currentMap = map.currentMap;
+
         const cycle = [".", "o", " ", "H", "#"];
-        const ghostHouses = buildGhostHouses(currentMap);
+        const ghostHouses = map.buildGhostHouses(currentMap);
         const currentTile = currentMap.tiles[position.y][position.x];
         const currentIndex = cycle.indexOf(currentTile);
         const oldTile = cycle[currentIndex];
@@ -363,7 +383,7 @@ function createGameEditor(context) {
             nextTile !== "H" &&
             ghostHouses.length <= 1
         ) {
-            showEditorToast("mapHouseRequiredError");
+            state.showEditorToast("mapHouseRequiredError");
             return;
         }
 
@@ -378,68 +398,61 @@ function createGameEditor(context) {
         if (nextTile === "#") {
             for (const direction of Object.values(DIRECTIONS)) {
                 currentMap.edges.delete(
-                    getBoundaryKey(position.x, position.y, direction)
+                    map.getBoundaryKey(position.x, position.y, direction)
                 );
             }
         }
 
-
-        // pellets = MAP.reduce((total, row) =>
-        //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
-        // 0);
-        currentGameState.pellets = buildPellets();
-        graph = buildGraph(currentMap);
+        gs.pellets = map.buildPellets();
+        map.graph = map.buildGraph(currentMap);
 
         if (!isEditorMapConnected()) {
             currentMap.tiles[position.y] = previousRow;
             currentMap.edges = previousEdges;
-            // pellets = MAP.reduce((total, row) =>
-            //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
-            // 0);
-            currentGameState.pellets = buildPellets();
-            graph = buildGraph(currentMap);
-            showEditorToast("mapConnectivityError");
+            gs.pellets = map.buildPellets();
+            map.graph = map.buildGraph(currentMap);
+            state.showEditorToast("mapConnectivityError");
 
             cycleEditorTile(position, count + 1);
         }
     }
 
-
     function updateAddGhostButton() {
-        const existingColors = currentGameState.ghosts.map((ghost, index) =>
-            ghost.color || getGhostColor(index)
+        const gs = gameState();
+
+        const existingColors = gs.ghosts.map((ghost, index) =>
+            ghost.color || state.getGhostColor(index)
         );
 
-        const color = existingColors.length < BASE_GHOST_COLORS.length
-            ? BASE_GHOST_COLORS[existingColors.length]
-            : getMostDistinctGhostColor(existingColors);
+        const color = existingColors.length < state.BASE_GHOST_COLORS.length
+            ? state.BASE_GHOST_COLORS[existingColors.length]
+            : state.getMostDistinctGhostColor(existingColors);
 
         const label = document.createElement("span");
-        label.textContent = messages.addGhost;
+        label.textContent = state.messages.addGhost;
 
-        addGhostButton.replaceChildren(
-            createGhostIcon(color, "ghost-choice-icon"),
+        state.addGhostButton.replaceChildren(
+            map.createGhostIcon(color, "ghost-choice-icon"),
             label
         );
 
-        addGhostButton.setAttribute(
+        state.addGhostButton.setAttribute(
             "aria-pressed",
-            String(addingGhost)
+            String(state.addingGhost)
         );
 
-        addGhostButton.setAttribute(
+        state.addGhostButton.setAttribute(
             "aria-label",
-            addingGhost
-                ? messages.cancelAddGhost
-                : messages.addGhost
+            state.addingGhost
+                ? state.messages.cancelAddGhost
+                : state.messages.addGhost
         );
 
-        addGhostButton.title = messages.addGhostInstructions;
+        state.addGhostButton.title = state.messages.addGhostInstructions;
     }
 
-
-    canvas.addEventListener("pointerdown", event => {
-        if (!editorMode) {
+    state.canvas.addEventListener("pointerdown", event => {
+        if (!state.editorMode) {
             return;
         }
 
@@ -449,11 +462,11 @@ function createGameEditor(context) {
         }
 
         event.preventDefault();
-        canvas.setPointerCapture(event.pointerId);
+        state.canvas.setPointerCapture(event.pointerId);
         const boundary = getEditorBoundary(event);
         const selected = getEditorEntity(position);
 
-        editorGesture = addingGhost
+        state.editorGesture = state.addingGhost
             ? { type: "add-ghost", start: position, moved: false }
             : boundary
                 ? { type: "boundary", edge: boundary, start: position, moved: false }
@@ -462,12 +475,11 @@ function createGameEditor(context) {
                     : { type: "tile", start: position, moved: false };
     });
 
-
-    canvas.addEventListener("pointermove", event => {
+    state.canvas.addEventListener("pointermove", event => {
         if (
-            !editorMode ||
-            !editorGesture ||
-            (editorGesture.type !== "player" && editorGesture.type !== "ghost")
+            !state.editorMode ||
+            !state.editorGesture ||
+            (state.editorGesture.type !== "player" && state.editorGesture.type !== "ghost")
         ) {
             return;
         }
@@ -477,19 +489,18 @@ function createGameEditor(context) {
             return;
         }
 
-        if (position.x !== editorGesture.start.x || position.y !== editorGesture.start.y) {
-            editorGesture.moved = moveEditorEntity(editorGesture, position) || editorGesture.moved;
+        if (position.x !== state.editorGesture.start.x || position.y !== state.editorGesture.start.y) {
+            state.editorGesture.moved = moveEditorEntity(state.editorGesture, position) || state.editorGesture.moved;
         }
     });
 
-
-    canvas.addEventListener("pointerup", event => {
-        if (!editorMode || !editorGesture) {
+    state.canvas.addEventListener("pointerup", event => {
+        if (!state.editorMode || !state.editorGesture) {
             return;
         }
 
-        const gesture = editorGesture;
-        editorGesture = null;
+        const gesture = state.editorGesture;
+        state.editorGesture = null;
 
         if (gesture.type === "boundary") {
             const boundary = getEditorBoundary(event);
@@ -527,31 +538,29 @@ function createGameEditor(context) {
         }
     });
 
-
-    canvas.addEventListener("pointercancel", () => {
-        editorGesture = null;
+    state.canvas.addEventListener("pointercancel", () => {
+        state.editorGesture = null;
     });
 
-
     document.getElementById("edit-map").addEventListener("click", enterMapEditor);
-    newMapButton.addEventListener("click", createNewMap);
-    addGhostButton.addEventListener("click", toggleGhostPlacement);
-    editorBackButton.addEventListener("click", () => leaveMapEditor(false));
-    editorSaveButton.addEventListener("click", () => leaveMapEditor(true));
-    mapSelectElement.addEventListener("change", () => {
-        activeMapId = mapSelectElement.value;
+    state.newMapButton.addEventListener("click", createNewMap);
+    state.addGhostButton.addEventListener("click", toggleGhostPlacement);
+    state.editorBackButton.addEventListener("click", () => leaveMapEditor(false));
+    state.editorSaveButton.addEventListener("click", () => leaveMapEditor(true));
+    state.mapSelectElement.addEventListener("change", () => {
+        map.activeMapId = state.mapSelectElement.value;
         if (
-            selectedCharacter.startsWith("ghost-") &&
-            Number(selectedCharacter.slice("ghost-".length)) >=
-            getCurrentMapDefinition().ghostStarts.length
+            state.selectedCharacter.startsWith("ghost-") &&
+            Number(state.selectedCharacter.slice("ghost-".length)) >=
+            map.getCurrentMapDefinition().ghostStarts.length
         ) {
-            selectedCharacter = "pacman";
+            state.selectedCharacter = "pacman";
         }
-        resetGame();
-        updateCharacterChoices();
+        rules.resetGame();
+        map.updateCharacterChoices();
     });
 
     return {
         leaveMapEditor
-    }
+    };
 }

@@ -1,21 +1,27 @@
-function createGameUi(context) {
+function createGameUi(parameters = {}) {
+    const {
+        state
+    } = parameters;
+
+    const gameState = () => state.currentGameState;
+
     function updatePauseButton() {
-        pauseButton.textContent = paused
-            ? messages.resume || "Resume"
-            : messages.pause || "Pause";
+        const gs = gameState();
+        const pauseButton = state.pauseButton;
+
+        pauseButton.textContent = gs.paused
+            ? state.messages.resume || "Resume"
+            : state.messages.pause || "Pause";
         pauseButton.setAttribute("aria-label", pauseButton.textContent);
-        pauseButton.setAttribute("aria-pressed", String(paused));
-        pauseButton.disabled = !running && !paused;
+        pauseButton.setAttribute("aria-pressed", String(gs.paused));
+        pauseButton.disabled = !gs.running && !gs.paused;
     }
 
-
     function updateUI() {
+        const gs = gameState();
 
-        scoreElement.textContent =
-            currentGameState.score;
-
-        livesElement.textContent =
-            currentGameState.lives;
+        state.scoreElement.textContent = gs.score;
+        state.livesElement.textContent = gs.lives;
 
         updatePauseButton();
     }

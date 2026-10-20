@@ -1,3 +1,5 @@
+/* global importScripts, self */
+
 importScripts(
     "./game-config.js",
     "./game-map-geometry.js",
@@ -6,30 +8,43 @@ importScripts(
     "./game-strategy.js"
 );
 
-globalThis.__PACMAN_STRATEGY_WORKER__ = true;
-Object.assign(globalThis, createGameConfig(), createGameMapGeometry());
-
-globalThis.cloneCharacterState = createGameModel().cloneCharacterState;
+const config = createGameConfig();
+const geometry = createGameMapGeometry();
+const model = createGameModel();
 
 let strategy = null;
-let activeMapId = null;
+let strategyMapSignature = null;
+
+function mapSignature(definition) {
+    return JSON.stringify({
+        id: definition.id,
+        tiles: definition.tiles,
+        edges: [...(definition.edges || [])].sort(),
+        playerStart: definition.playerStart,
+        ghostStarts: definition.ghostStarts
+    });
+}
 
 function restoreMap(map) {
-    const definition = {
+    return {
         ...map,
         edges: new Set(map.edges || [])
     };
-
-    globalThis.currentMap = definition;
-    activeMapId = definition.id;
 }
 
 function getStrategy(map) {
-    if (!strategy || activeMapId !== map.id) {
-        restoreMap(map);
-        strategy = createGameStrategy({});
-    } else {
-        restoreMap(map);
+    const definition = restoreMap(map);
+    const signature = mapSignature(definition);
+
+    if (!strategy || signature !== strategyMapSignature) {
+        strategyMapSignature = signature;
+        strategy = createGameStrategy({
+            map: definition,
+            geometry,
+            model,
+            config,
+            rmfMinimax: createRandomizedBestFirstMinimax
+        });
     }
 
     return strategy;

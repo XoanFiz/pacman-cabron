@@ -1,131 +1,98 @@
-function createGameRenderer(context) {
+function createGameRenderer(parameters = {}) {
+    const {
+        config,
+        state,
+        map,
+        strategy
+    } = parameters;
+
+    const {
+        CELL,
+        DOMAIN_ALPHA,
+        FRIGHTENED_BLINK_TIME,
+        FRIGHTENED_BLINK_FREQUENCY
+    } = config;
+
+    const gameState = () => state.currentGameState;
+
     // RENDER
     // ============================================================
 
     function draw() {
+        const gs = gameState();
+        const ctx = state.ctx;
+        const currentMap = map.currentMap;
 
-        ctx.fillStyle =
-            "#090b12";
-
-
-        ctx.fillRect(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
+        ctx.fillStyle = "#090b12";
+        ctx.fillRect(0, 0, state.canvas.width, state.canvas.height);
 
         drawVoronoiDomains();
 
-
-        for (
-            let y = 0;
-            y < getMapRowCount(currentMap);
-            y++
-        ) {
-
-            for (
-                let x = 0;
-                x < currentMap.tiles[y].length;
-                x++
-            ) {
-
-                let cell =
-                    currentMap.tiles[y][x];
-
-                if ((cell === "." || cell === "o") && !currentGameState.pellets.has(`${x},${y}`)) {
-                    cell = " "
-                }
-
-
-                const px =
-                    x * CELL;
-
-                const py =
-                    y * CELL;
-
-
-                if (cell === "#") {
-
-                    ctx.fillStyle =
-                        "#3156a3";
-
-
-                    ctx.fillRect(
-                        px + 2,
-                        py + 2,
-                        CELL - 4,
-                        CELL - 4
-                    );
-                }
-
+        for (let y = 0; y < map.getMapRowCount(currentMap); y++) {
+            for (let x = 0; x < currentMap.tiles[y].length; x++) {
+                let cell = currentMap.tiles[y][x];
 
                 if (
-                    cell === "." ||
-                    cell === "o"
+                    (cell === "." || cell === "o") &&
+                    !gs.pellets.has(`${x},${y}`)
                 ) {
+                    cell = " ";
+                }
 
-                    ctx.fillStyle =
-                        "#f4e7b5";
+                const px = x * CELL;
+                const py = y * CELL;
 
+                if (cell === "#") {
+                    ctx.fillStyle = "#3156a3";
+                    ctx.fillRect(px + 2, py + 2, CELL - 4, CELL - 4);
+                }
 
+                if (cell === "." || cell === "o") {
+                    ctx.fillStyle = "#f4e7b5";
                     ctx.beginPath();
-
-
                     ctx.arc(
                         px + CELL / 2,
                         py + CELL / 2,
-                        cell === "o"
-                            ? 5
-                            : 2.5,
+                        cell === "o" ? 5 : 2.5,
                         0,
                         Math.PI * 2
                     );
-
-
                     ctx.fill();
                 }
             }
         }
 
-        if (editorMode) {
+        if (state.editorMode) {
             drawMapEditorGrid();
         }
 
         drawBoundaryWalls();
         drawGhostHouses();
-
         drawPlayer();
 
-        for (
-            let i = 0;
-            i < currentGameState.ghosts.length;
-            i++
-        ) {
-
-            drawGhost(
-                currentGameState.ghosts[i],
-                i
-            );
+        for (let i = 0; i < gs.ghosts.length; i++) {
+            drawGhost(gs.ghosts[i], i);
         }
     }
 
-
     function drawBoundaryWalls() {
-        ctx.fillStyle = editorMode ? "#9dbdff" : "#3156a3";
+        const ctx = state.ctx;
+        const currentMap = map.currentMap;
+
+        ctx.fillStyle = state.editorMode ? "#9dbdff" : "#3156a3";
 
         for (const edgeKey of currentMap.edges) {
             const [orientation, rawX, rawY] = edgeKey.split(":");
             const x = Number(rawX);
             const y = Number(rawY);
-            const thickness = editorMode ? 5 : 4;
+            const thickness = state.editorMode ? 5 : 4;
 
             if (orientation === "h") {
                 const edgeX = (x + 1) * CELL - thickness / 2;
                 const edgeY = y * CELL;
                 ctx.fillRect(edgeX, edgeY, thickness, CELL);
 
-                if (x === getMapColumnCount(currentMap) - 1) {
+                if (x === map.getMapColumnCount(currentMap) - 1) {
                     ctx.fillRect(-thickness / 2, edgeY, thickness, CELL);
                 }
             } else {
@@ -133,17 +100,19 @@ function createGameRenderer(context) {
                 const edgeY = (y + 1) * CELL - thickness / 2;
                 ctx.fillRect(edgeX, edgeY, CELL, thickness);
 
-                if (y === getMapRowCount(currentMap) - 1) {
+                if (y === map.getMapRowCount(currentMap) - 1) {
                     ctx.fillRect(edgeX, -thickness / 2, CELL, thickness);
                 }
             }
         }
     }
 
-
     function drawGhostHouses() {
-        for (let y = 0; y < getMapRowCount(currentMap); y++) {
-            for (let x = 0; x < getMapColumnCount(currentMap); x++) {
+        const ctx = state.ctx;
+        const currentMap = map.currentMap;
+
+        for (let y = 0; y < map.getMapRowCount(currentMap); y++) {
+            for (let x = 0; x < map.getMapColumnCount(currentMap); x++) {
                 if (currentMap.tiles[y][x] !== "H") {
                     continue;
                 }
@@ -172,284 +141,138 @@ function createGameRenderer(context) {
         }
     }
 
-
     function drawMapEditorGrid() {
+        const ctx = state.ctx;
+        const currentMap = map.currentMap;
+
         ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
         ctx.lineWidth = 1;
 
-        for (let x = 0; x <= getMapColumnCount(currentMap); x++) {
+        for (let x = 0; x <= map.getMapColumnCount(currentMap); x++) {
             ctx.beginPath();
             ctx.moveTo(x * CELL + 0.5, 0);
-            ctx.lineTo(x * CELL + 0.5, getMapRowCount(currentMap) * CELL);
+            ctx.lineTo(x * CELL + 0.5, map.getMapRowCount(currentMap) * CELL);
             ctx.stroke();
         }
 
-        for (let y = 0; y <= getMapRowCount(currentMap); y++) {
+        for (let y = 0; y <= map.getMapRowCount(currentMap); y++) {
             ctx.beginPath();
             ctx.moveTo(0, y * CELL + 0.5);
-            ctx.lineTo(getMapColumnCount(currentMap) * CELL, y * CELL + 0.5);
+            ctx.lineTo(map.getMapColumnCount(currentMap) * CELL, y * CELL + 0.5);
             ctx.stroke();
         }
     }
 
-
     function drawPlayer() {
+        const ctx = state.ctx;
+        const player = gameState().player;
 
-        const cx =
-            currentGameState.player.px * CELL +
-            CELL / 2;
+        const cx = player.px * CELL + CELL / 2;
+        const cy = player.py * CELL + CELL / 2;
 
-
-        const cy =
-            currentGameState.player.py * CELL +
-            CELL / 2;
-
-
-        const facingDirection = currentGameState.player.facingDirection || player.direction;
+        const facingDirection = player.facingDirection || player.direction;
         let angle = 0;
 
-
-        if (
-            facingDirection.x === -1
-        ) {
+        if (facingDirection.x === -1) {
             angle = Math.PI;
         }
 
-
-        if (
-            facingDirection.y === -1
-        ) {
+        if (facingDirection.y === -1) {
             angle = -Math.PI / 2;
         }
 
-
-        if (
-            facingDirection.y === 1
-        ) {
+        if (facingDirection.y === 1) {
             angle = Math.PI / 2;
         }
-
 
         const mouth =
             0.20 +
             Math.abs(
-                Math.sin(
-                    performance.now() / 90
-                )
+                Math.sin(performance.now() / 90)
             ) * 0.20;
 
-
-        ctx.fillStyle =
-            "#ffd43b";
-
-
+        ctx.fillStyle = "#ffd43b";
         ctx.beginPath();
-
-
-        ctx.moveTo(
-            cx,
-            cy
-        );
-
-
-        ctx.arc(
-            cx,
-            cy,
-            11,
-            angle + mouth,
-            angle +
-            Math.PI * 2 -
-            mouth
-        );
-
-
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, 11, angle + mouth, angle + Math.PI * 2 - mouth);
         ctx.closePath();
-
         ctx.fill();
     }
 
+    function drawGhost(ghost, index) {
+        const ctx = state.ctx;
 
-    function drawGhost(
-        ghost,
-        index
-    ) {
-
-        const cx =
-            ghost.px * CELL +
-            CELL / 2;
-
-
-        const cy =
-            ghost.py * CELL +
-            CELL / 2;
-
+        const cx = ghost.px * CELL + CELL / 2;
+        const cy = ghost.py * CELL + CELL / 2;
 
         if (ghost.eaten) {
-
-            drawGhostEyes(
-                ghost,
-                cx,
-                cy
-            );
-
+            drawGhostEyes(ghost, cx, cy);
             return;
         }
 
-
         if (ghost.frightened) {
-
             const blinking =
                 ghost.frightenedTimer <= FRIGHTENED_BLINK_TIME &&
-                Math.floor(currentGameState.time * FRIGHTENED_BLINK_FREQUENCY) % 2 === 0;
+                Math.floor(gameState().time * FRIGHTENED_BLINK_FREQUENCY) % 2 === 0;
 
             ctx.fillStyle = blinking
-                ? getGhostColor(index)
+                ? state.getGhostColor(index)
                 : "#3159d6";
-
+        } else {
+            ctx.fillStyle = state.getGhostColor(index);
         }
-
-        else {
-
-            ctx.fillStyle = getGhostColor(index);
-        }
-
 
         ctx.beginPath();
-
-
-        ctx.arc(
-            cx,
-            cy - 2,
-            10,
-            Math.PI,
-            0
-        );
-
-
-        ctx.lineTo(
-            cx + 10,
-            cy + 10
-        );
-
-
-        ctx.lineTo(
-            cx + 5,
-            cy + 6
-        );
-
-
-        ctx.lineTo(
-            cx,
-            cy + 10
-        );
-
-
-        ctx.lineTo(
-            cx - 5,
-            cy + 6
-        );
-
-
-        ctx.lineTo(
-            cx - 10,
-            cy + 10
-        );
-
-
+        ctx.arc(cx, cy - 2, 10, Math.PI, 0);
+        ctx.lineTo(cx + 10, cy + 10);
+        ctx.lineTo(cx + 5, cy + 6);
+        ctx.lineTo(cx, cy + 10);
+        ctx.lineTo(cx - 5, cy + 6);
+        ctx.lineTo(cx - 10, cy + 10);
         ctx.closePath();
-
         ctx.fill();
 
-
-        drawGhostEyes(
-            ghost,
-            cx,
-            cy
-        );
+        drawGhostEyes(ghost, cx, cy);
     }
 
+    function drawGhostEyes(ghost, cx, cy) {
+        const ctx = state.ctx;
 
-    function drawGhostEyes(
-        ghost,
-        cx,
-        cy
-    ) {
-
-        ctx.fillStyle =
-            "white";
-
-
+        ctx.fillStyle = "white";
         ctx.beginPath();
-
-
-        ctx.arc(
-            cx - 4,
-            cy - 3,
-            3,
-            0,
-            Math.PI * 2
-        );
-
-
-        ctx.arc(
-            cx + 4,
-            cy - 3,
-            3,
-            0,
-            Math.PI * 2
-        );
-
-
+        ctx.arc(cx - 4, cy - 3, 3, 0, Math.PI * 2);
+        ctx.arc(cx + 4, cy - 3, 3, 0, Math.PI * 2);
         ctx.fill();
 
-
-        ctx.fillStyle =
-            "#263b78";
-
-
+        ctx.fillStyle = "#263b78";
         ctx.beginPath();
-
-
-        ctx.arc(
-            cx - 4 +
-            ghost.direction.x,
-            cy - 3 +
-            ghost.direction.y,
-            1.5,
-            0,
-            Math.PI * 2
-        );
-
-
-        ctx.arc(
-            cx + 4 +
-            ghost.direction.x,
-            cy - 3 +
-            ghost.direction.y,
-            1.5,
-            0,
-            Math.PI * 2
-        );
-
-
+        ctx.arc(cx - 4 + ghost.direction.x, cy - 3 + ghost.direction.y, 1.5, 0, Math.PI * 2);
+        ctx.arc(cx + 4 + ghost.direction.x, cy - 3 + ghost.direction.y, 1.5, 0, Math.PI * 2);
         ctx.fill();
     }
 
     function drawVoronoiDomains() {
-        if (!showVoronoiDomains) {
+        if (!state.showVoronoiDomains) {
             return;
         }
 
+        const ctx = state.ctx;
+        const gs = gameState();
+        const currentMap = map.currentMap;
+
         const getGhostIndex = (owner) => owner.replace("ghost", "");
 
-
-        const domain = calculateDomain(
-            currentGameState.player, currentGameState.ghosts, buildGhostHouses(getCurrentMapDefinition()), currentGameState.pellets, currentGameState.time, true
+        const domain = strategy.calculateDomain(
+            gs.player,
+            gs.ghosts,
+            map.buildGhostHouses(map.getCurrentMapDefinition()),
+            gs.pellets,
+            gs.time,
+            true
         );
 
-        for (let y = 0; y < getMapRowCount(currentMap); y++) {
-            for (let x = 0; x < getMapColumnCount(currentMap); x++) {
-
+        for (let y = 0; y < map.getMapRowCount(currentMap); y++) {
+            for (let x = 0; x < map.getMapColumnCount(currentMap); x++) {
                 if (currentMap.tiles[y][x] === "#") {
                     continue;
                 }
@@ -461,39 +284,31 @@ function createGameRenderer(context) {
                 }
 
                 let color;
+
                 if (owner === "pacman") {
-                    color = DOMAIN_COLORS.pacman;
+                    color = state.DOMAIN_COLORS.pacman;
                 }
 
                 if (owner.startsWith("ghost")) {
                     const index = getGhostIndex(owner);
-                    color = currentGameState.ghosts[index]?.color
-                        ? hexToRgb(currentGameState.ghosts[index].color)
-                        : getGhostColorRgb(index);
+                    color = gs.ghosts[index]?.color
+                        ? state.hexToRgb(gs.ghosts[index].color)
+                        : state.getGhostColorRgb(index);
                 }
 
                 if (!color) {
                     continue;
                 }
 
-                const r = color[0];
-                const g = color[1];
-                const b = color[2];
+                const [r, g, b] = color;
 
-                ctx.fillStyle =
-                    `rgba(${r}, ${g}, ${b}, ${DOMAIN_ALPHA})`;
-
-                ctx.fillRect(
-                    x * CELL,
-                    y * CELL,
-                    CELL,
-                    CELL
-                );
+                ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${DOMAIN_ALPHA})`;
+                ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
             }
         }
     }
 
     return {
         draw
-    }
+    };
 }

@@ -1,47 +1,42 @@
-function createGameRuntime(context) {
+function createGameRuntime(parameters = {}) {
+    const {
+        state,
+        map,
+        rules,
+        intelligence,
+        renderer
+    } = parameters;
+
     // ============================================================
     // GAME LOOP
     // ============================================================
 
     function gameLoop(time) {
+        const dt = Math.min((time - state.currentTime) / 1000, 0.05);
 
-        const dt =
-            Math.min(
-                (time - currentTime) / 1000,
-                0.05
-            );
+        state.currentTime = time;
 
+        rules.update(dt);
 
-        currentTime = time;
-
-
-        update(dt);
-
-        if (running) {
-            gameIntelligence.advanceStrategicSearch();
+        if (state.currentGameState.running) {
+            intelligence.advanceSearch();
         }
 
-        draw();
+        renderer.draw();
 
-
-        requestAnimationFrame(
-            gameLoop
-        );
+        requestAnimationFrame(gameLoop);
     }
 
-
     async function start() {
-        await loadPersistedMaps();
-        updateMapSelector();
-        resetGame();
-        updateCharacterChoices();
+        await map.loadPersistedMaps();
+        map.updateMapSelector();
+        rules.resetGame();
+        map.updateCharacterChoices();
 
-        requestAnimationFrame(
-            gameLoop
-        );
+        requestAnimationFrame(gameLoop);
     }
 
     return {
         start
-    }
+    };
 }

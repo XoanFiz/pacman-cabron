@@ -1,7 +1,30 @@
+function createGameMap(parameters = {}) {
+    const {
+        config,
+        state,
+        geometry,
+        mapStorage
+    } = parameters;
 
-function createGameMap(context) {
-    const mapGeometry = createGameMapGeometry();
-    const DIRECTIONS = mapGeometry.DIRECTIONS;
+    const {
+        CELL
+    } = config;
+
+    const DIRECTIONS = geometry.DIRECTIONS;
+
+    // Late-bound runtime dependencies (wired by game.js once created).
+    const runtime = {
+        resetGame: () => undefined,
+        getCurrentSearchContext: () => null,
+        createCurrentGameSearchState: () => null
+    };
+
+    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState }) {
+        if (resetGame) runtime.resetGame = resetGame;
+        if (getCurrentSearchContext) runtime.getCurrentSearchContext = getCurrentSearchContext;
+        if (createCurrentGameSearchState) runtime.createCurrentGameSearchState = createCurrentGameSearchState;
+    }
+
     // ============================================================
     // MAP DEFINITIONS
     // ============================================================
@@ -9,7 +32,6 @@ function createGameMap(context) {
     function toTiles(rows) {
         return rows.map(row => Array.from(row));
     }
-
 
     function cloneMapPosition(position) {
         return {
@@ -23,7 +45,6 @@ function createGameMap(context) {
             })
         };
     }
-
 
     function cloneCalibration(calibration) {
         if (calibration === undefined) {
@@ -40,7 +61,6 @@ function createGameMap(context) {
         };
     }
 
-
     function cloneMapDefinition(definition,
         { includeCalibration = false } = {}) {
         return {
@@ -55,11 +75,6 @@ function createGameMap(context) {
                 : { calibration: undefined })
         };
     }
-
-
-    // ============================================================
-    // PREDEFINED MAPS
-    // ============================================================
 
     const PREDEFINED_MAPS = [
 
@@ -221,31 +236,45 @@ function createGameMap(context) {
                 { x: 11, y: 10, direction: { x: -1, y: 0 } }
             ]
         }
-    ];
-
+    ];;
 
     // ============================================================
     // MAP STATE
     // ============================================================
 
-    const mapStorage = createGameMapStorage();
+    const map = {
+        maps: PREDEFINED_MAPS.map(cloneMapDefinition),
+        activeMapId: "classic",
+        editorDraftMap: null,
+        nextCustomMapNumber: 1,
+        currentMap: null,
+        graph: null,
+        mapStorageReady: false,
 
-    context.maps = PREDEFINED_MAPS.map(cloneMapDefinition);
-    context.mapStorageReady = false;
+        strategicSearch: {
+            nodes: new Map(),
+            frontier: [],
+            root: null
+        }
+    };
 
-    function syncMapStateBindings() {
-        globalThis.maps = context.maps;
-        globalThis.activeMapId = context.activeMapId;
-        globalThis.nextCustomMapNumber = context.nextCustomMapNumber;
-        globalThis.currentMap = context.currentMap;
-    }
+    map.currentMap = cloneMapDefinition(map.maps[0], {
+        includeCalibration: true
+    });
+
+    state.canvas.width = geometry.getMapColumnCount(map.maps[0]) * CELL;
+    state.canvas.height = geometry.getMapRowCount(map.maps[0]) * CELL;
+
+    // ============================================================
+    // PERSISTENCE
+    // ============================================================
 
     async function loadPersistedMaps() {
         try {
             const persisted = await mapStorage.load();
 
             if (!persisted) {
-                context.mapStorageReady = true;
+                map.mapStorageReady = true;
                 return;
             }
 
@@ -269,32 +298,31 @@ function createGameMap(context) {
                 );
             }
 
-            context.maps = Array.from(definitionsById.values());
+            map.maps = Array.from(definitionsById.values());
 
-            if (context.maps.some(definition => definition.id === persisted.activeMapId)) {
-                context.activeMapId = persisted.activeMapId;
+            if (map.maps.some(definition => definition.id === persisted.activeMapId)) {
+                map.activeMapId = persisted.activeMapId;
             }
 
-            const customNumbers = context.maps
+            const customNumbers = map.maps
                 .map(definition => definition.customNumber)
                 .filter(Number.isFinite);
             const nextAvailableNumber = customNumbers.length > 0
                 ? Math.max(...customNumbers) + 1
                 : 1;
 
-            context.nextCustomMapNumber = Math.max(
+            map.nextCustomMapNumber = Math.max(
                 nextAvailableNumber,
                 Number(persisted.nextCustomMapNumber) || 1
             );
-            context.currentMap = cloneMapDefinition(
-                context.maps.find(definition => definition.id === context.activeMapId) || context.maps[0],
+            map.currentMap = cloneMapDefinition(
+                map.maps.find(definition => definition.id === map.activeMapId) || map.maps[0],
                 { includeCalibration: true }
             );
-            syncMapStateBindings();
         } catch (error) {
             console.warn("Unable to load saved maps from IndexedDB.", error);
         } finally {
-            context.mapStorageReady = true;
+            map.mapStorageReady = true;
         }
     }
 
@@ -303,9 +331,9 @@ function createGameMap(context) {
     function persistMaps() {
         mapPersistenceQueue = mapPersistenceQueue
             .catch(() => undefined)
-            .then(() => mapStorage.save(maps, {
-                activeMapId,
-                nextCustomMapNumber
+            .then(() => mapStorage.save(map.maps, {
+                activeMapId: map.activeMapId,
+                nextCustomMapNumber: map.nextCustomMapNumber
             }))
             .catch(error => {
                 console.warn("Unable to save maps in IndexedDB.", error);
@@ -314,74 +342,43 @@ function createGameMap(context) {
 
         return mapPersistenceQueue;
     }
-    context.activeMapId = "classic";
-    context.editorDraftMap = null;
-    context.nextCustomMapNumber = 1;
-    context.currentMap = cloneMapDefinition(context.maps[0], {
-        includeCalibration: true
-    });
-
-    canvas.width = getMapColumnCount(context.maps[0]) * CELL;
-    canvas.height = getMapRowCount(context.maps[0]) * CELL;
-
-
-
-    // Static graph of the active map.
-    context.graph = null;
-
-    context.strategicSearch = {
-        nodes: new Map(),
-        frontier: [],
-        root: null
-    };
-
 
     // ============================================================
     // MAP UTILITIES
     // ============================================================
 
     function getCurrentMapDefinition() {
-        return editorDraftMap ||
-            maps.find(definition => definition.id === activeMapId) ||
-            maps[0];
+        return map.editorDraftMap ||
+            map.maps.find(definition => definition.id === map.activeMapId) ||
+            map.maps[0];
     }
-
 
     function getMapLabel(definition) {
         return definition.nameKey
-            ? messages[definition.nameKey]
-            : `${messages.customMap} ${definition.customNumber}`;
+            ? state.messages[definition.nameKey]
+            : `${state.messages.customMap} ${definition.customNumber}`;
     }
 
-
-    function getMapRowCount(definition = currentMap) {
-        return mapGeometry.getMapRowCount(definition);
+    function getMapRowCount(definition = map.currentMap) {
+        return geometry.getMapRowCount(definition);
     }
 
-
-    function getMapColumnCount(definition = currentMap) {
-        return mapGeometry.getMapColumnCount(definition);
+    function getMapColumnCount(definition = map.currentMap) {
+        return geometry.getMapColumnCount(definition);
     }
-
 
     function wrap(value, size) {
-        return mapGeometry.wrap(value, size);
+        return geometry.wrap(value, size);
     }
 
-
-    function getWrappedPosition(x, y, definition = currentMap) {
+    function getWrappedPosition(x, y, definition = map.currentMap) {
         return {
             x: wrap(x, getMapColumnCount(definition)),
             y: wrap(y, getMapRowCount(definition))
         };
     }
 
-    // Returns the legal directions available to a character at its
-    // current position, using the live game's movement constraints.
-    function getPossibleDirections(
-        character
-    ) {
-
+    function getPossibleDirections(character) {
         return [
             DIRECTIONS.up,
             DIRECTIONS.down,
@@ -396,35 +393,27 @@ function createGameMap(context) {
         );
     }
 
-
-    // Boundary keys are bidirectional and also wrap around the edges of the map. For example, a boundary between (0, 0) and (1, 0) is
-    // represented as "h:0:0", while a boundary between (19, 0) and (0, 0) is represented as "h:19:0". Similarly, a boundary between (0, 0)
-    // and (0, 1) is represented as "v:0:0", while a boundary between (0, 17) and (0, 0) is represented as "v:0:17".
-    function getBoundaryKey(x, y, direction, definition = currentMap) {
-        return mapGeometry.getBoundaryKey(x, y, direction, definition);
+    function getBoundaryKey(x, y, direction, definition = map.currentMap) {
+        return geometry.getBoundaryKey(x, y, direction, definition);
     }
 
-
-    function isWall(x, y, definition = currentMap) {
-        return mapGeometry.isWall(x, y, definition);
+    function isWall(x, y, definition = map.currentMap) {
+        return geometry.isWall(x, y, definition);
     }
 
-
-    function isBoundaryBlocked(x, y, direction, definition = currentMap) {
-        return mapGeometry.isBoundaryBlocked(x, y, direction, definition);
+    function isBoundaryBlocked(x, y, direction, definition = map.currentMap) {
+        return geometry.isBoundaryBlocked(x, y, direction, definition);
     }
 
-
-    function canMove(x, y, direction, definition = currentMap) {
-        return mapGeometry.canMove(x, y, direction, definition);
+    function canMove(x, y, direction, definition = map.currentMap) {
+        return geometry.canMove(x, y, direction, definition);
     }
-
 
     // ============================================================
     // MAP CONTENT
     // ============================================================
 
-    function buildPellets(definition = currentMap) {
+    function buildPellets(definition = map.currentMap) {
         const result = new Set();
 
         definition.tiles.forEach((row, y) => {
@@ -438,8 +427,7 @@ function createGameMap(context) {
         return result;
     }
 
-
-    function buildGhostHouses(definition = currentMap) {
+    function buildGhostHouses(definition = map.currentMap) {
         const ghostHouses = [];
 
         for (let y = 0; y < getMapRowCount(definition); y++) {
@@ -461,26 +449,24 @@ function createGameMap(context) {
         };
     }
 
-
     // ============================================================
     // MAP SELECTOR
     // ============================================================
 
     function updateMapSelector() {
-        mapSelectElement.replaceChildren();
+        state.mapSelectElement.replaceChildren();
 
-        for (const definition of maps) {
+        for (const definition of map.maps) {
             const option = document.createElement("option");
 
             option.value = definition.id;
             option.textContent = getMapLabel(definition);
 
-            mapSelectElement.append(option);
+            state.mapSelectElement.append(option);
         }
 
-        mapSelectElement.value = activeMapId;
+        state.mapSelectElement.value = map.activeMapId;
     }
-
 
     // ============================================================
     // CHARACTER ICONS
@@ -541,8 +527,7 @@ function createGameMap(context) {
         return svg;
     }
 
-
-    function getGhostName(index, ghostStarts = currentMap.ghostStarts) {
+    function getGhostName(index, ghostStarts = map.currentMap.ghostStarts) {
         const standardNames = [
             "redGhost",
             "orangeGhost",
@@ -550,27 +535,25 @@ function createGameMap(context) {
         ];
 
         if (index < standardNames.length) {
-            return messages[standardNames[index]];
+            return state.messages[standardNames[index]];
         }
 
-        return messages.ghostNumber.replace(
+        return state.messages.ghostNumber.replace(
             "{number}",
             String(index + 1)
         );
     }
 
-
     function selectCharacter(button) {
-        selectedCharacter = button.dataset.character;
-        resetGame();
-        startScreenElement.hidden = true;
+        state.selectedCharacter = button.dataset.character;
+        runtime.resetGame();
+        state.startScreenElement.hidden = true;
     }
-
 
     function updateCharacterChoices() {
         const ghostStarts = getCurrentMapDefinition().ghostStarts;
 
-        ghostCharacterChoicesElement.replaceChildren();
+        state.ghostCharacterChoicesElement.replaceChildren();
 
         for (let index = 0; index < ghostStarts.length; index++) {
             const name = getGhostName(index, ghostStarts);
@@ -581,7 +564,7 @@ function createGameMap(context) {
             button.setAttribute("aria-label", name);
 
             const icon = createGhostIcon(
-                ghostStarts[index].color || getGhostColor(index),
+                ghostStarts[index].color || state.getGhostColor(index),
                 "character-figure"
             );
 
@@ -595,10 +578,9 @@ function createGameMap(context) {
                 () => selectCharacter(button)
             );
 
-            ghostCharacterChoicesElement.append(button);
+            state.ghostCharacterChoicesElement.append(button);
         }
     }
-
 
     // ============================================================
     // MAP EDITOR
@@ -630,14 +612,6 @@ function createGameMap(context) {
                 referenceHorizonSeconds: CALIBRATION_REFERENCE_HORIZON_SECONDS
             }
         };
-    }
-
-    function scheduleCalibrationStep(callback) {
-        if (typeof window.requestIdleCallback === "function") {
-            window.requestIdleCallback(callback, { timeout: 100 });
-        } else {
-            window.setTimeout(callback, 0);
-        }
     }
 
     function startMapCalibration(definition) {
@@ -713,8 +687,8 @@ function createGameMap(context) {
                 }
             };
 
-            if (currentMap?.id === definition.id) {
-                currentMap.calibration = cloneCalibration(
+            if (map.currentMap?.id === definition.id) {
+                map.currentMap.calibration = cloneCalibration(
                     definition.calibration
                 );
             }
@@ -722,9 +696,9 @@ function createGameMap(context) {
         };
 
         try {
-            const searchContext = getCurrentSearchContext();
+            const searchContext = runtime.getCurrentSearchContext();
             const readyGhostIndices = searchContext.ghosts.map((_, index) => index);
-            const initialState = createCurrentGameSearchState(
+            const initialState = runtime.createCurrentGameSearchState(
                 searchContext,
                 readyGhostIndices,
                 true
@@ -747,44 +721,56 @@ function createGameMap(context) {
         }
     }
 
-
     function saveEditorMap() {
-        const savedMap = cloneMapDefinition(editorDraftMap, {
+        const savedMap = cloneMapDefinition(map.editorDraftMap, {
             includeCalibration: true
         });
         savedMap.calibration = createPendingCalibration(savedMap);
 
-        const existingIndex = maps.findIndex(
+        const existingIndex = map.maps.findIndex(
             definition => definition.id === savedMap.id
         );
 
         if (existingIndex < 0) {
-            maps.push(savedMap);
+            map.maps.push(savedMap);
         } else {
-            maps[existingIndex] = savedMap;
+            map.maps[existingIndex] = savedMap;
         }
 
-        activeMapId = savedMap.id;
+        map.activeMapId = savedMap.id;
 
         updateMapSelector();
         void persistMaps();
         startMapCalibration(savedMap);
     }
 
-
     // ============================================================
     // GRAPH
     // ============================================================
 
-    // Graph is bidirectional
-    function buildGraph(definition = currentMap) {
-        return mapGeometry.buildGraph(
+    function buildGraph(definition = map.currentMap) {
+        return geometry.buildGraph(
             definition,
             Object.values(DIRECTIONS)
         );
     }
 
     return {
+        get maps() { return map.maps; },
+        get activeMapId() { return map.activeMapId; },
+        set activeMapId(value) { map.activeMapId = value; },
+        get editorDraftMap() { return map.editorDraftMap; },
+        set editorDraftMap(value) { map.editorDraftMap = value; },
+        get nextCustomMapNumber() { return map.nextCustomMapNumber; },
+        set nextCustomMapNumber(value) { map.nextCustomMapNumber = value; },
+        get currentMap() { return map.currentMap; },
+        set currentMap(value) { map.currentMap = value; },
+        get graph() { return map.graph; },
+        set graph(value) { map.graph = value; },
+        get mapStorageReady() { return map.mapStorageReady; },
+        strategicSearch: map.strategicSearch,
+
+        bindRuntime,
         cloneMapDefinition,
         DIRECTIONS,
         createGhostIcon,
@@ -808,5 +794,5 @@ function createGameMap(context) {
         saveEditorMap,
         buildGraph,
         canMove
-    }
+    };
 }

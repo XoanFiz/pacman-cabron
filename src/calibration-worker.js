@@ -9,25 +9,17 @@ importScripts(
     "calibration-runner.js"
 );
 
-const configuration = createGameConfig();
-Object.assign(globalThis, configuration);
-const mapGeometry = createGameMapGeometry();
-Object.assign(globalThis, mapGeometry);
+const config = createGameConfig();
+const geometry = createGameMapGeometry();
+const model = createGameModel();
 
-let currentMap;
-
-globalThis.cloneCharacterState = createGameModel().cloneCharacterState;
-
-globalThis.buildGraph = definition =>
-    mapGeometry.buildGraph(definition, Object.values(DIRECTIONS));
 function restoreMap(definition) {
-    currentMap = {
+    return {
         ...definition,
         edges: new Set(definition.edges || [])
     };
-    globalThis.currentMap = currentMap;
-    globalThis.graph = buildGraph(currentMap);
 }
+
 function restoreState(state) {
     return {
         ...state,
@@ -59,8 +51,15 @@ function restoreState(state) {
 }
 
 function runCalibration(request) {
-    restoreMap(request.map);
-    const strategy = createGameStrategy({});
+    const currentMap = restoreMap(request.map);
+    const strategy = createGameStrategy({
+        map: currentMap,
+        geometry,
+        model,
+        config,
+        rmfMinimax: createRandomizedBestFirstMinimax
+    });
+
     const initialState = restoreState(request.initialState);
     const options = request.options;
     const getNodeType = state => state.firstActor === "player" ? "max" : "min";
@@ -80,11 +79,6 @@ function runCalibration(request) {
             };
         }
     };
-
-    globalThis.getStateKey = strategy.buildStateKey;
-    globalThis.getNodeType = getNodeType;
-    globalThis.createSuccessorIterator = createSuccessorIterator;
-    globalThis.evaluateSearchState = strategy.evaluateSearchState;
 
     const runner = createRbfmCalibrationRunner({
         map: currentMap,

@@ -9,15 +9,15 @@ function createGameMapGeometry() {
         return ((value % size) + size) % size;
     }
 
-    function getMapColumnCount(definition = globalThis.currentMap) {
+    function getMapColumnCount(definition) {
         return definition.tiles[0]?.length ?? 0;
     }
 
-    function getMapRowCount(definition = globalThis.currentMap) {
+    function getMapRowCount(definition) {
         return definition.tiles.length;
     }
 
-    function getBoundaryKey(x, y, direction, definition = globalThis.currentMap) {
+    function getBoundaryKey(x, y, direction, definition) {
         const positionX = wrap(x, getMapColumnCount(definition));
         const positionY = wrap(y, getMapRowCount(definition));
         const columnCount = getMapColumnCount(definition);
@@ -31,7 +31,7 @@ function createGameMapGeometry() {
         return `v:${positionX}:${wrap(positionY - 1, rowCount)}`;
     }
 
-    function isWall(x, y, definition = globalThis.currentMap) {
+    function isWall(x, y, definition) {
         return x < 0 ||
             x >= getMapColumnCount(definition) ||
             y < 0 ||
@@ -39,13 +39,13 @@ function createGameMapGeometry() {
             definition.tiles[y][x] === "#";
     }
 
-    function isBoundaryBlocked(x, y, direction, definition = globalThis.currentMap) {
+    function isBoundaryBlocked(x, y, direction, definition) {
         return definition.edges.has(
             getBoundaryKey(x, y, direction, definition)
         );
     }
 
-    function canMove(x, y, direction, definition = globalThis.currentMap) {
+    function canMove(x, y, direction, definition) {
         const nextX = wrap(
             x + direction.x,
             getMapColumnCount(definition)
@@ -59,7 +59,7 @@ function createGameMapGeometry() {
             !isBoundaryBlocked(x, y, direction, definition);
     }
 
-    function buildGraph(definition = globalThis.currentMap, directions = Object.values(DIRECTIONS)) {
+    function buildGraph(definition, directions = Object.values(DIRECTIONS)) {
         const rowCount = getMapRowCount(definition);
         const columnCount = getMapColumnCount(definition);
         const graph = Array.from(

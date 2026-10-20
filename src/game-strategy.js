@@ -1,4 +1,104 @@
-function createGameStrategy(context) {
+// ============================================================
+// GAME STRATEGY
+// ============================================================
+//
+// Pure simulation module shared by the main thread, the strategy
+// worker and the calibration worker.
+//
+// It receives every game dependency through an explicit context and
+// never reads global variables:
+//
+//   createGameStrategy({
+//       map,        // active map definition (tiles, edges, calibration, id)
+//       graph,      // optional movement graph; derived from map if absent
+//       geometry,   // { DIRECTIONS, wrap, getMapRowCount, getMapColumnCount,
+//                   //   canMove, isBoundaryBlocked, buildGraph }
+//       model,      // { cloneCharacterState }
+//       config,     // speed / weighting constants (PACMAN_SPEED, ...)
+//       worker      // optional { requestAction } bridge (main thread only)
+//   })
+//
+// The search tree (rbfmSearch) and the root pointer are this module's
+// own state. Callers only use the exposed choose*/advance* functions.
+
+function createGameStrategy(parameters = {}) {
+
+        const {
+        geometry,
+        model,
+        config,
+        rmfMinimax,
+        worker = null
+    } = parameters;
+
+    if (typeof rmfMinimax !== "function") {
+        throw new TypeError(
+            "createGameStrategy requires an rmfMinimax factory."
+        );
+    }
+
+    // Defensive snapshot of the map so later mutations of the live
+    // `currentMap` (editor, reset, etc.) cannot corrupt the simulation.
+    const sourceMap = parameters.map;
+    const map = {
+        ...sourceMap,
+        tiles: sourceMap.tiles.map(row => [...row]),
+        edges: new Set(sourceMap.edges),
+        calibration: sourceMap.calibration
+            ? { ...sourceMap.calibration }
+            : undefined
+    };
+
+    // Snapshot of the movement graph so callers cannot mutate it later.
+    const sourceGraph = parameters.graph ??
+        geometry.buildGraph(map, Object.values(geometry.DIRECTIONS));
+    const graph = sourceGraph.map(row =>
+        row.map(cell =>
+            cell.map(edge => ({
+                x: edge.x,
+                y: edge.y,
+                direction: { ...edge.direction }
+            }))
+        )
+    );
+
+    const {
+        DIRECTIONS,
+        wrap,
+        getMapRowCount,
+        getMapColumnCount,
+        canMove,
+        isBoundaryBlocked
+    } = geometry;
+
+    // Bind geometry helpers to this strategy's map snapshot so internal
+    // callers can omit the map argument (the strategy is pure for map).
+    const getMapRowCountForMap = () => getMapRowCount(map);
+    const getMapColumnCountForMap = () => getMapColumnCount(map);
+    const canMoveForMap = (x, y, direction) => canMove(x, y, direction, map);
+    const isBoundaryBlockedForMap = (x, y, direction) =>
+        isBoundaryBlocked(x, y, direction, map);
+
+    const {
+        cloneCharacterState
+    } = model;
+
+    const {
+        PACMAN_SPEED,
+        GHOST_SPEED,
+        FRIGHTENED_GHOST_SPEED,
+        EATEN_GHOST_SPEED,
+        FRIGHTENED_DURATION,
+        GHOST_COLLISION_DISTANCE,
+        SEARCH_EPSILON,
+        WEIGHT_NORMAL,
+        WEIGHT_PELLET,
+        MAX_PELLET_SCORE_FRACTION,
+        TOTAL_PELLET_VALUE,
+        TOTAL_NORMAL_VALUE,
+        INITIAL_LIVES,
+        SEARCH_LIFE_PRIORITY
+    } = config;
 
     // PRIORITY QUEUE
     // ============================================================
@@ -155,8 +255,8 @@ function createGameStrategy(context) {
 
         const distances =
             Array.from(
-                { length: getMapRowCount(currentMap) },
-                () => Array(getMapColumnCount(currentMap)).fill(Infinity)
+                { length: getMapRowCountForMap() },
+                () => Array(getMapColumnCountForMap()).fill(Infinity)
             );
 
 
@@ -303,11 +403,11 @@ function createGameStrategy(context) {
             const isMoving =
                 ghost.progress > 0 &&
                 (ghost.direction.x !== 0 || ghost.direction.y !== 0) &&
-                canMove(ghost.x, ghost.y, ghost.direction);
+                canMoveForMap(ghost.x, ghost.y, ghost.direction);
             const nextX =
-                wrap(ghost.x + ghost.direction.x, getMapColumnCount(currentMap));
+                wrap(ghost.x + ghost.direction.x, getMapColumnCountForMap());
             const nextY =
-                wrap(ghost.y + ghost.direction.y, getMapRowCount(currentMap));
+                wrap(ghost.y + ghost.direction.y, getMapRowCountForMap());
 
             for (const house of ghostHouses) {
                 const distance =
@@ -360,7 +460,8 @@ function createGameStrategy(context) {
         const spreadTheWave = (assessedDomainStatus, isBetter) => {
             for (
                 const next of
-                context.gameContext.graph[assessedDomainStatus.y][assessedDomainStatus.x]
+
+                graph[assessedDomainStatus.y][assessedDomainStatus.x]
             ) {
 
                 const result = calculateNextTimeAndCell(assessedDomainStatus, domain, next);
@@ -408,9 +509,9 @@ function createGameStrategy(context) {
 
         const domain =
             Array.from(
-                { length: getMapRowCount(currentMap) },
+                { length: getMapRowCountForMap() },
                 () => Array.from(
-                    { length: getMapColumnCount(currentMap) },
+                    { length: getMapColumnCountForMap() },
                     createDomainCell
                 )
             );
@@ -524,7 +625,7 @@ function createGameStrategy(context) {
                 // Pacman stops expanding as soon as he reaches a power pill.
                 if (
                     assessedDomainFact.owner === "pacman" &&
-                    currentMap.tiles[assessedDomainFact.y][assessedDomainFact.x] === "o" &&
+                    map.tiles[assessedDomainFact.y][assessedDomainFact.x] === "o" &&
                     (pellets.has(`${assessedDomainFact.x},${assessedDomainFact.y}`))) {
                     continue;
                 }
@@ -577,7 +678,7 @@ function createGameStrategy(context) {
         const isMoving =
             character.progress > 0 &&
             (character.direction.x !== 0 || character.direction.y !== 0) &&
-            canMove(character.x, character.y, character.direction);
+            canMoveForMap(character.x, character.y, character.direction);
 
         if (!isMoving) {
             return shortestDistance(
@@ -589,9 +690,9 @@ function createGameStrategy(context) {
         }
 
         const nextX =
-            wrap(character.x + character.direction.x, getMapColumnCount(currentMap));
+            wrap(character.x + character.direction.x, getMapColumnCountForMap());
         const nextY =
-            wrap(character.y + character.direction.y, getMapRowCount(currentMap));
+            wrap(character.y + character.direction.y, getMapRowCountForMap());
 
         return 1 - character.progress +
             shortestDistance(nextX, nextY, targetX, targetY);
@@ -655,10 +756,10 @@ function createGameStrategy(context) {
         let pelletScore = 0;
 
         let pacmanControlledSquares = 0;
-        for (let y = 0; y < getMapRowCount(currentMap); y++) {
-            for (let x = 0; x < getMapColumnCount(currentMap); x++) {
+        for (let y = 0; y < getMapRowCountForMap(); y++) {
+            for (let x = 0; x < getMapColumnCountForMap(); x++) {
                 if (
-                    currentMap.tiles[y][x] !== "#" &&
+                    map.tiles[y][x] !== "#" &&
                     domain[y][x].owner === "pacman"
                 ) {
                     pacmanControlledSquares++;
@@ -691,12 +792,12 @@ function createGameStrategy(context) {
                 : 0;
 
 
-        for (let y = 0; y < getMapRowCount(currentMap); y++) {
+        for (let y = 0; y < getMapRowCountForMap(); y++) {
 
-            for (let x = 0; x < getMapColumnCount(currentMap); x++) {
+            for (let x = 0; x < getMapColumnCountForMap(); x++) {
 
                 const cell =
-                    currentMap.tiles[y][x];
+                    map.tiles[y][x];
 
 
                 if (
@@ -930,16 +1031,15 @@ function createGameStrategy(context) {
     // Checks movement legality against the simulated map and the game's
     // boundary restrictions, independently of the live game state.
     function canMoveInSearchState(state, character, direction) {
-        const x = wrap(character.x + direction.x, getMapColumnCount(currentMap));
-        const y = wrap(character.y + direction.y, getMapRowCount(currentMap));
+        const x = wrap(character.x + direction.x, getMapColumnCountForMap());
+        const y = wrap(character.y + direction.y, getMapRowCountForMap());
 
-        return currentMap.tiles[y][x] !== "#" &&
-            !isBoundaryBlocked(character.x, character.y, direction);
+        return map.tiles[y][x] !== "#" &&
+            !isBoundaryBlockedForMap(character.x, character.y, direction);
     }
 
     // Generates legal movement choices, with a fallback for characters
     // that have no available move. Eaten ghosts may continue their current
-    // direction when temporarily unable to select a new one.
     function getSearchDirections(state, character, isGhost, map) {
         const possible = Object.values(DIRECTIONS)
             .filter(direction =>
@@ -989,8 +1089,8 @@ function createGameStrategy(context) {
     // together to preserve its physical location.
     function reverseSearchGhost(ghost) {
         if (ghost.progress > 0) {
-            ghost.x = wrap(ghost.x + ghost.direction.x, getMapColumnCount(currentMap));
-            ghost.y = wrap(ghost.y + ghost.direction.y, getMapRowCount(currentMap));
+            ghost.x = wrap(ghost.x + ghost.direction.x, getMapColumnCountForMap());
+            ghost.y = wrap(ghost.y + ghost.direction.y, getMapRowCountForMap());
             ghost.progress = 1 - ghost.progress;
         }
 
@@ -1019,12 +1119,12 @@ function createGameStrategy(context) {
 
         character.x = wrap(
             character.x + character.direction.x,
-            getMapColumnCount(currentMap)
+            getMapColumnCountForMap()
         );
 
         character.y = wrap(
             character.y + character.direction.y,
-            getMapRowCount(currentMap)
+            getMapRowCountForMap()
         );
 
         return true;
@@ -1035,7 +1135,7 @@ function createGameStrategy(context) {
             return;
         }
 
-        const cell = currentMap.tiles[state.player.y][state.player.x];
+        const cell = map.tiles[state.player.y][state.player.x];
         const key = `${state.player.x},${state.player.y}`;
 
         if (
@@ -1557,7 +1657,7 @@ function createGameStrategy(context) {
     // translates game states into generic RBFM transitions and exposes the
     // actions selected by the root edges.
     function getCalibrationDistribution(node) {
-        const calibration = currentMap?.calibration;
+        const calibration = map?.calibration;
 
         if (calibration?.status !== "completed") {
             return {
@@ -1605,37 +1705,13 @@ function createGameStrategy(context) {
         }
     }
 
-    let strategyWorker = null;
-    let strategyWorkerRequestId = 0;
-    const latestWorkerActions = {
-        ghost: null,
-        player: null
-    };
-
-    if (
-        !globalThis.__PACMAN_STRATEGY_WORKER__ &&
-        typeof Worker === "function"
-    ) {
-        strategyWorker = new Worker("./src/strategy-worker.js");
-        strategyWorker.onmessage = event => {
-            const message = event.data;
-
-            if (message.type === "result") {
-                latestWorkerActions[message.playerDirection
-                    ? "player"
-                    : "ghost"] = message;
-            } else if (message.type === "error") {
-                console.warn("Strategy worker failed.", message.error);
-            }
-        };
-    }
-
+        // Optional bridge to the strategy Web Worker. The main thread injects
+    // `worker` (see game-ai-controller); inside workers it stays null and
+    // the search runs locally on the simulation context.
     function requestWorkerAction(mode, searchContext, indices, readyPlayer) {
-        strategyWorker?.postMessage({
-            type: "request",
-            requestId: ++strategyWorkerRequestId,
+        worker?.requestAction({
             mode,
-            map: currentMap,
+            map,
             searchContext,
             readyGhostIndices: indices,
             readyPlayer
@@ -1643,15 +1719,20 @@ function createGameStrategy(context) {
     }
 
     function getWorkerAction(mode, stateKey) {
-        const result = latestWorkerActions[mode];
+        if (!worker?.getAction) {
+            return null;
+        }
+
+        const result = worker.getAction(mode);
 
         return result &&
-            result.mapId === currentMap.id &&
+            result.mapId === map.id &&
             result.stateKey === stateKey
             ? result
             : null;
     }
-    const rbfmSearch = createRandomizedBestFirstMinimax({
+
+    const rbfmSearch = rmfMinimax({
         getStateKey: buildStateKey,
         getNodeType: state => state.firstActor === "player"
             ? "min"
@@ -1701,7 +1782,7 @@ function createGameStrategy(context) {
 
         refreshRbfmDistributions();
         rbfmSearch.rootDecision(
-            currentGameState?.time ?? rbfmSearch.root.state.time
+            rbfmSearch.root.state.time
         );
         refreshRbfmDistributions();
     }

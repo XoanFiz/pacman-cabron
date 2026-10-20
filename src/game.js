@@ -20,32 +20,104 @@
         document.body.append(script);
     };
 
-    function initializeGame() {
-        const context = {
-            ...createGameConfig(),
-            running: false, paused: false, gameWon: false, deathTimer: 0,
-            selectedCharacter: "pacman", editorMode: false, editorGesture: null,
-            editorToastTimer: 0, addingGhost: false, currentTime: 0
-        };
-        const { publish } = createGameBindings(context);
+    function createStrategyWorkerBridge() {
+        if (typeof Worker !== "function") {
+            return null;
+        }
 
-        publish(createGameModel(context));
-        publish(createGameState(context));
-        publish(createGameMap(context));
-        publish(createGameStrategy(context));
-        publish(createGameAiController(context));
-        context.chooseStrategicGhostDirections = context.chooseGhostDirections;
-        context.chooseStrategicPacmanDirection = context.choosePacmanDirection;
-        context.advanceStrategicSearch = context.advanceSearch;
-        context.gameIntelligence = context;
-        publish(createGameRules(context));
-        publish(createGameRenderer(context));
-        publish(createGameUi(context));
-        publish(createGameEditor(context));
-        publish(createGameInput(context));
-        publish(createGameRuntime(context));
-        context.start();
-        window.PACMAN_GAME = context;
+        const worker = new Worker("./src/strategy-worker.js");
+        const latestWorkerActions = {
+            ghost: null,
+            player: null
+        };
+        let requestId = 0;
+
+        worker.onmessage = event => {
+            const message = event.data;
+
+            if (message.type === "result") {
+                latestWorkerActions[message.playerDirection
+                    ? "player"
+                    : "ghost"] = message;
+            } else if (message.type === "error") {
+                console.warn("Strategy worker failed.", message.error);
+            }
+        };
+
+        return {
+            requestAction({ mode, map, searchContext, readyGhostIndices, readyPlayer }) {
+                worker.postMessage({
+                    type: "request",
+                    requestId: ++requestId,
+                    mode,
+                    map,
+                    searchContext,
+                    readyGhostIndices,
+                    readyPlayer
+                });
+            },
+            getAction(mode) {
+                return latestWorkerActions[mode];
+            }
+        };
+    }
+
+    function initializeGame() {
+        const config = createGameConfig();
+        const geometry = createGameMapGeometry();
+        const model = createGameModel();
+
+        const state = createGameState({ config });
+        const map = createGameMap({
+            config,
+            state,
+            geometry,
+            mapStorage: createGameMapStorage()
+        });
+
+        const intelligence = createGameAiController({
+            config,
+            state,
+            map,
+            geometry,
+            model,
+            rmfMinimax: createRandomizedBestFirstMinimax,
+            workerBridge: createStrategyWorkerBridge()
+        });
+
+        const ui = createGameUi({ state });
+        const rules = createGameRules({
+            config,
+            state,
+            map,
+            model,
+            intelligence,
+            ui
+        });
+        const renderer = createGameRenderer({
+            config,
+            state,
+            map,
+            strategy: intelligence
+        });
+        const editor = createGameEditor({ state, map, rules });
+        createGameInput({ state, map, rules, ui, editor });
+        const runtime = createGameRuntime({
+            state,
+            map,
+            rules,
+            intelligence,
+            renderer
+        });
+
+        map.bindRuntime({
+            resetGame: rules.resetGame,
+            getCurrentSearchContext: intelligence.getCurrentSearchContext,
+            createCurrentGameSearchState: intelligence.createCurrentGameSearchState
+        });
+
+        runtime.start();
+        window.PACMAN_GAME = { config, state, map, intelligence, rules, ui, renderer, editor, runtime };
     }
 
     loadScript(0);
