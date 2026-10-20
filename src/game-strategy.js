@@ -2135,6 +2135,7 @@ function createGameStrategy(context) {
     return {
         calculateDomain,
         cloneSearchCharacter,
+        createCurrentGameSearchState,
         buildStateKey,
         evaluateSearchState,
         advanceSearchState,

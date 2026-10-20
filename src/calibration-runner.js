@@ -31,14 +31,14 @@ function createRbfmCalibration(map) {
             !Number.isFinite(node.value) ||
             !Number.isFinite(referenceValue)
         ) {
-            return;
+            return false;
         }
 
         const d = node.successors.length;
         const s = node.searchCount;
 
         if (d === 0 || s === 0) {
-            return;
+            return false;
         }
 
         const stats = getNodeStats(node);
@@ -58,6 +58,7 @@ function createRbfmCalibration(map) {
         }
 
         samples.get(key).errors.push(error);
+        return true;
     }
 
     function onNodeVisit(node) {
@@ -155,7 +156,7 @@ function createRbfmCalibrationExperiment({
     maxSamplesPerStep = 1
 }) {
     const pending = new Map();
-    const completed = new WeakSet();
+    let completed = new WeakSet();
 
     let running = false;
 
@@ -205,7 +206,12 @@ function createRbfmCalibrationExperiment({
                     continue;
                 }
 
-                calibration.record(node, referenceValue);
+                const recorded = calibration.record(node, referenceValue);
+
+                if (!recorded) {
+                    continue;
+                }
+
                 completed.add(node);
                 processed++;
             }
@@ -225,8 +231,7 @@ function createRbfmCalibrationExperiment({
 
     function clear() {
         pending.clear();
-        // WeakSet does not support clearing; a new instance is created
-        // if the experiment needs to be completely reset.
+        completed = new WeakSet();
     }
 
     return {
@@ -373,19 +378,182 @@ function calculateReferenceValue(
     return minimax(initialState);
 }
 
-const calibration = createRbfmCalibration(getCurrentMapDefinition());
+function createRbfmCalibrationRunner({
+    map,
+    initialState,
+    targetSamples = 256,
+    maxSteps = 10000,
+    maxSamplesPerStep = 1,
+    getReferenceValue = state => calculateReferenceValue(state),
+    getStateKey: stateKey = getStateKey,
+    getNodeType: nodeType = getNodeType,
+    createSuccessorIterator: successorIterator = createSuccessorIterator,
+    evaluateState = evaluateSearchState
+} = {}) {
+    if (!map) {
+        throw new TypeError("createRbfmCalibrationRunner requires a map.");
+    }
 
+    if (!initialState || typeof initialState !== "object") {
+        throw new TypeError(
+            "createRbfmCalibrationRunner requires an initial state."
+        );
+    }
 
-const search = createUnboundedBestFirstMinimax({
-    getStateKey,
-    getNodeType,
-    createSuccessorIterator,
-    onNodeVisit: calibration.onNodeVisit
-});
+    if (!Number.isInteger(targetSamples) || targetSamples <= 0) {
+        throw new RangeError("targetSamples must be a positive integer.");
+    }
 
-const experiment = createRbfmCalibrationExperiment({
-    calibration,
-    search,
-    getReferenceValue: calculateReferenceValue,
-    maxSamplesPerStep: 1
-});
+    if (!Number.isInteger(maxSteps) || maxSteps <= 0) {
+        throw new RangeError("maxSteps must be a positive integer.");
+    }
+
+    if (!Number.isInteger(maxSamplesPerStep) || maxSamplesPerStep <= 0) {
+        throw new RangeError(
+            "maxSamplesPerStep must be a positive integer."
+        );
+    }
+
+    const calibration = createRbfmCalibration(map);
+    const search = createRandomizedBestFirstMinimax({
+        getStateKey: stateKey,
+        getNodeType: nodeType,
+        createSuccessorIterator: successorIterator,
+        onNodeVisit: calibration.onNodeVisit
+    });
+    const experiment = createRbfmCalibrationExperiment({
+        calibration,
+        search,
+        getReferenceValue,
+        maxSamplesPerStep
+    });
+
+    let steps = 0;
+    let finished = false;
+    let finishReason = null;
+
+    function refreshNodeDistributions() {
+        const tables = calibration.getTables();
+
+        for (const node of search.nodes.values()) {
+            const key = `${node.searchCount},${node.successors.length}`;
+            const correction = tables.f.get(key) || 0;
+            const variance = tables.g.get(key) || 0;
+
+            node.distribution = {
+                mean: node.value + correction,
+                standardDeviation: Math.sqrt(Math.max(0, variance))
+            };
+        }
+    }
+
+    search.setRoot(
+        initialState,
+        evaluateState(initialState),
+        initialState.time
+    );
+    refreshNodeDistributions();
+
+    function updateCompletion() {
+        const status = experiment.getStatus();
+
+        if (status.completed >= targetSamples) {
+            finished = true;
+            finishReason = "target-samples";
+        } else if (steps >= maxSteps) {
+            finished = true;
+            finishReason = "max-steps";
+        }
+
+        return status;
+    }
+
+    function step() {
+        if (finished) {
+            return getStatus();
+        }
+
+        refreshNodeDistributions();
+        search.rootDecision(initialState.time + steps);
+        experiment.step();
+        refreshNodeDistributions();
+        steps++;
+        updateCompletion();
+
+        return getStatus();
+    }
+
+    function runToCompletion(stepLimit = maxSteps) {
+        if (!Number.isInteger(stepLimit) || stepLimit <= 0) {
+            throw new RangeError("stepLimit must be a positive integer.");
+        }
+
+        const limit = Math.min(stepLimit, maxSteps);
+
+        while (!finished && steps < limit) {
+            step();
+        }
+
+        updateCompletion();
+        return getStatus();
+    }
+
+    function getStatus() {
+        const experimentStatus = experiment.getStatus();
+
+        return {
+            steps,
+            pending: experimentStatus.pending,
+            completed: experimentStatus.completed,
+            targetSamples,
+            finished,
+            finishReason
+        };
+    }
+
+    function getResult() {
+        const tables = calibration.getTables();
+        const status = getStatus();
+
+        return {
+            mapId: map.id || null,
+            sampleCount: status.completed,
+            targetSamples,
+            parameters: {
+                targetSamples,
+                maxSteps,
+                maxSamplesPerStep
+            },
+            completed: status.finished && status.finishReason === "target-samples",
+            finishReason: status.finishReason,
+            f: Object.fromEntries(tables.f),
+            g: Object.fromEntries(tables.g)
+        };
+    }
+
+    function reset() {
+        calibration.clear();
+        experiment.clear();
+        search.nodes.clear();
+        search.root = null;
+        steps = 0;
+        finished = false;
+        finishReason = null;
+        search.setRoot(
+            initialState,
+            evaluateState(initialState),
+            initialState.time
+        );
+        refreshNodeDistributions();
+    }
+
+    return {
+        calibration,
+        search,
+        step,
+        runToCompletion,
+        getStatus,
+        getResult,
+        reset
+    };
+}

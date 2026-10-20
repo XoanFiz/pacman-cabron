@@ -388,17 +388,21 @@ function createRandomizedBestFirstMinimax({
             );
         } 
         
-        if (onNodeVisit !== null) {
-            onNodeVisit(node);
-        }
-
         if (!node.expansionComplete) {
             expandNode(node, currentTime);
+
+            if (onNodeVisit !== null) {
+                onNodeVisit(node);
+            }
 
             return node;
         }
 
         recordSearchVisit(node);
+
+        if (onNodeVisit !== null) {
+            onNodeVisit(node);
+        }
 
         if (node.successors.length === 0) {
             return node;
@@ -463,8 +467,8 @@ function createRandomizedBestFirstMinimax({
         const bestEdge = getBestChild(root);
 
         const mode = randomEdge === bestEdge
-            ? "up"
-            : "improve";
+            ? "improve"
+            : "worsen";
 
         return {
             expandedNode: extend(
