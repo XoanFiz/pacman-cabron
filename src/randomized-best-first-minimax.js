@@ -266,12 +266,21 @@ function createRandomizedBestFirstMinimax({
     // SUCCESSOR ORDERING
     // ========================================================
 
-    function comesBefore(node, firstEdge, secondEdge) {
-        return node.type === "max"
-            ? firstEdge.child.value > secondEdge.child.value
-            : firstEdge.child.value < secondEdge.child.value;
+    function getComparableValue(node) {
+        return node.distribution &&
+            Number.isFinite(node.distribution.mean)
+            ? node.distribution.mean
+            : node.value;
     }
 
+    function comesBefore(node, firstEdge, secondEdge) {
+        const firstValue = getComparableValue(firstEdge.child);
+        const secondValue = getComparableValue(secondEdge.child);
+
+        return node.type === "max"
+            ? firstValue > secondValue
+            : firstValue < secondValue;
+    }
     function ensureSuccessorOrder(node) {
         const edges = node.successors;
 
@@ -487,6 +496,7 @@ function createRandomizedBestFirstMinimax({
     search.getOrCreateNode = getOrCreateNode;
     search.expandNode = expandNode;
     search.updateNodeValue = updateNodeValue;
+    search.getBestChild = getBestChild;
     search.rootDecision = rootDecision;
 
     search.setRoot = function (

@@ -287,7 +287,8 @@ function createGameMap(context) {
                 Number(persisted.nextCustomMapNumber) || 1
             );
             context.currentMap = cloneMapDefinition(
-                context.maps.find(definition => definition.id === context.activeMapId) || context.maps[0]
+                context.maps.find(definition => definition.id === context.activeMapId) || context.maps[0],
+                { includeCalibration: true }
             );
             syncMapStateBindings();
         } catch (error) {
@@ -316,7 +317,9 @@ function createGameMap(context) {
     context.activeMapId = "classic";
     context.editorDraftMap = null;
     context.nextCustomMapNumber = 1;
-    context.currentMap = cloneMapDefinition(context.maps[0]);
+    context.currentMap = cloneMapDefinition(context.maps[0], {
+        includeCalibration: true
+    });
 
     canvas.width = getMapColumnCount(context.maps[0]) * CELL;
     canvas.height = getMapRowCount(context.maps[0]) * CELL;
@@ -453,7 +456,8 @@ function createGameMap(context) {
     function buildMapData(definition) {
         return {
             graph: buildGraph(definition),
-            pellets: buildPellets(definition)
+            pellets: buildPellets(definition),
+            calibration: cloneCalibration(definition.calibration)
         };
     }
 
@@ -708,6 +712,12 @@ function createGameMap(context) {
                         CALIBRATION_REFERENCE_HORIZON_SECONDS
                 }
             };
+
+            if (currentMap?.id === definition.id) {
+                currentMap.calibration = cloneCalibration(
+                    definition.calibration
+                );
+            }
             void persistMaps();
         };
 

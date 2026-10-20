@@ -360,7 +360,7 @@ function createGameStrategy(context) {
         const spreadTheWave = (assessedDomainStatus, isBetter) => {
             for (
                 const next of
-                graph[assessedDomainStatus.y][assessedDomainStatus.x]
+                context.gameContext.graph[assessedDomainStatus.y][assessedDomainStatus.x]
             ) {
 
                 const result = calculateNextTimeAndCell(assessedDomainStatus, domain, next);
@@ -1553,477 +1553,166 @@ function createGameStrategy(context) {
         return [];
     }
 
-    // Creates a node in the shared strategic search graph. Identical
-    // states can reuse an existing node, while incoming edges allow value
-    // changes to propagate back to every parent that depends on the node.
-    function createSearchNode(
-        state,
-        value,
-        discoveryDepth = 0
+    // The game and calibration use the same RBFM engine. This adapter only
+    // translates game states into generic RBFM transitions and exposes the
+    // actions selected by the root edges.
+    function getCalibrationDistribution(node) {
+        const calibration = currentMap?.calibration;
+
+        if (calibration?.status !== "completed") {
+            return {
+                mean: node.value,
+                standardDeviation: 0
+            };
+        }
+
+        const key = `${node.searchCount},${node.successors.length}`;
+        const correction = Number(calibration.f?.[key]);
+        const variance = Number(calibration.g?.[key]);
+
+        return {
+            mean: node.value + (Number.isFinite(correction) ? correction : 0),
+            standardDeviation: Math.sqrt(Math.max(
+                0,
+                Number.isFinite(variance) ? variance : 0
+            ))
+        };
+    }
+
+    function refreshRbfmDistributions() {
+        for (const node of rbfmSearch.nodes.values()) {
+            node.distribution = getCalibrationDistribution(node);
+        }
+    }
+
+    function* createGameRbfmSuccessors(state) {
+        for (const profile of getSearchActionProfiles(state)) {
+            const nextState = advanceSearchState(
+                state,
+                profile.ghostDirections,
+                profile.playerDirection
+            );
+
+            yield {
+                state: nextState,
+                value: evaluateSearchState(nextState),
+                duration: nextState.time - state.time,
+                action: {
+                    ghostDirections: profile.ghostDirections,
+                    playerDirection: profile.playerDirection
+                }
+            };
+        }
+    }
+
+    let strategyWorker = null;
+    let strategyWorkerRequestId = 0;
+    const latestWorkerActions = {
+        ghost: null,
+        player: null
+    };
+
+    if (
+        !globalThis.__PACMAN_STRATEGY_WORKER__ &&
+        typeof Worker === "function"
     ) {
-        const key = buildStateKey(state);
+        strategyWorker = new Worker("./src/strategy-worker.js");
+        strategyWorker.onmessage = event => {
+            const message = event.data;
 
-        const node = {
-            key,
-            state,
-
-            // Revisable strategic estimate.
-            value,
-
-            // Generated transitions and reverse graph dependencies.
-            candidates: null,
-            incomingEdges: [],
-
-            // Mutable search progress, separate from state identity.
-            exploration: {
-                nextCandidate: 0,
-                expanded: state.terminal,
-
-                // Scheduling hint only; not a canonical depth.
-                discoveryDepth,
-
-                // Temporary compatibility with the indexed frontier.
-                heapIndex: -1
+            if (message.type === "result") {
+                latestWorkerActions[message.playerDirection
+                    ? "player"
+                    : "ghost"] = message;
+            } else if (message.type === "error") {
+                console.warn("Strategy worker failed.", message.error);
             }
         };
-
-        strategicSearch.nodes.set(key, node);
-
-        if (!node.exploration.expanded) {
-            pushSearchFrontier(node);
-        }
-
-        return node;
     }
 
-    // Produces a stable identifier for a joint ghost action.
-    function getGhostActionKey(candidate) {
-        return candidate.ghostDirections
-            .map(([index, direction]) =>
-                `${index}:${direction.x},${direction.y}`
-            )
-            .join("|");
-    }
-
-    // Returns the best currently available estimate for a candidate
-    // transition, whether or not its successor has been expanded.
-    function getCandidateValue(candidate) {
-        return candidate.child
-            ? candidate.child.value
-            : -Infinity;
-    }
-
-    // Evaluates a decision node using the value of its available successors.
-    function getSearchNodeValue(node) {
-        const candidates = (node.candidates ?? [])
-            .filter(candidate => candidate.child !== null);
-
-        if (candidates.length === 0) {
-            return node.value;
-        }
-
-        const values = candidates.map(
-            candidate => candidate.child.value
-        );
-
-        return node.state.firstActor === "ghosts"
-            ? Math.max(...values)
-            : Math.min(...values);
-    }
-
-    function getBestSearchCandidate(node) {
-        if (node.candidates === null) {
-            node.candidates = getSearchActionProfiles(node.state);
-        }
-
-        if (node.candidates.length === 0) {
-            return null;
-        }
-
-        const candidates = node.candidates.filter(
-            candidate => candidate.child !== null
-        );
-
-        if (candidates.length === 0) {
-            return node.candidates[0];
-        }
-
-        return candidates.reduce((best, candidate) => {
-            const value = getCandidateValue(candidate);
-            const bestValue = getCandidateValue(best);
-
-            if (node.state.firstActor === "ghosts") {
-                return value > bestValue ? candidate : best;
-            }
-
-            return value < bestValue ? candidate : best;
+    function requestWorkerAction(mode, searchContext, indices, readyPlayer) {
+        strategyWorker?.postMessage({
+            type: "request",
+            requestId: ++strategyWorkerRequestId,
+            mode,
+            map: currentMap,
+            searchContext,
+            readyGhostIndices: indices,
+            readyPlayer
         });
     }
 
-    function getResponseCandidate(candidate) {
-        if (!candidate.child) {
-            return null;
-        }
+    function getWorkerAction(mode, stateKey) {
+        const result = latestWorkerActions[mode];
 
-        return getBestSearchCandidate(candidate.child);
+        return result &&
+            result.mapId === currentMap.id &&
+            result.stateKey === stateKey
+            ? result
+            : null;
     }
+    const rbfmSearch = createRandomizedBestFirstMinimax({
+        getStateKey: buildStateKey,
+        getNodeType: state => state.firstActor === "player"
+            ? "min"
+            : "max",
+        createSuccessorIterator: createGameRbfmSuccessors
+    });
 
-    // Propagates changed values through the reverse dependency graph.
-    // Shared states may affect multiple ancestors, so updates continue
-    // until no reachable parent value changes beyond the tolerance.
-    function refreshSearchValues(node) {
-        const pending = [node];
-        const queued = new Set(pending);
-
-        while (pending.length > 0) {
-            const current = pending.pop();
-            queued.delete(current);
-
-            const nextValue =
-                getSearchNodeValue(current);
-
-            if (
-                Math.abs(nextValue - current.value) <= EPSILON
-            ) {
-                continue;
-            }
-
-            current.value = nextValue;
-
-            // The frontier is still used in this iteration.
-            updateSearchFrontier(current);
-
-            for (const edge of current.incomingEdges) {
-                const parent = edge.parent;
-
-                if (!queued.has(parent)) {
-                    pending.push(parent);
-                    queued.add(parent);
-                }
-            }
-        }
-    }
-
-    // Evaluates one candidate transition and connects its resulting state
-    // to the shared graph. Repeated states reuse their existing values and dependencies.
-    function expandSearchCandidate(node, candidate) {
-        if (candidate.child) {
-            return candidate.child;
-        }
-
-        const nextState = advanceSearchState(
-            node.state,
-            candidate.ghostDirections,
-            candidate.playerDirection
-        );
-
-        const childKey = buildStateKey(nextState);
-        let child = strategicSearch.nodes.get(childKey);
-
-        if (!child) {
-            child = createSearchNode(
-                nextState,
-                evaluateSearchState(nextState),
-                node.exploration.discoveryDepth + 1
-            );
-        }
-
-        candidate.child = child;
-
-        if (!child.incomingEdges.some(
-            edge => edge.parent === node && edge.candidate === candidate
-        )) {
-            child.incomingEdges.push({ parent: node, candidate });
-        }
-
-        return child;
-    }
-
-    // Defines frontier priority from the current decision-maker's
-    // perspective, preferring strategically promising nodes while using
-    // depth and improvement over the parent as tie-breakers.
-    function compareSearchNodes(a, b) {
-        const sign = node => {
-            if (node.state.firstActor === "ghosts") return 1;
-            if (node.state.firstActor === "player") return -1;
-            return 0;
-        };
-
-        const aValue = a.value * sign(a);
-        const bValue = b.value * sign(b);
-
-        if (Math.abs(aValue - bValue) > EPSILON) {
-            return bValue - aValue;
-        }
-
-        return (
-            a.exploration.discoveryDepth -
-            b.exploration.discoveryDepth
-        );
-    }
-
-    // Swaps two frontier entries while keeping each node's stored heap
-    // index synchronized with its actual position.
-    function swapSearchFrontier(a, b) {
-        const frontier = strategicSearch.frontier;
-
-        [frontier[a], frontier[b]] = [frontier[b], frontier[a]];
-        frontier[a].exploration.heapIndex = a;
-        frontier[b].exploration.heapIndex = b;
-    }
-
-    // Inserts a node into the indexed priority queue used to schedule
-    // further search expansions.
-    function pushSearchFrontier(node) {
-        const exploration = node.exploration;
-
-        if (exploration.heapIndex >= 0) {
-            updateSearchFrontier(node);
-            return;
-        }
-
-        const frontier = strategicSearch.frontier;
-        let index = frontier.length;
-
-        frontier.push(node);
-        exploration.heapIndex = index;
-
-        while (index > 0) {
-            const parent = Math.floor((index - 1) / 2);
-
-            if (
-                compareSearchNodes(
-                    frontier[index],
-                    frontier[parent]
-                ) >= 0
-            ) {
-                break;
-            }
-
-            swapSearchFrontier(index, parent);
-            index = parent;
-        }
-    }
-
-
-    // Restores heap order after a node's strategic value changes.
-    // Because values can propagate through the graph, frontier priorities
-    // must be updated without inserting duplicate entries.
-    function updateSearchFrontier(node) {
-        let index = node.exploration.heapIndex;
-
-        if (index < 0) {
-            return;
-        }
-
-        const frontier = strategicSearch.frontier;
-
-        while (index > 0) {
-            const parent = Math.floor((index - 1) / 2);
-
-            if (compareSearchNodes(frontier[index], frontier[parent]) >= 0) {
-                break;
-            }
-
-            swapSearchFrontier(index, parent);
-            index = parent;
-        }
-
-        while (true) {
-            const left = index * 2 + 1;
-            const right = left + 1;
-            let best = index;
-
-            if (
-                left < frontier.length &&
-                compareSearchNodes(frontier[left], frontier[best]) < 0
-            ) {
-                best = left;
-            }
-
-            if (
-                right < frontier.length &&
-                compareSearchNodes(frontier[right], frontier[best]) < 0
-            ) {
-                best = right;
-            }
-
-            if (best === index) {
-                break;
-            }
-
-            swapSearchFrontier(index, best);
-            index = best;
-        }
-    }
-
-    // Removes and returns the highest-priority node, maintaining the
-    // indexed heap required for efficient subsequent updates and removals.
-    function popSearchFrontier() {
-        const frontier = strategicSearch.frontier;
-
-        if (frontier.length === 0) {
-            return null;
-        }
-
-        const first = frontier[0];
-        const last = frontier.pop();
-        first.exploration.heapIndex = -1;
-
-        if (frontier.length > 0) {
-            frontier[0] = last;
-            last.exploration.heapIndex = 0;
-            updateSearchFrontier(last);
-        }
-
-        return first;
-    }
-
-    // Removes a specific node from the frontier in logarithmic time,
-    // using its stored heap index rather than searching the queue.
-    function removeSearchFrontier(node) {
-        const index = node.exploration.heapIndex;
-
-        if (index < 0) {
-            return;
-        }
-
-        const frontier = strategicSearch.frontier;
-        const last = frontier.pop();
-
-        node.exploration.heapIndex = -1;
-
-        if (index < frontier.length) {
-            frontier[index] = last;
-            last.exploration.heapIndex = index;
-
-            updateSearchFrontier(last);
-        }
-    }
-
-
-    // Performs a bounded amount of search work per frame, allowing the
-    // strategic graph to expand incrementally without monopolizing the
-    // game loop. Each expansion processes one candidate transition.
-    function advanceSearch() {
-        // console.log("ADVANCE SEARCH", {
-        //     frontierSize: strategicSearch.frontier.length,
-        //     rootKey: strategicSearch.root?.key,
-        //     rootHeapIndex: strategicSearch.root?.exploration.heapIndex,
-        //     rootExpanded: strategicSearch.root?.exploration.expanded
-        // });
-
-        let expansions = 0;
-
-        while (expansions < SEARCH_EXPANSIONS_PER_FRAME) {
-            const node = popSearchFrontier();
-            // if (node && node === strategicSearch.root) {
-            //     console.log("ROOT POPPED", {
-            //         nextCandidate: node.exploration.nextCandidate,
-            //         candidateCount: node.candidates?.length,
-            //         expanded: node.exploration.expanded
-            //     });
-            // }
-
-            if (!node) {
-                break;
-            }
-
-            const exploration = node.exploration;
-
-            if (exploration.expanded) {
-                continue;
-            }
-
-            if (node.candidates === null) {
-                node.candidates = getSearchActionProfiles(node.state);
-            }
-
-            if (node.candidates.length === 0) {
-                exploration.expanded = true;
-                continue;
-            }
-
-            if (
-                exploration.nextCandidate >=
-                node.candidates.length
-            ) {
-                exploration.expanded = true;
-                continue;
-            }
-
-            const candidate =
-                node.candidates[exploration.nextCandidate];
-
-            expandSearchCandidate(node, candidate);
-
-            exploration.nextCandidate++;
-            expansions++;
-
-            if (
-                exploration.nextCandidate >=
-                node.candidates.length
-            ) {
-                exploration.expanded = true;
-            } else {
-                pushSearchFrontier(node);
-            }
-        }
-    }
-
-    // Selects the ghost's direction from the best available joint ghost
-    // action, evaluating each action against Pac-Man's worst response (best for him but worst for the ghosts).
-    // Unresolved candidates use their parent's static evaluation until further search expansions provide more accurate values.
-    function getGhostDirection(node, ghostIndex, fallback) {
-        if (node.state.firstActor !== "ghosts") {
-            return { ...fallback };
-        }
-
-        const candidate = getBestSearchCandidate(node);
-
-        const selected = candidate?.ghostDirections.find(
-            ([index]) => index === ghostIndex
-        );
-
-        return selected
-            ? { ...selected[1] }
-            : { ...fallback };
-    }
-
-    // Retrieves or initializes the search node corresponding to the
-    // current decision state. The root's immediate candidates are
-    // evaluated before it is returned for action selection.
     function getOrSetSearchRoot(
         searchContext,
         readyGhostIndices = [],
         readyPlayer = false
     ) {
-        const provisionalState = createCurrentGameSearchState(
+        const state = createCurrentGameSearchState(
             searchContext,
             readyGhostIndices,
             readyPlayer
         );
 
-        const stateKey = buildStateKey(provisionalState);
+        const root = rbfmSearch.setRoot(
+            state,
+            evaluateSearchState(state),
+            state.time
+        );
 
-        let root = strategicSearch.nodes.get(stateKey);
-
-        if (!root) {
-            root = createSearchNode(
-                provisionalState,
-                evaluateSearchState(provisionalState),
-                0
-            );
-        }
-
-        strategicSearch.root = root;
-
+        refreshRbfmDistributions();
         return root;
     }
 
+    function ensureExpanded(node) {
+        if (!node.expansionComplete) {
+            rbfmSearch.expandNode(node, node.state.time);
+            refreshRbfmDistributions();
+        }
+    }
 
-    // Chooses coordinated directions for the ghosts that are ready to
-    // move, treating their simultaneous decisions as a joint action.
+    function getBestAction(node) {
+        ensureExpanded(node);
+        return rbfmSearch.getBestChild(node)?.action;
+    }
+
+    // Advances the shared RBFM exploration without blocking the game loop
+    // with a second search implementation.
+    function advanceSearch() {
+        if (!rbfmSearch.root) {
+            return;
+        }
+
+        refreshRbfmDistributions();
+        rbfmSearch.rootDecision(
+            currentGameState?.time ?? rbfmSearch.root.state.time
+        );
+        refreshRbfmDistributions();
+    }
+
+    function getFallbackGhostDirections(searchContext, indices) {
+        return new Map(indices.map(index => [
+            index,
+            { ...searchContext.ghosts[index].direction }
+        ]));
+    }
+
     function chooseGhostDirections(
         searchContext,
         readyGhostIndices,
@@ -2034,58 +1723,45 @@ function createGameStrategy(context) {
             readyGhostIndices,
             readyPlayer
         );
-
-        let decisionNode = root;
-
-        // If Pac-Man decides first, select his move and then obtain
-        // the ghost response from the resulting intermediate state.
-        if (root.state.firstActor === "player") {
-            const playerCandidate =
-                getBestSearchCandidate(root);
-
-            const response =
-                getResponseCandidate(playerCandidate);
-
-            if (!response) {
-                return new Map(
-                    readyGhostIndices.map(index => [
-                        index,
-                        { ...searchContext.ghosts[index].direction }
-                    ])
-                );
-            }
-
-            return new Map(
-                response.ghostDirections.map(([index, direction]) => [
-                    index,
-                    { ...direction }
-                ])
-            );
-        }
-
-        if (root.state.firstActor !== "ghosts") {
-            return new Map(
-                readyGhostIndices.map(index => [
-                    index,
-                    { ...searchContext.ghosts[index].direction }
-                ])
-            );
-        }
-
-        return new Map(
-            readyGhostIndices.map(index => [
-                index,
-                getGhostDirection(
-                    decisionNode,
-                    index,
-                    searchContext.ghosts[index].direction
-                )
-            ])
+        requestWorkerAction(
+            "ghost",
+            searchContext,
+            readyGhostIndices,
+            readyPlayer
         );
+
+        const workerAction = getWorkerAction("ghost", root.key);
+
+        if (workerAction?.ghostDirections) {
+            return new Map(workerAction.ghostDirections.map(([index, direction]) => [
+                index,
+                { ...direction }
+            ]));
+        }
+
+        const rootAction = getBestAction(root);
+
+        if (!rootAction) {
+            return getFallbackGhostDirections(searchContext, readyGhostIndices);
+        }
+
+        let action = rootAction;
+
+        if (root.state.firstActor === "player") {
+            const child = rbfmSearch.getBestChild(root)?.child;
+            action = child ? getBestAction(child) : null;
+        }
+
+        if (!action?.ghostDirections) {
+            return getFallbackGhostDirections(searchContext, readyGhostIndices);
+        }
+
+        return new Map(action.ghostDirections.map(([index, direction]) => [
+            index,
+            { ...direction }
+        ]));
     }
 
-    // Chooses Pac-Man's move by minimizing the worst outcome across
-    // the ghost responses represented in the root's candidate actions.
     function choosePacmanDirection(
         searchContext,
         readyGhostIndices = []
@@ -2095,34 +1771,30 @@ function createGameStrategy(context) {
             readyGhostIndices,
             true
         );
+        requestWorkerAction(
+            "player",
+            searchContext,
+            readyGhostIndices,
+            true
+        );
 
-        // If Pac-Man decides first, select directly from the root.
-        if (root.state.firstActor === "player") {
-            const candidate =
-                getBestSearchCandidate(root);
+        const workerAction = getWorkerAction("player", root.key);
 
-            return candidate?.playerDirection
-                ? { ...candidate.playerDirection }
-                : { ...root.state.player.direction };
+        if (workerAction?.playerDirection) {
+            return { ...workerAction.playerDirection };
         }
 
-        // If ghosts decide first, Pac-Man responds in the intermediate
-        // state reached after the selected joint ghost action.
-        if (root.state.firstActor === "ghosts") {
-            const ghostCandidate =
-                getBestSearchCandidate(root);
+        const rootEdge = rbfmSearch.getBestChild(root);
+        let action = rootEdge?.action;
 
-            const response =
-                getResponseCandidate(ghostCandidate);
-
-            return response?.playerDirection
-                ? { ...response.playerDirection }
-                : { ...root.state.player.direction };
+        if (root.state.firstActor === "ghosts" && rootEdge) {
+            action = getBestAction(rootEdge.child);
         }
 
-        return { ...root.state.player.direction };
+        return action?.playerDirection
+            ? { ...action.playerDirection }
+            : { ...searchContext.player.direction };
     }
-
     return {
         calculateDomain,
         cloneSearchCharacter,

@@ -467,8 +467,8 @@ function createGameRenderer(context) {
 
                 if (owner.startsWith("ghost")) {
                     const index = getGhostIndex(owner);
-                    color = ghosts[index]?.color
-                        ? hexToRgb(ghosts[index].color)
+                    color = currentGameState.ghosts[index]?.color
+                        ? hexToRgb(currentGameState.ghosts[index].color)
                         : getGhostColorRgb(index);
                 }
 

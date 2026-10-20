@@ -17,7 +17,7 @@ function createGameConfig() {
         TOTAL_PELLET_VALUE: 1000,
         TOTAL_NORMAL_VALUE: 1000,
         INITIAL_LIVES: 3,
-        SEARCH_LIFE_PRIORITY: 3001,
+        SEARCH_LIFE_PRIORITY: 1,
         EPSILON: 1e-9,
         SEARCH_EPSILON: 1e-7,
         SEARCH_EXPANSIONS_PER_FRAME: 8
