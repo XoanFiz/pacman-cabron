@@ -1,14 +1,16 @@
 TODO
-Progress update: RBFM calibration runner is now executable and has been tested against a real classic-map search state.
+Progress update: RBFM calibration runner is executable and map save now persists maps and calibration state through IndexedDB.
     Completed: expose the complete search-state adapter from game-strategy.
     Completed: add incremental runner controls through step, runToCompletion, getStatus, reset, and getResult.
     Completed: produce serializable f/g calibration tables with sample and completion metadata.
     Completed: initialize and update RBFM node distributions from observed calibration errors.
     Completed: fix invalid RBFM mode transitions and valid-sample tracking.
-    Pending: load the calibration modules in the application and start them lazily from map creation.
-    Pending: persist the calibration payload together with each map in IndexedDB.
+    Completed: load the calibration modules in the application and start calibration lazily after saving a map.
+    Completed: persist the pending and final calibration payload together with each map in IndexedDB.
+    Completed: integrate a configurable short reference horizon of 2 simulated seconds.
+    Completed: move horizon-based reference evaluation into a dedicated Web Worker.
     Pending: validate map/calibration versions and invalidate stale calibration data.
-    Pending: add automated calibration and IndexedDB persistence tests.
+    Pending: bound worker search cost and add automated calibration and IndexedDB persistence tests.
 
 Continuation script: finish RBFM calibration and persist calibrated map data
     Finish the RBFM calibration runner, including a clear completion condition, progress reporting, and a stable result format that can be consumed by map creation.

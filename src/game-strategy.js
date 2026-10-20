@@ -1,14 +1,5 @@
 function createGameStrategy(context) {
 
-    const SEARCH_LIFE_PRIORITY =
-        TOTAL_NORMAL_VALUE +
-        2 * TOTAL_PELLET_VALUE +
-        1;
-
-    const EPSILON = 1e-9;
-    const SEARCH_EPSILON = 1e-7;
-    const SEARCH_EXPANSIONS_PER_FRAME = 8;
-
     // PRIORITY QUEUE
     // ============================================================
 

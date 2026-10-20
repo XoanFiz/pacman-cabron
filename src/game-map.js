@@ -1,5 +1,7 @@
 
 function createGameMap(context) {
+    const mapGeometry = createGameMapGeometry();
+    const DIRECTIONS = mapGeometry.DIRECTIONS;
     // ============================================================
     // MAP DEFINITIONS
     // ============================================================
@@ -23,6 +25,22 @@ function createGameMap(context) {
     }
 
 
+    function cloneCalibration(calibration) {
+        if (calibration === undefined) {
+            return undefined;
+        }
+
+        return {
+            ...calibration,
+            parameters: calibration.parameters
+                ? { ...calibration.parameters }
+                : undefined,
+            f: calibration.f ? { ...calibration.f } : {},
+            g: calibration.g ? { ...calibration.g } : {}
+        };
+    }
+
+
     function cloneMapDefinition(definition,
         { includeCalibration = false } = {}) {
         return {
@@ -33,7 +51,7 @@ function createGameMap(context) {
             ghostStarts: definition.ghostStarts.map(cloneMapPosition),
 
             ...(includeCalibration && definition.calibration !== undefined
-                ? { calibration: definition.calibration }
+                ? { calibration: cloneCalibration(definition.calibration) }
                 : { calibration: undefined })
         };
     }
@@ -245,7 +263,9 @@ function createGameMap(context) {
 
                 definitionsById.set(
                     persistedDefinition.id,
-                    cloneMapDefinition(persistedDefinition)
+                    cloneMapDefinition(persistedDefinition, {
+                        includeCalibration: true
+                    })
                 );
             }
 
@@ -277,14 +297,21 @@ function createGameMap(context) {
         }
     }
 
+    let mapPersistenceQueue = Promise.resolve();
+
     function persistMaps() {
-        return mapStorage.save(maps, {
-            activeMapId,
-            nextCustomMapNumber
-        }).catch(error => {
-            console.warn("Unable to save maps in IndexedDB.", error);
-            return false;
-        });
+        mapPersistenceQueue = mapPersistenceQueue
+            .catch(() => undefined)
+            .then(() => mapStorage.save(maps, {
+                activeMapId,
+                nextCustomMapNumber
+            }))
+            .catch(error => {
+                console.warn("Unable to save maps in IndexedDB.", error);
+                return false;
+            });
+
+        return mapPersistenceQueue;
     }
     context.activeMapId = "classic";
     context.editorDraftMap = null;
@@ -307,18 +334,6 @@ function createGameMap(context) {
 
 
     // ============================================================
-    // DIRECTIONS
-    // ============================================================
-
-    const DIRECTIONS = {
-        up: { x: 0, y: -1 },
-        down: { x: 0, y: 1 },
-        left: { x: -1, y: 0 },
-        right: { x: 1, y: 0 }
-    };
-
-
-    // ============================================================
     // MAP UTILITIES
     // ============================================================
 
@@ -337,17 +352,17 @@ function createGameMap(context) {
 
 
     function getMapRowCount(definition = currentMap) {
-        return definition.tiles.length;
+        return mapGeometry.getMapRowCount(definition);
     }
 
 
     function getMapColumnCount(definition = currentMap) {
-        return definition.tiles[0]?.length ?? 0;
+        return mapGeometry.getMapColumnCount(definition);
     }
 
 
     function wrap(value, size) {
-        return ((value % size) + size) % size;
+        return mapGeometry.wrap(value, size);
     }
 
 
@@ -383,54 +398,22 @@ function createGameMap(context) {
     // represented as "h:0:0", while a boundary between (19, 0) and (0, 0) is represented as "h:19:0". Similarly, a boundary between (0, 0)
     // and (0, 1) is represented as "v:0:0", while a boundary between (0, 17) and (0, 0) is represented as "v:0:17".
     function getBoundaryKey(x, y, direction, definition = currentMap) {
-        const position = getWrappedPosition(x, y, definition);
-
-        if (direction.x === 1) {
-            return `h:${position.x}:${position.y}`;
-        }
-
-        if (direction.x === -1) {
-            return `h:${wrap(position.x - 1, getMapColumnCount(definition))}:${position.y}`;
-        }
-
-        if (direction.y === 1) {
-            return `v:${position.x}:${position.y}`;
-        }
-
-        return `v:${position.x}:${wrap(position.y - 1, getMapRowCount(definition))}`;
+        return mapGeometry.getBoundaryKey(x, y, direction, definition);
     }
 
 
     function isWall(x, y, definition = currentMap) {
-        if (
-            x < 0 ||
-            x >= getMapColumnCount(definition) ||
-            y < 0 ||
-            y >= getMapRowCount(definition)
-        ) {
-            return true;
-        }
-
-        return definition.tiles[y][x] === "#";
+        return mapGeometry.isWall(x, y, definition);
     }
 
 
     function isBoundaryBlocked(x, y, direction, definition = currentMap) {
-        return definition.edges.has(
-            getBoundaryKey(x, y, direction, definition)
-        );
+        return mapGeometry.isBoundaryBlocked(x, y, direction, definition);
     }
 
 
     function canMove(x, y, direction, definition = currentMap) {
-        const next = getWrappedPosition(
-            x + direction.x,
-            y + direction.y,
-            definition
-        );
-
-        return !isWall(next.x, next.y, definition) &&
-            !isBoundaryBlocked(x, y, direction, definition);
+        return mapGeometry.canMove(x, y, direction, definition);
     }
 
 
@@ -617,8 +600,149 @@ function createGameMap(context) {
     // MAP EDITOR
     // ============================================================
 
+    const CALIBRATION_TARGET_SAMPLES = 8;
+    const CALIBRATION_MAX_STEPS = 2048;
+    const CALIBRATION_REFERENCE_HORIZON_SECONDS = 2;
+
+    function getMapSignature(definition) {
+        return JSON.stringify({
+            tiles: definition.tiles,
+            edges: [...definition.edges].sort(),
+            playerStart: definition.playerStart,
+            ghostStarts: definition.ghostStarts
+        });
+    }
+
+    function createPendingCalibration(definition) {
+        return {
+            status: "pending",
+            mapSignature: getMapSignature(definition),
+            sampleCount: 0,
+            targetSamples: CALIBRATION_TARGET_SAMPLES,
+            parameters: {
+                targetSamples: CALIBRATION_TARGET_SAMPLES,
+                maxSteps: CALIBRATION_MAX_STEPS,
+                maxSamplesPerStep: 1,
+                referenceHorizonSeconds: CALIBRATION_REFERENCE_HORIZON_SECONDS
+            }
+        };
+    }
+
+    function scheduleCalibrationStep(callback) {
+        if (typeof window.requestIdleCallback === "function") {
+            window.requestIdleCallback(callback, { timeout: 100 });
+        } else {
+            window.setTimeout(callback, 0);
+        }
+    }
+
+    function startMapCalibration(definition) {
+        if (typeof Worker !== "function") {
+            definition.calibration = {
+                ...definition.calibration,
+                status: "error",
+                error: "Web Worker is unavailable."
+            };
+            void persistMaps();
+            return;
+        }
+
+        const worker = new Worker("./src/calibration-worker.js");
+        definition.calibration = {
+            ...definition.calibration,
+            status: "running",
+            parameters: {
+                ...definition.calibration.parameters,
+                referenceHorizonSeconds:
+                    CALIBRATION_REFERENCE_HORIZON_SECONDS
+            }
+        };
+
+        const finishWithError = error => {
+            worker.terminate();
+            definition.calibration = {
+                ...definition.calibration,
+                status: "error",
+                error: String(error)
+            };
+            void persistMaps();
+            console.warn("Map calibration failed.", error);
+        };
+
+        worker.onerror = event => {
+            finishWithError(event.error || event.message || "Worker error.");
+        };
+
+        worker.onmessage = event => {
+            const message = event.data;
+
+            if (message.type === "progress") {
+                definition.calibration = {
+                    ...definition.calibration,
+                    status: "running",
+                    sampleCount: message.status.completed,
+                    progress: message.status
+                };
+                return;
+            }
+
+            if (message.type === "error") {
+                finishWithError(message.error);
+                return;
+            }
+
+            if (message.type !== "result") return;
+
+            worker.terminate();
+            const result = message.result;
+            definition.calibration = {
+                status: message.status.finishReason === "target-samples"
+                    ? "completed"
+                    : "incomplete",
+                mapSignature: getMapSignature(definition),
+                completedAt: Date.now(),
+                ...result,
+                parameters: {
+                    ...result.parameters,
+                    referenceHorizonSeconds:
+                        CALIBRATION_REFERENCE_HORIZON_SECONDS
+                }
+            };
+            void persistMaps();
+        };
+
+        try {
+            const searchContext = getCurrentSearchContext();
+            const readyGhostIndices = searchContext.ghosts.map((_, index) => index);
+            const initialState = createCurrentGameSearchState(
+                searchContext,
+                readyGhostIndices,
+                true
+            );
+
+            worker.postMessage({
+                type: "start",
+                map: definition,
+                initialState,
+                options: {
+                    targetSamples: CALIBRATION_TARGET_SAMPLES,
+                    maxSteps: CALIBRATION_MAX_STEPS,
+                    maxSamplesPerStep: 1,
+                    referenceHorizonSeconds:
+                        CALIBRATION_REFERENCE_HORIZON_SECONDS
+                }
+            });
+        } catch (error) {
+            finishWithError(error);
+        }
+    }
+
+
     function saveEditorMap() {
-        const savedMap = cloneMapDefinition(editorDraftMap);
+        const savedMap = cloneMapDefinition(editorDraftMap, {
+            includeCalibration: true
+        });
+        savedMap.calibration = createPendingCalibration(savedMap);
 
         const existingIndex = maps.findIndex(
             definition => definition.id === savedMap.id
@@ -634,6 +758,7 @@ function createGameMap(context) {
 
         updateMapSelector();
         void persistMaps();
+        startMapCalibration(savedMap);
     }
 
 
@@ -643,49 +768,10 @@ function createGameMap(context) {
 
     // Graph is bidirectional
     function buildGraph(definition = currentMap) {
-        const rowCount = getMapRowCount(definition);
-        const colCount = getMapColumnCount(definition);
-
-        const result = Array.from(
-            { length: rowCount },
-            () => Array.from({ length: colCount }, () => [])
+        return mapGeometry.buildGraph(
+            definition,
+            Object.values(DIRECTIONS)
         );
-
-        for (let y = 0; y < rowCount; y++) {
-            for (let x = 0; x < colCount; x++) {
-                if (isWall(x, y, definition)) {
-                    continue;
-                }
-
-                for (const direction of Object.values(DIRECTIONS)) {
-                    const next = getWrappedPosition(
-                        x + direction.x,
-                        y + direction.y,
-                        definition
-                    );
-
-                    if (
-                        isWall(next.x, next.y, definition) ||
-                        isBoundaryBlocked(
-                            x,
-                            y,
-                            direction,
-                            definition
-                        )
-                    ) {
-                        continue;
-                    }
-
-                    result[y][x].push({
-                        x: next.x,
-                        y: next.y,
-                        direction
-                    });
-                }
-            }
-        }
-
-        return result;
     }
 
     return {

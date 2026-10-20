@@ -27,7 +27,7 @@ function createGameState(context) {
 
     const currentGameState = {
         score: 0,
-        lives: 3,
+        lives: INITIAL_LIVES,
         pellets: new Set(),
 
         player: null,
@@ -48,13 +48,6 @@ function createGameState(context) {
     let addingGhost = false;
 
     let currentTime = 0;
-
-    const FRIGHTENED_DURATION = 7;
-    const FRIGHTENED_BLINK_TIME = 2;
-    const FRIGHTENED_BLINK_FREQUENCY = 12;
-    const GHOST_COLLISION_DISTANCE = 0.55;
-
-    const CELL = 28;
 
     function localizeContent() {
         document.documentElement.lang = contentLanguage;
@@ -201,8 +194,6 @@ function createGameState(context) {
     function getGhostColorRgb(index) {
         return hexToRgb(getGhostColor(index));
     }
-
-    const DOMAIN_ALPHA = 0.35;
     Object.assign(context, {
         canvas, ctx, scoreElement, livesElement, pauseButton, statusElement,
         editorToastElement, startScreenElement, editorToolbarElement,
