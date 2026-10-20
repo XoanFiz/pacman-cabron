@@ -1,7 +1,7 @@
 (() => {
     const scripts = [
-        "locales.js", "game-config.js", "game-bindings.js", "game-state.js", "game-map.js",
-        "game-strategy.js", "game-rules.js", "game-renderer.js",
+        "locales.js", "game-config.js", "game-bindings.js", "game-model.js", "game-state.js", "game-map.js",
+        "game-strategy.js", "game-ai-controller.js", "game-rules.js", "game-renderer.js",
         "game-ui.js", "game-editor.js", "game-input.js", "game-runtime.js"
     ];
 
@@ -29,9 +29,11 @@
         };
         const { publish } = createGameBindings(context);
 
+        publish(createGameModel(context));
         publish(createGameState(context));
         publish(createGameMap(context));
         publish(createGameStrategy(context));
+        publish(createGameAiController(context));
         context.chooseStrategicGhostDirections = context.chooseGhostDirections;
         context.chooseStrategicPacmanDirection = context.choosePacmanDirection;
         context.advanceStrategicSearch = context.advanceSearch;

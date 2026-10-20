@@ -798,13 +798,7 @@ function createGameStrategy(context) {
     // Creates an isolated character snapshot for hypothetical search
     // branches, preventing simulated movement from mutating live state.
     function cloneSearchCharacter(character) {
-        return {
-            ...character,
-            direction: { ...character.direction },
-            nextDirection: character.nextDirection
-                ? { ...character.nextDirection }
-                : undefined
-        };
+        return cloneCharacterState(character);
     }
 
     // Captures the game configuration needed to simulate future events.

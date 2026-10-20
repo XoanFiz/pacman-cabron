@@ -33,41 +33,21 @@ function createGameRules(context) {
 
         const playerStart = currentMap.playerStart;
 
-        currentGameState.player = {
-            x: playerStart.x,
-            y: playerStart.y,
-            px: playerStart.x,
-            py: playerStart.y,
-            direction: { ...playerStart.direction },
-            facingDirection: playerStart.direction.x || playerStart.direction.y
-                ? { ...playerStart.direction }
-                : { ...DIRECTIONS.right },
-
-            nextDirection: {
-                x: 0,
-                y: 0
-            },
-
-            progress: 0,
-            speed: PACMAN_SPEED
-        };
+        currentGameState.player = createPlayerState(
+            playerStart,
+            PACMAN_SPEED
+        );
 
 
         const ghostStarts = currentMap.ghostStarts;
 
-        currentGameState.ghosts = ghostStarts.map((ghost, index) => ({
-            x: ghost.x,
-            y: ghost.y,
-            px: ghost.x,
-            py: ghost.y,
-            color: ghost.color || getGhostColor(index),
-            direction: { ...ghost.direction },
-            nextDirection: { ...ghost.direction },
-            frightened: false,
-            eaten: false,
-            progress: 0,
-            speed: GHOST_SPEED
-        }));
+        currentGameState.ghosts = ghostStarts.map((ghost, index) =>
+            createGhostState(
+                ghost,
+                ghost.color || getGhostColor(index),
+                GHOST_SPEED
+            )
+        );
 
 
         running = false;
@@ -707,40 +687,6 @@ function createGameRules(context) {
             ghost.frightened = false;
             ghost.speed = GHOST_SPEED;
         });
-    }
-
-
-    // ============================================================
-    function getCurrentSearchContext() {
-        const mapDefinition = getCurrentMapDefinition();
-
-        return {
-            player: cloneSearchCharacter(currentGameState.player),
-            ghosts: currentGameState.ghosts.map(cloneSearchCharacter),
-
-            pellets: new Set(currentGameState.pellets),
-            lives,
-            time: currentGameState.time,
-
-            controlledGhostIndex: selectedCharacter.startsWith("ghost-")
-                ? Number(selectedCharacter.slice("ghost-".length))
-                : -1,
-
-            respawnState: {
-                player: {
-                    x: mapDefinition.playerStart.x,
-                    y: mapDefinition.playerStart.y
-                },
-                ghosts: mapDefinition.ghostStarts.map(start => ({
-                    x: start.x,
-                    y: start.y,
-                    direction: { ...start.direction },
-                    speed: GHOST_SPEED
-                })),
-
-                houses: buildGhostHouses(mapDefinition)
-            }
-        };
     }
 
 
