@@ -72,6 +72,7 @@
             config,
             state,
             geometry,
+            model,
             mapStorage: createGameMapStorage()
         });
 

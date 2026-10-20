@@ -132,12 +132,17 @@ function createGameAiController(parameters = {}) {
         return ensureStrategy().createCurrentGameSearchState(...args);
     }
 
+    function getNodetype(...args){
+        return  ensureStrategy().getNodetype(...args);
+    }
+
     return {
         getCurrentSearchContext,
         chooseGhostDirections,
         choosePacmanDirection,
         advanceSearch,
         calculateDomain,
-        createCurrentGameSearchState
+        createCurrentGameSearchState,
+        getNodetype
     };
 }

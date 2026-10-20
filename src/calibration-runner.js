@@ -248,13 +248,6 @@ function getStateKey(state) {
 }
 
 
-function getNodeType(state) {
-    return state.firstActor === "player"
-        ? "max"
-        : "min";
-}
-
-
 function* createSuccessorIterator(state) {
     if (state.terminal) {
         return;
@@ -306,77 +299,7 @@ function* createSuccessorIterator(state) {
         }
     }
 }
-///////////////////////////////////////////////
 
-function calculateReferenceValue(
-    initialState,
-    horizonSeconds = 10
-) {
-    if (
-        !Number.isFinite(horizonSeconds) ||
-        horizonSeconds < 0
-    ) {
-        throw new TypeError(
-            "horizonSeconds must be a finite non-negative number."
-        );
-    }
-
-    const deadline = initialState.time + horizonSeconds;
-    const memo = new Map();
-    const active = new Set();
-
-    function minimax(state) {
-        if (
-            state.terminal ||
-            state.time >= deadline
-        ) {
-            return evaluateSearchState(state);
-        }
-
-        const key = `${getStateKey(state)}|${state.time}`;
-
-        if (memo.has(key)) {
-            return memo.get(key);
-        }
-
-        // Prevent infinite recursion if a zero-duration cycle exists.
-        if (active.has(key)) {
-            return evaluateSearchState(state);
-        }
-
-        active.add(key);
-
-        try {
-            const isMaxNode = getNodeType(state) === "max";
-            let bestValue = isMaxNode ? -Infinity : Infinity;
-            let hasSuccessor = false;
-
-            for (const transition of createSuccessorIterator(state)) {
-                hasSuccessor = true;
-
-                const value = minimax(transition.state);
-
-                if (isMaxNode) {
-                    bestValue = Math.max(bestValue, value);
-                } else {
-                    bestValue = Math.min(bestValue, value);
-                }
-            }
-
-            const value = hasSuccessor
-                ? bestValue
-                : evaluateSearchState(state);
-
-            memo.set(key, value);
-
-            return value;
-        } finally {
-            active.delete(key);
-        }
-    }
-
-    return minimax(initialState);
-}
 
 function createRbfmCalibrationRunner({
     map,
@@ -386,10 +309,82 @@ function createRbfmCalibrationRunner({
     maxSamplesPerStep = 1,
     getReferenceValue = state => calculateReferenceValue(state),
     getStateKey: stateKey = getStateKey,
-    getNodeType: nodeType = getNodeType,
+    getNodeType,
     createSuccessorIterator: successorIterator = createSuccessorIterator,
     evaluateState = evaluateSearchState
 } = {}) {
+
+    function calculateReferenceValue(
+        initialState,
+        getNodeType,
+        horizonSeconds = 10
+    ) {
+        if (
+            !Number.isFinite(horizonSeconds) ||
+            horizonSeconds < 0
+        ) {
+            throw new TypeError(
+                "horizonSeconds must be a finite non-negative number."
+            );
+        }
+
+        const deadline = initialState.time + horizonSeconds;
+        const memo = new Map();
+        const active = new Set();
+
+        function minimax(state) {
+            if (
+                state.terminal ||
+                state.time >= deadline
+            ) {
+                return evaluateSearchState(state);
+            }
+
+            const key = `${getStateKey(state)}|${state.time}`;
+
+            if (memo.has(key)) {
+                return memo.get(key);
+            }
+
+            // Prevent infinite recursion if a zero-duration cycle exists.
+            if (active.has(key)) {
+                return evaluateSearchState(state);
+            }
+
+            active.add(key);
+
+            try {
+                const isMaxNode = getNodeType(state) === "max";
+                let bestValue = isMaxNode ? -Infinity : Infinity;
+                let hasSuccessor = false;
+
+                for (const transition of createSuccessorIterator(state)) {
+                    hasSuccessor = true;
+
+                    const value = minimax(transition.state);
+
+                    if (isMaxNode) {
+                        bestValue = Math.max(bestValue, value);
+                    } else {
+                        bestValue = Math.min(bestValue, value);
+                    }
+                }
+
+                const value = hasSuccessor
+                    ? bestValue
+                    : evaluateSearchState(state);
+
+                memo.set(key, value);
+
+                return value;
+            } finally {
+                active.delete(key);
+            }
+        }
+
+        return minimax(initialState);
+    }
+
     if (!map) {
         throw new TypeError("createRbfmCalibrationRunner requires a map.");
     }
@@ -417,7 +412,7 @@ function createRbfmCalibrationRunner({
     const calibration = createRbfmCalibration(map);
     const search = createRandomizedBestFirstMinimax({
         getStateKey: stateKey,
-        getNodeType: nodeType,
+        getNodeType,
         createSuccessorIterator: successorIterator,
         onNodeVisit: calibration.onNodeVisit
     });

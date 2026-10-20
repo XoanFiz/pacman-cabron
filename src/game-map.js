@@ -3,6 +3,7 @@ function createGameMap(parameters = {}) {
         config,
         state,
         geometry,
+        model,
         mapStorage
     } = parameters;
 
@@ -614,95 +615,220 @@ function createGameMap(parameters = {}) {
         };
     }
 
-    function startMapCalibration(definition) {
-        if (typeof Worker !== "function") {
-            definition.calibration = {
-                ...definition.calibration,
-                status: "error",
-                error: "Web Worker is unavailable."
-            };
-            void persistMaps();
-            return;
-        }
+    function isCalibrationCompleted(definition) {
+        return definition?.calibration?.status === "completed";
+    }
 
-        const worker = new Worker("./src/calibration-worker.js");
-        definition.calibration = {
-            ...definition.calibration,
-            status: "running",
-            parameters: {
-                ...definition.calibration.parameters,
-                referenceHorizonSeconds:
-                    CALIBRATION_REFERENCE_HORIZON_SECONDS
+    // ============================================================
+    // CALIBRATION
+    // ============================================================
+    //
+    // Calibration is a property of a MAP DEFINITION, not of the active
+    // map or the live game state. Every helper below works from a
+    // `definition` alone so that maps can be calibrated in the
+    // background (at startup and right after saving) without touching
+    // `map.currentMap`, `map.activeMapId`, the canvas or the running
+    // game. The initial search state is rebuilt purely from the
+    // definition (players/ghosts/pellets/houses) instead of reading
+    // pseudo-global runtime state.
+    //
+    // The RBFM engine relies on score distributions. Without
+    // calibration every node distribution has standardDeviation 0,
+    // which makes child selection deterministic and can drive the
+    // recursive `extend` into an unbounded descent. Calibrating every
+    // map (predefined or custom) keeps the search well behaved.
+    //
+    // Predefined maps are only a FALLBACK reference: when the game
+    // starts and a map has no calibration of its own, the completed
+    // calibration of the first available map is reused so the game
+    // never runs completely uncalibrated.
+
+    // Builds the initial search state for a definition, with no
+    // dependency on the active map or the live game state.
+    function createCalibrationInitialState(definition) {
+        const player = model.createPlayerState(
+            definition.playerStart,
+            config.PACMAN_SPEED
+        );
+
+        const ghosts = definition.ghostStarts.map((start, index) =>
+            model.createGhostState(
+                start,
+                start.color || state.getGhostColor(index),
+                config.GHOST_SPEED
+            )
+        );
+
+        const searchContext = {
+            player,
+            ghosts,
+            pellets: buildPellets(definition),
+            lives: config.INITIAL_LIVES,
+            time: 0,
+            controlledGhostIndex: -1,
+            respawnState: {
+                player: {
+                    x: definition.playerStart.x,
+                    y: definition.playerStart.y
+                },
+                ghosts: definition.ghostStarts.map(start => ({
+                    x: start.x,
+                    y: start.y,
+                    direction: { ...start.direction },
+                    speed: config.GHOST_SPEED
+                })),
+                houses: buildGhostHouses(definition)
             }
         };
 
-        const finishWithError = error => {
-            worker.terminate();
-            definition.calibration = {
-                ...definition.calibration,
-                status: "error",
-                error: String(error)
-            };
-            void persistMaps();
-            console.warn("Map calibration failed.", error);
-        };
+        const readyGhostIndices = ghosts.map((_, index) => index);
 
-        worker.onerror = event => {
-            finishWithError(event.error || event.message || "Worker error.");
-        };
+        // Reuse the strategy's canonical state adapter so the worker
+        // receives exactly the same shape the game would produce.
+        return runtime.createCurrentGameSearchState(
+            searchContext,
+            readyGhostIndices,
+            true
+        );
+    }
 
-        worker.onmessage = event => {
-            const message = event.data;
-
-            if (message.type === "progress") {
+    // Calibrates a single definition in the background. Returns a
+    // promise that resolves with the final calibration object (never
+    // rejects). `onProgress` receives the worker progress status.
+    function calibrateMap(definition, { onProgress } = {}) {
+        return new Promise(resolve => {
+            if (typeof Worker !== "function") {
                 definition.calibration = {
                     ...definition.calibration,
-                    status: "running",
-                    sampleCount: message.status.completed,
-                    progress: message.status
+                    status: "error",
+                    error: "Web Worker is unavailable."
                 };
+                console.warn(
+                    `[calibration] ${definition.id}: Web Worker unavailable.`
+                );
+                void persistMaps();
+                resolve(definition.calibration);
                 return;
             }
 
-            if (message.type === "error") {
-                finishWithError(message.error);
+            let initialState;
+
+            try {
+                initialState = createCalibrationInitialState(definition);
+            } catch (error) {
+                definition.calibration = {
+                    ...definition.calibration,
+                    status: "error",
+                    error: String(error)
+                };
+                console.warn(
+                    `[calibration] ${definition.id}: unable to build initial state.`,
+                    error
+                );
+                void persistMaps();
+                resolve(definition.calibration);
                 return;
             }
 
-            if (message.type !== "result") return;
+            const worker = new Worker("./src/calibration-worker.js");
 
-            worker.terminate();
-            const result = message.result;
             definition.calibration = {
-                status: message.status.finishReason === "target-samples"
-                    ? "completed"
-                    : "incomplete",
-                mapSignature: getMapSignature(definition),
-                completedAt: Date.now(),
-                ...result,
+                ...definition.calibration,
+                status: "running",
                 parameters: {
-                    ...result.parameters,
+                    ...definition.calibration?.parameters,
                     referenceHorizonSeconds:
                         CALIBRATION_REFERENCE_HORIZON_SECONDS
                 }
             };
 
-            if (map.currentMap?.id === definition.id) {
-                map.currentMap.calibration = cloneCalibration(
-                    definition.calibration
-                );
-            }
-            void persistMaps();
-        };
-
-        try {
-            const searchContext = runtime.getCurrentSearchContext();
-            const readyGhostIndices = searchContext.ghosts.map((_, index) => index);
-            const initialState = runtime.createCurrentGameSearchState(
-                searchContext,
-                readyGhostIndices,
-                true
+            console.log(
+                `[calibration] ${definition.id}: started ` +
+                `(target ${CALIBRATION_TARGET_SAMPLES} samples, ` +
+                `max ${CALIBRATION_MAX_STEPS} steps).`
             );
+
+            let settled = false;
+
+            const finish = calibration => {
+                if (settled) return;
+                settled = true;
+                worker.terminate();
+                definition.calibration = calibration;
+                void persistMaps();
+                resolve(calibration);
+            };
+
+            const finishWithError = error => {
+                console.warn(
+                    `[calibration] ${definition.id}: failed.`,
+                    error
+                );
+                finish({
+                    ...definition.calibration,
+                    status: "error",
+                    error: String(error)
+                });
+            };
+
+            worker.onerror = event => {
+                finishWithError(
+                    event.error || event.message || "Worker error."
+                );
+            };
+
+            worker.onmessage = event => {
+                const message = event.data;
+
+                if (message.type === "progress") {
+                    const status = message.status;
+                    definition.calibration = {
+                        ...definition.calibration,
+                        status: "running",
+                        sampleCount: status.completed,
+                        progress: status
+                    };
+                    console.log(
+                        `[calibration] ${definition.id}: ` +
+                        `${status.completed}/${status.targetSamples} samples ` +
+                        `(step ${status.steps}, ${status.pending} pending).`
+                    );
+                    if (typeof onProgress === "function") {
+                        onProgress(status);
+                    }
+                    return;
+                }
+
+                if (message.type === "error") {
+                    finishWithError(message.error);
+                    return;
+                }
+
+                if (message.type !== "result") return;
+
+                const result = message.result;
+                const completed =
+                    message.status.finishReason === "target-samples";
+
+                console.log(
+                    `[calibration] ${definition.id}: ` +
+                    `${completed ? "completed" : "incomplete"} ` +
+                    `(${message.status.completed}/${CALIBRATION_TARGET_SAMPLES} samples, ` +
+                    `reason: ${message.status.finishReason}).`
+                );
+
+                finish({
+                    status: completed ? "completed" : "incomplete",
+                    mapSignature: getMapSignature(definition),
+                    completedAt: Date.now(),
+                    ...result,
+                    parameters: {
+                        ...result.parameters,
+                        referenceHorizonSeconds:
+                            CALIBRATION_REFERENCE_HORIZON_SECONDS
+                    }
+                });
+            };
 
             worker.postMessage({
                 type: "start",
@@ -716,9 +842,94 @@ function createGameMap(parameters = {}) {
                         CALIBRATION_REFERENCE_HORIZON_SECONDS
                 }
             });
-        } catch (error) {
-            finishWithError(error);
+        });
+    }
+
+    // Returns the first completed calibration among the definitions
+    // (predefined maps included), used as a playable fallback.
+    function findReferenceCalibration() {
+        for (const definition of map.maps) {
+            if (isCalibrationCompleted(definition)) {
+                return { sourceId: definition.id, calibration: definition.calibration };
+            }
         }
+        for (const definition of PREDEFINED_MAPS) {
+            if (isCalibrationCompleted(definition)) {
+                return { sourceId: definition.id, calibration: definition.calibration };
+            }
+        }
+        return null;
+    }
+
+    // Inheritance of a reference calibration: keeps the same f/g tables
+    // but records provenance so it is clear it was borrowed.
+    function inheritCalibration(definition, reference) {
+        definition.calibration = {
+            ...cloneCalibration(reference.calibration),
+            status: "completed",
+            inheritedFrom: reference.sourceId,
+            mapSignature: getMapSignature(definition),
+            completedAt: Date.now()
+        };
+    }
+
+    let calibrationQueue = Promise.resolve();
+
+    // Ensures a single definition ends up with a completed calibration:
+    // if it already has one, resolves immediately; otherwise it is
+    // calibrated in the background (or inherits the reference fallback
+    // when `useReference` is set and a reference exists).
+    function ensureMapCalibrated(definition) {
+        calibrationQueue = calibrationQueue
+            .catch(() => undefined)
+            .then(async () => {
+                if (isCalibrationCompleted(definition)) {
+                    return definition.calibration;
+                }
+
+                const reference = findReferenceCalibration();
+
+                if (reference) {
+                    inheritCalibration(definition, reference);
+                    console.log(
+                        `[calibration] ${definition.id}: reused calibration ` +
+                        `from "${reference.sourceId}".`
+                    );
+                    void persistMaps();
+                    return definition.calibration;
+                }
+
+                return calibrateMap(definition);
+            });
+
+        return calibrationQueue;
+    }
+
+    // Calibrates every known map that is not calibrated yet. Runs in
+    // the background; the first map that gets a real calibration
+    // becomes the reference borrowed by the rest.
+    function calibrateAllMaps() {
+        const pending = map.maps
+            .concat(PREDEFINED_MAPS)
+            .filter(definition => !isCalibrationCompleted(definition));
+
+        if (pending.length === 0) {
+            return calibrationQueue;
+        }
+
+        console.log(
+            `[calibration] ${pending.length} map(s) without calibration; ` +
+            "calibrating in the background."
+        );
+
+        let chain = calibrationQueue;
+
+        for (const definition of pending) {
+            chain = chain.then(() => ensureMapCalibrated(definition));
+        }
+
+        calibrationQueue = chain;
+        return chain;
     }
 
     function saveEditorMap() {
@@ -741,7 +952,10 @@ function createGameMap(parameters = {}) {
 
         updateMapSelector();
         void persistMaps();
-        startMapCalibration(savedMap);
+
+        // Calibrate the freshly saved definition in the background,
+        // independently of the active map.
+        void calibrateMap(savedMap);
     }
 
     // ============================================================
@@ -792,6 +1006,10 @@ function createGameMap(parameters = {}) {
         selectCharacter,
         updateCharacterChoices,
         saveEditorMap,
+        calibrateMap,
+        ensureMapCalibrated,
+        calibrateAllMaps,
+        findReferenceCalibration,
         buildGraph,
         canMove
     };

@@ -23,7 +23,7 @@
 
 function createGameStrategy(parameters = {}) {
 
-        const {
+    const {
         geometry,
         model,
         config,
@@ -229,6 +229,12 @@ function createGameStrategy(parameters = {}) {
 
             return result;
         }
+    }
+
+    function getNodeType(state) {
+        return state.firstActor === "player"
+            ? "max"
+            : "min";
     }
 
 
@@ -1705,7 +1711,7 @@ function createGameStrategy(parameters = {}) {
         }
     }
 
-        // Optional bridge to the strategy Web Worker. The main thread injects
+    // Optional bridge to the strategy Web Worker. The main thread injects
     // `worker` (see game-ai-controller); inside workers it stays null and
     // the search runs locally on the simulation context.
     function requestWorkerAction(mode, searchContext, indices, readyPlayer) {
@@ -1734,9 +1740,7 @@ function createGameStrategy(parameters = {}) {
 
     const rbfmSearch = rmfMinimax({
         getStateKey: buildStateKey,
-        getNodeType: state => state.firstActor === "player"
-            ? "min"
-            : "max",
+        getNodeType: getNodeType,
         createSuccessorIterator: createGameRbfmSuccessors
     });
 
@@ -1888,6 +1892,7 @@ function createGameStrategy(parameters = {}) {
         getSearchActionProfiles,
         advanceSearch,
         chooseGhostDirections,
-        choosePacmanDirection
+        choosePacmanDirection,
+        getNodeType
     }
 }

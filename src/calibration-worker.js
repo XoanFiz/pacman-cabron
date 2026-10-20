@@ -60,9 +60,16 @@ function runCalibration(request) {
         rmfMinimax: createRandomizedBestFirstMinimax
     });
 
+    // The calibration runner resolves several of its own adapter helpers
+    // (used inside calculateReferenceValue) from the global scope.
+    globalThis.buildStateKey = strategy.buildStateKey;
+    globalThis.evaluateSearchState = strategy.evaluateSearchState;
+    globalThis.advanceSearchState = strategy.advanceSearchState;
+    globalThis.getSearchGhostActionProfiles = strategy.getSearchGhostActionProfiles;
+    globalThis.getSearchPlayerActionProfiles = strategy.getSearchPlayerActionProfiles;
+
     const initialState = restoreState(request.initialState);
     const options = request.options;
-    const getNodeType = state => state.firstActor === "player" ? "max" : "min";
     const createSuccessorIterator = function* (state) {
         for (const profile of strategy.getSearchActionProfiles(state)) {
             const nextState = strategy.advanceSearchState(
@@ -87,7 +94,7 @@ function runCalibration(request) {
         maxSteps: options.maxSteps,
         maxSamplesPerStep: options.maxSamplesPerStep,
         getStateKey: strategy.buildStateKey,
-        getNodeType,
+        getNodeType: strategy.getNodeType,
         createSuccessorIterator,
         evaluateState: strategy.evaluateSearchState,
         getReferenceValue: state => calculateReferenceValue(
