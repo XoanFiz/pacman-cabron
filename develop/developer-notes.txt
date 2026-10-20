@@ -1,4 +1,15 @@
 TODO
+Continuation script: finish RBFM calibration and persist calibrated map data
+    Finish the RBFM calibration runner, including a clear completion condition, progress reporting, and a stable result format that can be consumed by map creation.
+    Define the calibration payload stored with each map: map identity/version, RBFM parameters, observations or derived values, sample count, completion status, and creation timestamp.
+    Integrate calibration lazily into buildMapData so normal map creation remains fast and calibration runs only when the map has no valid cached calibration.
+    Keep buildMapData deterministic while calibration is pending: return the map data immediately and expose calibration readiness/progress without blocking gameplay.
+    Add IndexedDB persistence for map definitions and their RBFM calibration payloads so custom and built-in maps can be reused across browser sessions.
+    Add a small map-calibration storage layer with schema/version handling, read/write error handling, and graceful fallback when IndexedDB is unavailable.
+    Reuse cached map and calibration data when the map definition and calibration parameters match; invalidate stale entries when either changes.
+    Make map selection and map editing update the persisted entry without duplicating map data or calibration records.
+    Wire calibration loading, lazy execution, persistence, and progress reporting into the game startup flow and map editor.
+    Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
 Clarify chat-gpt refactor doubts
     Why it keeps using, or if, the old frontier to get the next candidates?
 Fix characters traversing walls
