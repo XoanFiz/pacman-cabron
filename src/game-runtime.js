@@ -1,274 +1,46 @@
-function getControlledGhost() {
-    if (!selectedCharacter.startsWith("ghost-")) {
-        return null;
-    }
+function createGameRuntime(context) {
+    // ============================================================
+    // GAME LOOP
+    // ============================================================
 
-    return gameState.ghosts[Number(selectedCharacter.slice("ghost-".length))] || null;
-}
+    function gameLoop(time) {
 
-
-function updatePressedDirectionButtons() {
-    const keys = {
-        ArrowUp: "up",
-        w: "up",
-        ArrowDown: "down",
-        s: "down",
-        ArrowLeft: "left",
-        a: "left",
-        ArrowRight: "right",
-        d: "right"
-    };
-    const pressedDirections = new Set(
-        Array.from(pressedDirectionKeys, key => keys[key])
-    );
-
-    document.querySelectorAll("[data-dir]").forEach(button => {
-        button.classList.toggle(
-            "is-key-pressed",
-            pressedDirections.has(button.dataset.dir)
-        );
-    });
-}
+        const dt =
+            Math.min(
+                (time - currentTime) / 1000,
+                0.05
+            );
 
 
-document
-    .querySelector('[data-character="pacman"]')
-    .addEventListener("click", event =>
-        selectCharacter(event.currentTarget)
-    );
+        currentTime = time;
 
 
-document.addEventListener(
-    "keydown",
-    event => {
-        if (editorMode) {
-            if (event.key === "Escape") {
-                leaveMapEditor(false);
-            }
-            return;
+        update(dt);
+
+        if (running) {
+            gameIntelligence.advanceStrategicSearch();
         }
 
-        if (gameWon) {
-            return;
-        }
-
-        if (event.key.toLowerCase() === "v") {
-            showVoronoiDomains = !showVoronoiDomains;
-            return;
-        }
-
-        if (!startScreenElement.hidden) {
-            return;
-        }
-
-        const keys = {
-
-            ArrowUp:
-                DIRECTIONS.up,
-
-            w:
-                DIRECTIONS.up,
+        draw();
 
 
-            ArrowDown:
-                DIRECTIONS.down,
-
-            s:
-                DIRECTIONS.down,
-
-
-            ArrowLeft:
-                DIRECTIONS.left,
-
-            a:
-                DIRECTIONS.left,
-
-
-            ArrowRight:
-                DIRECTIONS.right,
-
-            d:
-                DIRECTIONS.right
-        };
-
-
-        const direction =
-            keys[event.key] ||
-            keys[
-            event.key.toLowerCase()
-            ];
-
-
-        if (!direction)
-            return;
-
-
-        event.preventDefault();
-
-        pressedDirectionKeys.add(event.key.length === 1
-            ? event.key.toLowerCase()
-            : event.key);
-        updatePressedDirectionButtons();
-
-        setDirection(
-            direction
+        requestAnimationFrame(
+            gameLoop
         );
     }
-);
 
 
-document.addEventListener("keyup", event => {
-    const key = event.key.length === 1
-        ? event.key.toLowerCase()
-        : event.key;
+    function start() {
+        updateMapSelector();
+        resetGame();
+        updateCharacterChoices();
 
-    if (pressedDirectionKeys.delete(key)) {
-        updatePressedDirectionButtons();
-    }
-});
-
-
-window.addEventListener("blur", () => {
-    pressedDirectionKeys.clear();
-    updatePressedDirectionButtons();
-});
-
-
-document
-    .querySelectorAll(
-        "[data-dir]"
-    )
-    .forEach(button => {
-
-        button.addEventListener("pointerdown", () => {
-            button.classList.add("is-pointer-pressed");
-        });
-
-        button.addEventListener(
-            "click",
-            () => {
-
-                setDirection(
-                    DIRECTIONS[
-                    button.dataset.dir
-                    ]
-                );
-            }
+        requestAnimationFrame(
+            gameLoop
         );
-    });
-
-
-document.addEventListener("pointerup", () => {
-    document.querySelectorAll(".is-pointer-pressed").forEach(button => {
-        button.classList.remove("is-pointer-pressed");
-    });
-});
-
-
-document.addEventListener("pointercancel", () => {
-    document.querySelectorAll(".is-pointer-pressed").forEach(button => {
-        button.classList.remove("is-pointer-pressed");
-    });
-});
-
-
-document
-    .getElementById("restart")
-    .addEventListener(
-        "click",
-        () => {
-            if (editorMode) {
-                leaveMapEditor(false);
-            } else {
-                resetGame();
-                startScreenElement.hidden = false;
-            }
-        }
-    );
-
-pauseButton.addEventListener("click", () => {
-    if (editorMode || gameWon || lives <= 0 || deathTimer > 0) {
-        return;
     }
 
-    if (running) {
-        running = false;
-        paused = true;
-        statusElement.textContent =
-            messages.paused || "Paused";
-    } else if (paused) {
-        paused = false;
-        running = true;
-        statusElement.textContent = "";
-    } else {
-        return;
+    return {
+        start
     }
-
-    updatePauseButton();
-});
-
-
-// ============================================================
-// UI
-// ============================================================
-
-function updatePauseButton() {
-    pauseButton.textContent = paused
-        ? messages.resume || "Resume"
-        : messages.pause || "Pause";
-    pauseButton.setAttribute("aria-label", pauseButton.textContent);
-    pauseButton.setAttribute("aria-pressed", String(paused));
-    pauseButton.disabled = !running && !paused;
 }
-
-
-function updateUI() {
-
-    scoreElement.textContent =
-        gameState.score;
-
-    livesElement.textContent =
-        gameState.lives;
-
-    updatePauseButton();
-}
-
-
-// ============================================================
-// GAME LOOP
-// ============================================================
-
-function gameLoop(time) {
-
-    const dt =
-        Math.min(
-            (time - currentTime) / 1000,
-            0.05
-        );
-
-
-    currentTime = time;
-
-
-    update(dt);
-
-    if (running) {
-        advanceStrategicSearch();
-    }
-
-    draw();
-
-
-    requestAnimationFrame(
-        gameLoop
-    );
-}
-
-
-updateMapSelector();
-resetGame();
-updateCharacterChoices();
-
-requestAnimationFrame(
-    gameLoop
-);

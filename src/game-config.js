@@ -1,0 +1,25 @@
+function createGameConfig() {
+    return Object.freeze({
+        CELL: 28,
+        DOMAIN_ALPHA: 0.35,
+        BASE_GHOST_COLORS: ["#e05252", "#e99b35", "#d66ad9"],
+        FRIGHTENED_DURATION: 7,
+        FRIGHTENED_BLINK_TIME: 2,
+        FRIGHTENED_BLINK_FREQUENCY: 12,
+        GHOST_COLLISION_DISTANCE: 0.55,
+        PACMAN_SPEED: 3.5,
+        GHOST_SPEED: 2.25,
+        FRIGHTENED_GHOST_SPEED: 1.5,
+        EATEN_GHOST_SPEED: 4,
+        WEIGHT_NORMAL: 1,
+        WEIGHT_PELLET: 0.01,
+        MAX_PELLET_SCORE_FRACTION: 0.25,
+        TOTAL_PELLET_VALUE: 1000,
+        TOTAL_NORMAL_VALUE: 1000,
+        INITIAL_LIVES: 3,
+        SEARCH_LIFE_PRIORITY: 3001,
+        EPSILON: 1e-9,
+        SEARCH_EPSILON: 1e-7,
+        SEARCH_EXPANSIONS_PER_FRAME: 8
+    });
+}

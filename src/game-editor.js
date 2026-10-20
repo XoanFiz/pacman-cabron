@@ -1,174 +1,188 @@
-function enterMapEditor() {
-    editorDraftMap = cloneMapDefinition(
-        maps.find(map => map.id === activeMapId) || maps[0]
-    );
-    editorMode = true;
-    editorGesture = null;
-    addingGhost = false;
-    window.clearTimeout(editorToastTimer);
-    editorToastElement.hidden = true;
-    resetGame();
-    updateAddGhostButton();
-    document.body.classList.add("map-editor-active");
-    editorToolbarElement.hidden = false;
-    startScreenElement.hidden = true;
-    setMapEditorInstructions();
-}
+function createGameEditor(context) {
 
-
-function createNewMap() {
-    syncEditorDraftMap();
-    const sourceMap = editorDraftMap || getCurrentMapDefinition();
-
-    editorDraftMap = cloneMapDefinition(sourceMap);
-    editorDraftMap.id = `custom-${nextCustomMapNumber}`;
-    editorDraftMap.nameKey = null;
-    editorDraftMap.customNumber = nextCustomMapNumber++;
-    addingGhost = false;
-    resetGame();
-    updateAddGhostButton();
-    setMapEditorInstructions();
-}
-
-
-function toggleGhostPlacement() {
-    addingGhost = !addingGhost;
-    updateAddGhostButton();
-}
-
-
-function addGhostAt(position) {
-    if (
-        !position ||
-        currentMap.tiles[position.y][position.x] === "#" ||
-        currentMap.tiles[position.y][position.x] === "H" ||
-        (gameState.player.x === position.x && gameState.gameState.player.y === position.y) ||
-        gameState.ghosts.some(ghost => ghost.x === position.x && ghost.y === position.y)
-    ) {
-        showEditorToast("ghostPlacementError");
-        return false;
+    function enterMapEditor() {
+        editorDraftMap = cloneMapDefinition(
+            maps.find(map => map.id === activeMapId) || maps[0]
+        );
+        editorMode = true;
+        editorGesture = null;
+        addingGhost = false;
+        window.clearTimeout(editorToastTimer);
+        editorToastElement.hidden = true;
+        resetGame();
+        updateAddGhostButton();
+        document.body.classList.add("map-editor-active");
+        editorToolbarElement.hidden = false;
+        startScreenElement.hidden = true;
+        setMapEditorInstructions();
     }
 
-    const existingColors = gameState.ghosts.map((ghost, index) =>
-        ghost.color || getGhostColor(index)
-    );
-    const color = existingColors.length < BASE_GHOST_COLORS.length
-        ? BASE_GHOST_COLORS[existingColors.length]
-        : getMostDistinctGhostColor(existingColors);
-    const newGhost = {
-        x: position.x,
-        y: position.y,
-        px: position.x,
-        py: position.y,
-        progress: 0,
-        frightened: false,
-        eaten: false,
-        color,
-        direction: { ...DIRECTIONS.left },
-        nextDirection: { ...DIRECTIONS.left }
-    };
-    gameState.ghosts.push(newGhost);
 
-    const previousTile = currentMap.tiles[position.y][position.x];
-    if (currentMap.tiles[position.y][position.x] === "." || currentMap.tiles[position.y][position.x] === "o") {
-        currentMap.tiles[position.y][position.x] = " ";
-    }
-
-    if (!isEditorMapConnected()) {
-        gameState.ghosts.pop();
-        if (previousTile !== currentMap.tiles[position.y][position.x]) {
-            currentMap.tiles[position.y][position.x] = previousTile;
-        }
-        showEditorToast("mapConnectivityError");
-        return false;
-    }
-
-    strategicSearch.nodes.clear();
-    strategicSearch.frontier = [];
-    strategicSearch.root = null;
-    syncEditorDraftMap();
-    updateAddGhostButton();
-    setMapEditorInstructions();
-
-    return true;
-}
-
-
-function syncEditorDraftMap() {
-    if (!editorDraftMap) {
-        return;
-    }
-
-    editorDraftMap.tiles = currentMap.tiles.map(row => row.slice());
-    editorDraftMap.edges = Array.from(currentMap.edges);
-    editorDraftMap.playerStart = {
-        x: gameState.player.x,
-        y: gameState.player.y,
-        direction: { ...gameState.player.facingDirection }
-    };
-    editorDraftMap.ghostStarts = gameState.ghosts.map(ghost => ({
-        x: ghost.x,
-        y: ghost.y,
-        color: ghost.color,
-        direction: { ...ghost.direction }
-    }));
-}
-
-
-function leaveMapEditor(saveChanges) {
-    if (saveChanges) {
+    function createNewMap() {
         syncEditorDraftMap();
-        saveEditorMap();
+        const sourceMap = editorDraftMap || getCurrentMapDefinition();
+
+        editorDraftMap = cloneMapDefinition(sourceMap);
+        editorDraftMap.id = `custom-${nextCustomMapNumber}`;
+        editorDraftMap.nameKey = null;
+        editorDraftMap.customNumber = nextCustomMapNumber++;
+        addingGhost = false;
+        resetGame();
+        updateAddGhostButton();
+        setMapEditorInstructions();
     }
 
-    editorDraftMap = null;
-    editorMode = false;
-    editorGesture = null;
-    addingGhost = false;
-    updateCharacterChoices();
-    window.clearTimeout(editorToastTimer);
-    editorToastElement.hidden = true;
-    document.body.classList.remove("map-editor-active");
-    editorToolbarElement.hidden = true;
-    resetGame();
-    updateCharacterChoices();
-    startScreenElement.hidden = false;
-}
 
-
-function getEditorPosition(event) {
-    const bounds = canvas.getBoundingClientRect();
-    const x = Math.floor((event.clientX - bounds.left) * getMapColumnCount(currentMap) / bounds.width);
-    const y = Math.floor((event.clientY - bounds.top) * getMapRowCount(currentMap) / bounds.height);
-
-    if (x < 0 || x >= getMapColumnCount(currentMap) || y < 0 || y >= getMapRowCount(currentMap)) {
-        return null;
+    function toggleGhostPlacement() {
+        addingGhost = !addingGhost;
+        updateAddGhostButton();
     }
 
-    return { x, y };
-}
 
+    function addGhostAt(position) {
+        if (
+            !position ||
+            currentMap.tiles[position.y][position.x] === "#" ||
+            currentMap.tiles[position.y][position.x] === "H" ||
+            (currentGameState.player.x === position.x && currentGameState.player.y === position.y) ||
+            currentGameState.ghosts.some(ghost => ghost.x === position.x && ghost.y === position.y)
+        ) {
+            showEditorToast("ghostPlacementError");
+            return false;
+        }
 
-function getEditorBoundary(event) {
-    const bounds = canvas.getBoundingClientRect();
-    const gridX = (event.clientX - bounds.left) * getMapColumnCount(currentMap) / bounds.width;
-    const gridY = (event.clientY - bounds.top) * getMapRowCount(currentMap) / bounds.height;
-    const verticalLine = Math.round(gridX);
-    const horizontalLine = Math.round(gridY);
-    const verticalDistance = Math.abs(gridX - verticalLine);
-    const horizontalDistance = Math.abs(gridY - horizontalLine);
-    const edgeTolerance = 0.22;
+        const existingColors = currentGameState.ghosts.map((ghost, index) =>
+            ghost.color || getGhostColor(index)
+        );
+        const color = existingColors.length < BASE_GHOST_COLORS.length
+            ? BASE_GHOST_COLORS[existingColors.length]
+            : getMostDistinctGhostColor(existingColors);
+        const newGhost = {
+            x: position.x,
+            y: position.y,
+            px: position.x,
+            py: position.y,
+            progress: 0,
+            frightened: false,
+            eaten: false,
+            color,
+            direction: { ...DIRECTIONS.left },
+            nextDirection: { ...DIRECTIONS.left }
+        };
+        currentGameState.ghosts.push(newGhost);
 
-    if (
-        Math.min(verticalDistance, horizontalDistance) > edgeTolerance
-    ) {
-        return null;
+        const previousTile = currentMap.tiles[position.y][position.x];
+        if (currentMap.tiles[position.y][position.x] === "." || currentMap.tiles[position.y][position.x] === "o") {
+            currentMap.tiles[position.y][position.x] = " ";
+        }
+
+        if (!isEditorMapConnected()) {
+            currentGameState.ghosts.pop();
+            if (previousTile !== currentMap.tiles[position.y][position.x]) {
+                currentMap.tiles[position.y][position.x] = previousTile;
+            }
+            showEditorToast("mapConnectivityError");
+            return false;
+        }
+
+        strategicSearch.nodes.clear();
+        strategicSearch.frontier = [];
+        strategicSearch.root = null;
+        syncEditorDraftMap();
+        updateAddGhostButton();
+        setMapEditorInstructions();
+
+        return true;
     }
 
-    if (verticalDistance <= horizontalDistance) {
-        const y = Math.floor(gridY);
-        const x = wrap(verticalLine - 1, getMapColumnCount(currentMap));
-        const direction = DIRECTIONS.right;
+
+    function syncEditorDraftMap() {
+        if (!editorDraftMap) {
+            return;
+        }
+
+        editorDraftMap.tiles = currentMap.tiles.map(row => row.slice());
+        editorDraftMap.edges = Array.from(currentMap.edges);
+        editorDraftMap.playerStart = {
+            x: currentGameState.player.x,
+            y: currentGameState.player.y,
+            direction: { ...currentGameState.player.facingDirection }
+        };
+        editorDraftMap.ghostStarts = currentGameState.ghosts.map(ghost => ({
+            x: ghost.x,
+            y: ghost.y,
+            color: ghost.color,
+            direction: { ...ghost.direction }
+        }));
+    }
+
+
+    function leaveMapEditor(saveChanges) {
+        if (saveChanges) {
+            syncEditorDraftMap();
+            saveEditorMap();
+        }
+
+        editorDraftMap = null;
+        editorMode = false;
+        editorGesture = null;
+        addingGhost = false;
+        updateCharacterChoices();
+        window.clearTimeout(editorToastTimer);
+        editorToastElement.hidden = true;
+        document.body.classList.remove("map-editor-active");
+        editorToolbarElement.hidden = true;
+        resetGame();
+        updateCharacterChoices();
+        startScreenElement.hidden = false;
+    }
+
+
+    function getEditorPosition(event) {
+        const bounds = canvas.getBoundingClientRect();
+        const x = Math.floor((event.clientX - bounds.left) * getMapColumnCount(currentMap) / bounds.width);
+        const y = Math.floor((event.clientY - bounds.top) * getMapRowCount(currentMap) / bounds.height);
+
+        if (x < 0 || x >= getMapColumnCount(currentMap) || y < 0 || y >= getMapRowCount(currentMap)) {
+            return null;
+        }
+
+        return { x, y };
+    }
+
+
+    function getEditorBoundary(event) {
+        const bounds = canvas.getBoundingClientRect();
+        const gridX = (event.clientX - bounds.left) * getMapColumnCount(currentMap) / bounds.width;
+        const gridY = (event.clientY - bounds.top) * getMapRowCount(currentMap) / bounds.height;
+        const verticalLine = Math.round(gridX);
+        const horizontalLine = Math.round(gridY);
+        const verticalDistance = Math.abs(gridX - verticalLine);
+        const horizontalDistance = Math.abs(gridY - horizontalLine);
+        const edgeTolerance = 0.22;
+
+        if (
+            Math.min(verticalDistance, horizontalDistance) > edgeTolerance
+        ) {
+            return null;
+        }
+
+        if (verticalDistance <= horizontalDistance) {
+            const y = Math.floor(gridY);
+            const x = wrap(verticalLine - 1, getMapColumnCount(currentMap));
+            const direction = DIRECTIONS.right;
+
+            return {
+                key: getBoundaryKey(x, y, direction),
+                x,
+                y,
+                direction
+            };
+        }
+
+        const x = Math.floor(gridX);
+        const y = wrap(horizontalLine - 1, getMapRowCount(currentMap));
+        const direction = DIRECTIONS.down;
 
         return {
             key: getBoundaryKey(x, y, direction),
@@ -178,340 +192,366 @@ function getEditorBoundary(event) {
         };
     }
 
-    const x = Math.floor(gridX);
-    const y = wrap(horizontalLine - 1, getMapRowCount(currentMap));
-    const direction = DIRECTIONS.down;
 
-    return {
-        key: getBoundaryKey(x, y, direction),
-        x,
-        y,
-        direction
-    };
-}
+    function toggleEditorBoundary(boundary) {
+        const next = getWrappedPosition(
+            boundary.x + boundary.direction.x,
+            boundary.y + boundary.direction.y
+        );
 
+        if (
+            isWall(boundary.x, boundary.y) ||
+            isWall(next.x, next.y)
+        ) {
+            return;
+        }
 
-function toggleEditorBoundary(boundary) {
-    const next = getWrappedPosition(
-        boundary.x + boundary.direction.x,
-        boundary.y + boundary.direction.y
-    );
+        const wasBlocked = currentMap.edges.has(boundary.key);
 
-    if (
-        isWall(boundary.x, boundary.y) ||
-        isWall(next.x, next.y)
-    ) {
-        return;
-    }
-
-    const wasBlocked = currentMap.edges.has(boundary.key);
-
-    if (wasBlocked) {
-        currentMap.edges.delete(boundary.key);
-    } else {
-        currentMap.edges.add(boundary.key);
-    }
-
-    graph = buildGraph(currentMap);
-
-    if (!isEditorMapConnected()) {
         if (wasBlocked) {
-            currentMap.edges.add(boundary.key);
-        } else {
             currentMap.edges.delete(boundary.key);
+        } else {
+            currentMap.edges.add(boundary.key);
         }
 
         graph = buildGraph(currentMap);
-        showEditorToast("mapConnectivityError");
-    }
-}
 
-
-function getEditorEntity(position) {
-    if (gameState.player.x === position.x && gameState.player.y === position.y) {
-        return { type: "player", entity: gameState.player };
-    }
-
-    const ghostIndex = gameState.ghosts.findIndex(ghost =>
-        ghost.x === position.x && ghost.y === position.y
-    );
-
-    return ghostIndex < 0
-        ? null
-        : { type: "ghost", index: ghostIndex, entity: gameState.ghosts[ghostIndex] };
-}
-
-
-function rotateEditorEntity(entity, type) {
-    const currentIndex = EDITOR_DIRECTIONS.findIndex(direction =>
-        direction.x === entity.direction.x &&
-        direction.y === entity.direction.y
-    );
-    const direction = EDITOR_DIRECTIONS[(currentIndex + 1) % EDITOR_DIRECTIONS.length];
-
-    entity.direction = { ...direction };
-    entity.nextDirection = { ...direction };
-
-    if (type === "player") {
-        entity.facingDirection = { ...direction };
-    }
-}
-
-
-function moveEditorEntity(gesture, position) {
-    const { x, y } = position;
-
-    if (
-        currentMap.tiles[y][x] === "#" || currentMap.tiles[y][x] === "H"
-    ) {
-        return false;
-    }
-
-    if (
-        gesture.type !== "player" &&
-        gameState.player.x === x && gameState.player.y === y
-    ) {
-        return false;
-    }
-
-    if (gameState.ghosts.some((ghost, index) =>
-        ghost.x === x &&
-        ghost.y === y &&
-        !(gesture.type === "ghost" && index === gesture.index)
-    )) {
-        return false;
-    }
-
-    const entity = gesture.entity;
-    const previousPosition = {
-        x: entity.x,
-        y: entity.y,
-        px: entity.px,
-        py: entity.py,
-        progress: entity.progress
-    };
-    entity.x = x;
-    entity.y = y;
-    entity.px = x;
-    entity.py = y;
-    entity.progress = 0;
-
-    if (!isEditorMapConnected()) {
-        Object.assign(entity, previousPosition);
-        showEditorToast("mapConnectivityError");
-        return false;
-    }
-
-    if (gesture.type === "player") {
-        entity.nextDirection = { ...entity.direction };
-    } else {
-        entity.needsDirection = false;
-    }
-
-    return true;
-}
-
-
-function isEditorMapConnected() {
-    const targets = [
-        { x: gameState.player.x, y: gameState.player.y },
-        ...gameState.ghosts.map(ghost => ({ x: ghost.x, y: ghost.y })),
-        ...buildGhostHouses(currentMap),
-        ...currentMap.tiles.flatMap((row, y) =>
-            Array.from(row, (tile, x) =>
-                tile === "." || tile === "o"
-                    ? { x, y }
-                    : null
-            ).filter(Boolean)
-        )
-    ];
-    const reached = new Set([`${gameState.player.x},${gameState.player.y}`]);
-    const queue = [{ x: gameState.player.x, y: gameState.player.y }];
-
-    for (let index = 0; index < queue.length; index++) {
-        const current = queue[index];
-
-        for (const next of graph[current.y][current.x]) {
-            const key = `${next.x},${next.y}`;
-
-            if (reached.has(key)) {
-                continue;
+        if (!isEditorMapConnected()) {
+            if (wasBlocked) {
+                currentMap.edges.add(boundary.key);
+            } else {
+                currentMap.edges.delete(boundary.key);
             }
 
-            reached.add(key);
-            queue.push({ x: next.x, y: next.y });
-        }
-    }
-
-    return targets.every(target =>
-        reached.has(`${target.x},${target.y}`)
-    );
-}
-
-
-function cycleEditorTile(position, count = 1) {
-    const cycle = [".", "o", " ", "H", "#"];
-    const ghostHouses = buildGhostHouses(currentMap);
-    const currentTile = currentMap.tiles[position.y][position.x];
-    const currentIndex = cycle.indexOf(currentTile);
-    const oldTile = cycle[currentIndex];
-    const nextTile = cycle[(currentIndex + count) % cycle.length];
-
-    if (oldTile == "H" &&
-        nextTile !== "H" &&
-        ghostHouses.length <= 1
-    ) {
-        showEditorToast("mapHouseRequiredError");
-        return;
-    }
-
-    const previousRow = currentMap.tiles[position.y].slice();
-    const previousEdges = new Set(currentMap.edges);
-
-    const tile = nextTile;
-    const row = currentMap.tiles[position.y];
-
-    row[position.x] = tile;
-
-    if (nextTile === "#") {
-        for (const direction of Object.values(DIRECTIONS)) {
-            currentMap.edges.delete(
-                getBoundaryKey(position.x, position.y, direction)
-            );
+            graph = buildGraph(currentMap);
+            showEditorToast("mapConnectivityError");
         }
     }
 
 
-    // pellets = MAP.reduce((total, row) =>
-    //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
-    // 0);
-    gameState.pellets = buildPellets();
-    graph = buildGraph(currentMap);
+    function getEditorEntity(position) {
+        if (currentGameState.player.x === position.x && currentGameState.player.y === position.y) {
+            return { type: "player", entity: currentGameState.player };
+        }
 
-    if (!isEditorMapConnected()) {
-        currentMap.tiles[position.y] = previousRow;
-        currentMap.edges = previousEdges;
+        const ghostIndex = currentGameState.ghosts.findIndex(ghost =>
+            ghost.x === position.x && ghost.y === position.y
+        );
+
+        return ghostIndex < 0
+            ? null
+            : { type: "ghost", index: ghostIndex, entity: currentGameState.ghosts[ghostIndex] };
+    }
+
+
+    function rotateEditorEntity(entity, type) {
+        const currentIndex = EDITOR_DIRECTIONS.findIndex(direction =>
+            direction.x === entity.direction.x &&
+            direction.y === entity.direction.y
+        );
+        const direction = EDITOR_DIRECTIONS[(currentIndex + 1) % EDITOR_DIRECTIONS.length];
+
+        entity.direction = { ...direction };
+        entity.nextDirection = { ...direction };
+
+        if (type === "player") {
+            entity.facingDirection = { ...direction };
+        }
+    }
+
+
+    function moveEditorEntity(gesture, position) {
+        const { x, y } = position;
+
+        if (
+            currentMap.tiles[y][x] === "#" || currentMap.tiles[y][x] === "H"
+        ) {
+            return false;
+        }
+
+        if (
+            gesture.type !== "player" &&
+            currentGameState.player.x === x && currentGameState.player.y === y
+        ) {
+            return false;
+        }
+
+        if (currentGameState.ghosts.some((ghost, index) =>
+            ghost.x === x &&
+            ghost.y === y &&
+            !(gesture.type === "ghost" && index === gesture.index)
+        )) {
+            return false;
+        }
+
+        const entity = gesture.entity;
+        const previousPosition = {
+            x: entity.x,
+            y: entity.y,
+            px: entity.px,
+            py: entity.py,
+            progress: entity.progress
+        };
+        entity.x = x;
+        entity.y = y;
+        entity.px = x;
+        entity.py = y;
+        entity.progress = 0;
+
+        if (!isEditorMapConnected()) {
+            Object.assign(entity, previousPosition);
+            showEditorToast("mapConnectivityError");
+            return false;
+        }
+
+        if (gesture.type === "player") {
+            entity.nextDirection = { ...entity.direction };
+        } else {
+            entity.needsDirection = false;
+        }
+
+        return true;
+    }
+
+
+    function isEditorMapConnected() {
+        const targets = [
+            { x: currentGameState.player.x, y: currentGameState.player.y },
+            ...currentGameState.ghosts.map(ghost => ({ x: ghost.x, y: ghost.y })),
+            ...buildGhostHouses(currentMap),
+            ...currentMap.tiles.flatMap((row, y) =>
+                Array.from(row, (tile, x) =>
+                    tile === "." || tile === "o"
+                        ? { x, y }
+                        : null
+                ).filter(Boolean)
+            )
+        ];
+        const reached = new Set([`${currentGameState.player.x},${currentGameState.player.y}`]);
+        const queue = [{ x: currentGameState.player.x, y: currentGameState.player.y }];
+
+        for (let index = 0; index < queue.length; index++) {
+            const current = queue[index];
+
+            for (const next of graph[current.y][current.x]) {
+                const key = `${next.x},${next.y}`;
+
+                if (reached.has(key)) {
+                    continue;
+                }
+
+                reached.add(key);
+                queue.push({ x: next.x, y: next.y });
+            }
+        }
+
+        return targets.every(target =>
+            reached.has(`${target.x},${target.y}`)
+        );
+    }
+
+
+    function cycleEditorTile(position, count = 1) {
+        const cycle = [".", "o", " ", "H", "#"];
+        const ghostHouses = buildGhostHouses(currentMap);
+        const currentTile = currentMap.tiles[position.y][position.x];
+        const currentIndex = cycle.indexOf(currentTile);
+        const oldTile = cycle[currentIndex];
+        const nextTile = cycle[(currentIndex + count) % cycle.length];
+
+        if (oldTile == "H" &&
+            nextTile !== "H" &&
+            ghostHouses.length <= 1
+        ) {
+            showEditorToast("mapHouseRequiredError");
+            return;
+        }
+
+        const previousRow = currentMap.tiles[position.y].slice();
+        const previousEdges = new Set(currentMap.edges);
+
+        const tile = nextTile;
+        const row = currentMap.tiles[position.y];
+
+        row[position.x] = tile;
+
+        if (nextTile === "#") {
+            for (const direction of Object.values(DIRECTIONS)) {
+                currentMap.edges.delete(
+                    getBoundaryKey(position.x, position.y, direction)
+                );
+            }
+        }
+
+
         // pellets = MAP.reduce((total, row) =>
         //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
         // 0);
-        gameState.pellets = buildPellets();
+        currentGameState.pellets = buildPellets();
         graph = buildGraph(currentMap);
-        showEditorToast("mapConnectivityError");
 
-        cycleEditorTile(position, count + 1);
+        if (!isEditorMapConnected()) {
+            currentMap.tiles[position.y] = previousRow;
+            currentMap.edges = previousEdges;
+            // pellets = MAP.reduce((total, row) =>
+            //     total + Array.from(row).filter(cell => cell === "." || cell === "o").length,
+            // 0);
+            currentGameState.pellets = buildPellets();
+            graph = buildGraph(currentMap);
+            showEditorToast("mapConnectivityError");
+
+            cycleEditorTile(position, count + 1);
+        }
+    }
+
+
+    function updateAddGhostButton() {
+        const existingColors = currentGameState.ghosts.map((ghost, index) =>
+            ghost.color || getGhostColor(index)
+        );
+
+        const color = existingColors.length < BASE_GHOST_COLORS.length
+            ? BASE_GHOST_COLORS[existingColors.length]
+            : getMostDistinctGhostColor(existingColors);
+
+        const label = document.createElement("span");
+        label.textContent = messages.addGhost;
+
+        addGhostButton.replaceChildren(
+            createGhostIcon(color, "ghost-choice-icon"),
+            label
+        );
+
+        addGhostButton.setAttribute(
+            "aria-pressed",
+            String(addingGhost)
+        );
+
+        addGhostButton.setAttribute(
+            "aria-label",
+            addingGhost
+                ? messages.cancelAddGhost
+                : messages.addGhost
+        );
+
+        addGhostButton.title = messages.addGhostInstructions;
+    }
+
+
+    canvas.addEventListener("pointerdown", event => {
+        if (!editorMode) {
+            return;
+        }
+
+        const position = getEditorPosition(event);
+        if (!position) {
+            return;
+        }
+
+        event.preventDefault();
+        canvas.setPointerCapture(event.pointerId);
+        const boundary = getEditorBoundary(event);
+        const selected = getEditorEntity(position);
+
+        editorGesture = addingGhost
+            ? { type: "add-ghost", start: position, moved: false }
+            : boundary
+                ? { type: "boundary", edge: boundary, start: position, moved: false }
+                : selected
+                    ? { ...selected, start: position, moved: false }
+                    : { type: "tile", start: position, moved: false };
+    });
+
+
+    canvas.addEventListener("pointermove", event => {
+        if (
+            !editorMode ||
+            !editorGesture ||
+            (editorGesture.type !== "player" && editorGesture.type !== "ghost")
+        ) {
+            return;
+        }
+
+        const position = getEditorPosition(event);
+        if (!position) {
+            return;
+        }
+
+        if (position.x !== editorGesture.start.x || position.y !== editorGesture.start.y) {
+            editorGesture.moved = moveEditorEntity(editorGesture, position) || editorGesture.moved;
+        }
+    });
+
+
+    canvas.addEventListener("pointerup", event => {
+        if (!editorMode || !editorGesture) {
+            return;
+        }
+
+        const gesture = editorGesture;
+        editorGesture = null;
+
+        if (gesture.type === "boundary") {
+            const boundary = getEditorBoundary(event);
+
+            if (boundary && boundary.key === gesture.edge.key) {
+                toggleEditorBoundary(boundary);
+            }
+            return;
+        }
+
+        const position = getEditorPosition(event);
+
+        if (!position) {
+            return;
+        }
+
+        if (gesture.type === "add-ghost") {
+            if (position.x === gesture.start.x && position.y === gesture.start.y) {
+                addGhostAt(position);
+            }
+            return;
+        }
+
+        if (gesture.type === "tile") {
+            if (position.x === gesture.start.x && position.y === gesture.start.y) {
+                cycleEditorTile(position);
+            }
+            return;
+        }
+
+        if (!gesture.moved && position.x === gesture.start.x && position.y === gesture.start.y) {
+            rotateEditorEntity(gesture.entity, gesture.type);
+        } else if (!gesture.moved) {
+            moveEditorEntity(gesture, position);
+        }
+    });
+
+
+    canvas.addEventListener("pointercancel", () => {
+        editorGesture = null;
+    });
+
+
+    document.getElementById("edit-map").addEventListener("click", enterMapEditor);
+    newMapButton.addEventListener("click", createNewMap);
+    addGhostButton.addEventListener("click", toggleGhostPlacement);
+    editorBackButton.addEventListener("click", () => leaveMapEditor(false));
+    editorSaveButton.addEventListener("click", () => leaveMapEditor(true));
+    mapSelectElement.addEventListener("change", () => {
+        activeMapId = mapSelectElement.value;
+        if (
+            selectedCharacter.startsWith("ghost-") &&
+            Number(selectedCharacter.slice("ghost-".length)) >=
+            getCurrentMapDefinition().ghostStarts.length
+        ) {
+            selectedCharacter = "pacman";
+        }
+        resetGame();
+        updateCharacterChoices();
+    });
+
+    return {
+        leaveMapEditor
     }
 }
-
-
-canvas.addEventListener("pointerdown", event => {
-    if (!editorMode) {
-        return;
-    }
-
-    const position = getEditorPosition(event);
-    if (!position) {
-        return;
-    }
-
-    event.preventDefault();
-    canvas.setPointerCapture(event.pointerId);
-    const boundary = getEditorBoundary(event);
-    const selected = getEditorEntity(position);
-
-    editorGesture = addingGhost
-        ? { type: "add-ghost", start: position, moved: false }
-        : boundary
-            ? { type: "boundary", edge: boundary, start: position, moved: false }
-            : selected
-                ? { ...selected, start: position, moved: false }
-                : { type: "tile", start: position, moved: false };
-});
-
-
-canvas.addEventListener("pointermove", event => {
-    if (
-        !editorMode ||
-        !editorGesture ||
-        (editorGesture.type !== "player" && editorGesture.type !== "ghost")
-    ) {
-        return;
-    }
-
-    const position = getEditorPosition(event);
-    if (!position) {
-        return;
-    }
-
-    if (position.x !== editorGesture.start.x || position.y !== editorGesture.start.y) {
-        editorGesture.moved = moveEditorEntity(editorGesture, position) || editorGesture.moved;
-    }
-});
-
-
-canvas.addEventListener("pointerup", event => {
-    if (!editorMode || !editorGesture) {
-        return;
-    }
-
-    const gesture = editorGesture;
-    editorGesture = null;
-
-    if (gesture.type === "boundary") {
-        const boundary = getEditorBoundary(event);
-
-        if (boundary && boundary.key === gesture.edge.key) {
-            toggleEditorBoundary(boundary);
-        }
-        return;
-    }
-
-    const position = getEditorPosition(event);
-
-    if (!position) {
-        return;
-    }
-
-    if (gesture.type === "add-ghost") {
-        if (position.x === gesture.start.x && position.y === gesture.start.y) {
-            addGhostAt(position);
-        }
-        return;
-    }
-
-    if (gesture.type === "tile") {
-        if (position.x === gesture.start.x && position.y === gesture.start.y) {
-            cycleEditorTile(position);
-        }
-        return;
-    }
-
-    if (!gesture.moved && position.x === gesture.start.x && position.y === gesture.start.y) {
-        rotateEditorEntity(gesture.entity, gesture.type);
-    } else if (!gesture.moved) {
-        moveEditorEntity(gesture, position);
-    }
-});
-
-
-canvas.addEventListener("pointercancel", () => {
-    editorGesture = null;
-});
-
-
-document.getElementById("edit-map").addEventListener("click", enterMapEditor);
-newMapButton.addEventListener("click", createNewMap);
-addGhostButton.addEventListener("click", toggleGhostPlacement);
-editorBackButton.addEventListener("click", () => leaveMapEditor(false));
-editorSaveButton.addEventListener("click", () => leaveMapEditor(true));
-mapSelectElement.addEventListener("change", () => {
-    activeMapId = mapSelectElement.value;
-    if (
-        selectedCharacter.startsWith("ghost-") &&
-        Number(selectedCharacter.slice("ghost-".length)) >=
-        getCurrentMapDefinition().ghostStarts.length
-    ) {
-        selectedCharacter = "pacman";
-    }
-    resetGame();
-    updateCharacterChoices();
-});

@@ -10,7 +10,7 @@
  * The algorithm does not evaluate states or generate successors itself.
  */
 
-function createUnboundedBestFirstMinimax({
+function createRandomizedBestFirstMinimax({
     getStateKey,
     getNodeType,
     createSuccessorIterator,

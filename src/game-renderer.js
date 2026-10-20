@@ -1,511 +1,499 @@
-// RENDER
-// ============================================================
+function createGameRenderer(context) {
+    // RENDER
+    // ============================================================
 
-function draw() {
+    function draw() {
 
-    ctx.fillStyle =
-        "#090b12";
-
-
-    ctx.fillRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    drawVoronoiDomains();
+        ctx.fillStyle =
+            "#090b12";
 
 
-    for (
-        let y = 0;
-        y < getMapRowCount(currentMap);
-        y++
-    ) {
+        ctx.fillRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        drawVoronoiDomains();
+
 
         for (
-            let x = 0;
-            x < currentMap.tiles[y].length;
-            x++
+            let y = 0;
+            y < getMapRowCount(currentMap);
+            y++
         ) {
 
-            let cell =
-                currentMap.tiles[y][x];
-
-            if ((cell === "." || cell === "o") && !gameState.pellets.has(`${x},${y}`)) {
-                cell = " "
-            }
-
-
-            const px =
-                x * CELL;
-
-            const py =
-                y * CELL;
-
-
-            if (cell === "#") {
-
-                ctx.fillStyle =
-                    "#3156a3";
-
-
-                ctx.fillRect(
-                    px + 2,
-                    py + 2,
-                    CELL - 4,
-                    CELL - 4
-                );
-            }
-
-
-            if (
-                cell === "." ||
-                cell === "o"
+            for (
+                let x = 0;
+                x < currentMap.tiles[y].length;
+                x++
             ) {
 
-                ctx.fillStyle =
-                    "#f4e7b5";
+                let cell =
+                    currentMap.tiles[y][x];
+
+                if ((cell === "." || cell === "o") && !currentGameState.pellets.has(`${x},${y}`)) {
+                    cell = " "
+                }
 
 
-                ctx.beginPath();
+                const px =
+                    x * CELL;
+
+                const py =
+                    y * CELL;
 
 
-                ctx.arc(
-                    px + CELL / 2,
-                    py + CELL / 2,
+                if (cell === "#") {
+
+                    ctx.fillStyle =
+                        "#3156a3";
+
+
+                    ctx.fillRect(
+                        px + 2,
+                        py + 2,
+                        CELL - 4,
+                        CELL - 4
+                    );
+                }
+
+
+                if (
+                    cell === "." ||
                     cell === "o"
-                        ? 5
-                        : 2.5,
-                    0,
-                    Math.PI * 2
-                );
+                ) {
+
+                    ctx.fillStyle =
+                        "#f4e7b5";
 
 
+                    ctx.beginPath();
+
+
+                    ctx.arc(
+                        px + CELL / 2,
+                        py + CELL / 2,
+                        cell === "o"
+                            ? 5
+                            : 2.5,
+                        0,
+                        Math.PI * 2
+                    );
+
+
+                    ctx.fill();
+                }
+            }
+        }
+
+        if (editorMode) {
+            drawMapEditorGrid();
+        }
+
+        drawBoundaryWalls();
+        drawGhostHouses();
+
+        drawPlayer();
+
+        for (
+            let i = 0;
+            i < currentGameState.ghosts.length;
+            i++
+        ) {
+
+            drawGhost(
+                currentGameState.ghosts[i],
+                i
+            );
+        }
+    }
+
+
+    function drawBoundaryWalls() {
+        ctx.fillStyle = editorMode ? "#9dbdff" : "#3156a3";
+
+        for (const edgeKey of currentMap.edges) {
+            const [orientation, rawX, rawY] = edgeKey.split(":");
+            const x = Number(rawX);
+            const y = Number(rawY);
+            const thickness = editorMode ? 5 : 4;
+
+            if (orientation === "h") {
+                const edgeX = (x + 1) * CELL - thickness / 2;
+                const edgeY = y * CELL;
+                ctx.fillRect(edgeX, edgeY, thickness, CELL);
+
+                if (x === getMapColumnCount(currentMap) - 1) {
+                    ctx.fillRect(-thickness / 2, edgeY, thickness, CELL);
+                }
+            } else {
+                const edgeX = x * CELL;
+                const edgeY = (y + 1) * CELL - thickness / 2;
+                ctx.fillRect(edgeX, edgeY, CELL, thickness);
+
+                if (y === getMapRowCount(currentMap) - 1) {
+                    ctx.fillRect(edgeX, -thickness / 2, CELL, thickness);
+                }
+            }
+        }
+    }
+
+
+    function drawGhostHouses() {
+        for (let y = 0; y < getMapRowCount(currentMap); y++) {
+            for (let x = 0; x < getMapColumnCount(currentMap); x++) {
+                if (currentMap.tiles[y][x] !== "H") {
+                    continue;
+                }
+
+                const centerX = x * CELL + CELL / 2;
+                const centerY = y * CELL + CELL / 2;
+
+                ctx.fillStyle = "#8b5cf6";
+                ctx.strokeStyle = "#e9d5ff";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX - 9, centerY - 1);
+                ctx.lineTo(centerX, centerY - 9);
+                ctx.lineTo(centerX + 9, centerY - 1);
+                ctx.lineTo(centerX + 7, centerY - 1);
+                ctx.lineTo(centerX + 7, centerY + 8);
+                ctx.lineTo(centerX - 7, centerY + 8);
+                ctx.lineTo(centerX - 7, centerY - 1);
+                ctx.closePath();
                 ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = "#090b12";
+                ctx.fillRect(centerX - 2, centerY + 2, 4, 6);
             }
         }
     }
 
-    if (editorMode) {
-        drawMapEditorGrid();
-    }
 
-    drawBoundaryWalls();
-    drawGhostHouses();
+    function drawMapEditorGrid() {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+        ctx.lineWidth = 1;
 
-    drawPlayer();
-
-    for (
-        let i = 0;
-        i < gameState.ghosts.length;
-        i++
-    ) {
-
-        drawGhost(
-            gameState.ghosts[i],
-            i
-        );
-    }
-}
-
-
-function drawBoundaryWalls() {
-    ctx.fillStyle = editorMode ? "#9dbdff" : "#3156a3";
-
-    for (const edgeKey of currentMap.edges) {
-        const [orientation, rawX, rawY] = edgeKey.split(":");
-        const x = Number(rawX);
-        const y = Number(rawY);
-        const thickness = editorMode ? 5 : 4;
-
-        if (orientation === "h") {
-            const edgeX = (x + 1) * CELL - thickness / 2;
-            const edgeY = y * CELL;
-            ctx.fillRect(edgeX, edgeY, thickness, CELL);
-
-            if (x === getMapColumnCount(currentMap) - 1) {
-                ctx.fillRect(-thickness / 2, edgeY, thickness, CELL);
-            }
-        } else {
-            const edgeX = x * CELL;
-            const edgeY = (y + 1) * CELL - thickness / 2;
-            ctx.fillRect(edgeX, edgeY, CELL, thickness);
-
-            if (y === getMapRowCount(currentMap) - 1) {
-                ctx.fillRect(edgeX, -thickness / 2, CELL, thickness);
-            }
-        }
-    }
-}
-
-
-function drawGhostHouses() {
-    for (let y = 0; y < getMapRowCount(currentMap); y++) {
-        for (let x = 0; x < getMapColumnCount(currentMap); x++) {
-            if (currentMap.tiles[y][x] !== "H") {
-                continue;
-            }
-
-            const centerX = x * CELL + CELL / 2;
-            const centerY = y * CELL + CELL / 2;
-
-            ctx.fillStyle = "#8b5cf6";
-            ctx.strokeStyle = "#e9d5ff";
-            ctx.lineWidth = 2;
+        for (let x = 0; x <= getMapColumnCount(currentMap); x++) {
             ctx.beginPath();
-            ctx.moveTo(centerX - 9, centerY - 1);
-            ctx.lineTo(centerX, centerY - 9);
-            ctx.lineTo(centerX + 9, centerY - 1);
-            ctx.lineTo(centerX + 7, centerY - 1);
-            ctx.lineTo(centerX + 7, centerY + 8);
-            ctx.lineTo(centerX - 7, centerY + 8);
-            ctx.lineTo(centerX - 7, centerY - 1);
-            ctx.closePath();
-            ctx.fill();
+            ctx.moveTo(x * CELL + 0.5, 0);
+            ctx.lineTo(x * CELL + 0.5, getMapRowCount(currentMap) * CELL);
             ctx.stroke();
+        }
 
-            ctx.fillStyle = "#090b12";
-            ctx.fillRect(centerX - 2, centerY + 2, 4, 6);
+        for (let y = 0; y <= getMapRowCount(currentMap); y++) {
+            ctx.beginPath();
+            ctx.moveTo(0, y * CELL + 0.5);
+            ctx.lineTo(getMapColumnCount(currentMap) * CELL, y * CELL + 0.5);
+            ctx.stroke();
         }
     }
-}
 
 
-function drawMapEditorGrid() {
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
-    ctx.lineWidth = 1;
+    function drawPlayer() {
 
-    for (let x = 0; x <= getMapColumnCount(currentMap); x++) {
+        const cx =
+            currentGameState.player.px * CELL +
+            CELL / 2;
+
+
+        const cy =
+            currentGameState.player.py * CELL +
+            CELL / 2;
+
+
+        const facingDirection = currentGameState.player.facingDirection || player.direction;
+        let angle = 0;
+
+
+        if (
+            facingDirection.x === -1
+        ) {
+            angle = Math.PI;
+        }
+
+
+        if (
+            facingDirection.y === -1
+        ) {
+            angle = -Math.PI / 2;
+        }
+
+
+        if (
+            facingDirection.y === 1
+        ) {
+            angle = Math.PI / 2;
+        }
+
+
+        const mouth =
+            0.20 +
+            Math.abs(
+                Math.sin(
+                    performance.now() / 90
+                )
+            ) * 0.20;
+
+
+        ctx.fillStyle =
+            "#ffd43b";
+
+
         ctx.beginPath();
-        ctx.moveTo(x * CELL + 0.5, 0);
-        ctx.lineTo(x * CELL + 0.5, getMapRowCount(currentMap) * CELL);
-        ctx.stroke();
+
+
+        ctx.moveTo(
+            cx,
+            cy
+        );
+
+
+        ctx.arc(
+            cx,
+            cy,
+            11,
+            angle + mouth,
+            angle +
+            Math.PI * 2 -
+            mouth
+        );
+
+
+        ctx.closePath();
+
+        ctx.fill();
     }
 
-    for (let y = 0; y <= getMapRowCount(currentMap); y++) {
+
+    function drawGhost(
+        ghost,
+        index
+    ) {
+
+        const cx =
+            ghost.px * CELL +
+            CELL / 2;
+
+
+        const cy =
+            ghost.py * CELL +
+            CELL / 2;
+
+
+        if (ghost.eaten) {
+
+            drawGhostEyes(
+                ghost,
+                cx,
+                cy
+            );
+
+            return;
+        }
+
+
+        if (ghost.frightened) {
+
+            const blinking =
+                ghost.frightenedTimer <= FRIGHTENED_BLINK_TIME &&
+                Math.floor(currentGameState.time * FRIGHTENED_BLINK_FREQUENCY) % 2 === 0;
+
+            ctx.fillStyle = blinking
+                ? getGhostColor(index)
+                : "#3159d6";
+
+        }
+
+        else {
+
+            ctx.fillStyle = getGhostColor(index);
+        }
+
+
         ctx.beginPath();
-        ctx.moveTo(0, y * CELL + 0.5);
-        ctx.lineTo(getMapColumnCount(currentMap) * CELL, y * CELL + 0.5);
-        ctx.stroke();
-    }
-}
 
 
-function drawPlayer() {
-
-    const cx =
-        gameState.player.px * CELL +
-        CELL / 2;
-
-
-    const cy =
-        gameState.player.py * CELL +
-        CELL / 2;
+        ctx.arc(
+            cx,
+            cy - 2,
+            10,
+            Math.PI,
+            0
+        );
 
 
-    const facingDirection = gameState.player.facingDirection || player.direction;
-    let angle = 0;
+        ctx.lineTo(
+            cx + 10,
+            cy + 10
+        );
 
 
-    if (
-        facingDirection.x === -1
-    ) {
-        angle = Math.PI;
-    }
+        ctx.lineTo(
+            cx + 5,
+            cy + 6
+        );
 
 
-    if (
-        facingDirection.y === -1
-    ) {
-        angle = -Math.PI / 2;
-    }
+        ctx.lineTo(
+            cx,
+            cy + 10
+        );
 
 
-    if (
-        facingDirection.y === 1
-    ) {
-        angle = Math.PI / 2;
-    }
+        ctx.lineTo(
+            cx - 5,
+            cy + 6
+        );
 
 
-    const mouth =
-        0.20 +
-        Math.abs(
-            Math.sin(
-                performance.now() / 90
-            )
-        ) * 0.20;
+        ctx.lineTo(
+            cx - 10,
+            cy + 10
+        );
 
 
-    ctx.fillStyle =
-        "#ffd43b";
+        ctx.closePath();
 
+        ctx.fill();
 
-    ctx.beginPath();
-
-
-    ctx.moveTo(
-        cx,
-        cy
-    );
-
-
-    ctx.arc(
-        cx,
-        cy,
-        11,
-        angle + mouth,
-        angle +
-        Math.PI * 2 -
-        mouth
-    );
-
-
-    ctx.closePath();
-
-    ctx.fill();
-}
-
-
-function drawGhost(
-    ghost,
-    index
-) {
-
-    const cx =
-        ghost.px * CELL +
-        CELL / 2;
-
-
-    const cy =
-        ghost.py * CELL +
-        CELL / 2;
-
-
-    if (ghost.eaten) {
 
         drawGhostEyes(
             ghost,
             cx,
             cy
         );
-
-        return;
     }
 
 
-    if (ghost.frightened) {
-
-        const blinking =
-            ghost.frightenedTimer <= FRIGHTENED_BLINK_TIME &&
-            Math.floor(gameState.time * FRIGHTENED_BLINK_FREQUENCY) % 2 === 0;
-
-        ctx.fillStyle = blinking
-            ? getGhostColor(index)
-            : "#3159d6";
-
-    }
-
-    else {
-
-        ctx.fillStyle = getGhostColor(index);
-    }
-
-
-    ctx.beginPath();
-
-
-    ctx.arc(
-        cx,
-        cy - 2,
-        10,
-        Math.PI,
-        0
-    );
-
-
-    ctx.lineTo(
-        cx + 10,
-        cy + 10
-    );
-
-
-    ctx.lineTo(
-        cx + 5,
-        cy + 6
-    );
-
-
-    ctx.lineTo(
-        cx,
-        cy + 10
-    );
-
-
-    ctx.lineTo(
-        cx - 5,
-        cy + 6
-    );
-
-
-    ctx.lineTo(
-        cx - 10,
-        cy + 10
-    );
-
-
-    ctx.closePath();
-
-    ctx.fill();
-
-
-    drawGhostEyes(
+    function drawGhostEyes(
         ghost,
         cx,
         cy
-    );
-}
+    ) {
+
+        ctx.fillStyle =
+            "white";
 
 
-function drawGhostEyes(
-    ghost,
-    cx,
-    cy
-) {
-
-    ctx.fillStyle =
-        "white";
+        ctx.beginPath();
 
 
-    ctx.beginPath();
+        ctx.arc(
+            cx - 4,
+            cy - 3,
+            3,
+            0,
+            Math.PI * 2
+        );
 
 
-    ctx.arc(
-        cx - 4,
-        cy - 3,
-        3,
-        0,
-        Math.PI * 2
-    );
+        ctx.arc(
+            cx + 4,
+            cy - 3,
+            3,
+            0,
+            Math.PI * 2
+        );
 
 
-    ctx.arc(
-        cx + 4,
-        cy - 3,
-        3,
-        0,
-        Math.PI * 2
-    );
+        ctx.fill();
 
 
-    ctx.fill();
+        ctx.fillStyle =
+            "#263b78";
 
 
-    ctx.fillStyle =
-        "#263b78";
+        ctx.beginPath();
 
 
-    ctx.beginPath();
+        ctx.arc(
+            cx - 4 +
+            ghost.direction.x,
+            cy - 3 +
+            ghost.direction.y,
+            1.5,
+            0,
+            Math.PI * 2
+        );
 
 
-    ctx.arc(
-        cx - 4 +
-        ghost.direction.x,
-        cy - 3 +
-        ghost.direction.y,
-        1.5,
-        0,
-        Math.PI * 2
-    );
+        ctx.arc(
+            cx + 4 +
+            ghost.direction.x,
+            cy - 3 +
+            ghost.direction.y,
+            1.5,
+            0,
+            Math.PI * 2
+        );
 
 
-    ctx.arc(
-        cx + 4 +
-        ghost.direction.x,
-        cy - 3 +
-        ghost.direction.y,
-        1.5,
-        0,
-        Math.PI * 2
-    );
-
-
-    ctx.fill();
-}
-
-
-// ============================================================
-// CONTROLS
-// ============================================================
-
-const EDITOR_DIRECTIONS = [
-    DIRECTIONS.right,
-    DIRECTIONS.down,
-    DIRECTIONS.left,
-    DIRECTIONS.up
-];
-
-
-function drawVoronoiDomains() {
-    if (!showVoronoiDomains) {
-        return;
+        ctx.fill();
     }
 
-    const getGhostIndex = (owner) => owner.replace("ghost", "");
+    function drawVoronoiDomains() {
+        if (!showVoronoiDomains) {
+            return;
+        }
+
+        const getGhostIndex = (owner) => owner.replace("ghost", "");
 
 
-    const domain = calculateDomain(
-        gameState.player, gameState.ghosts, buildGhostHouses(getCurrentMapDefinition()), gameState.pellets, gameState.time, true
-    );
+        const domain = calculateDomain(
+            currentGameState.player, currentGameState.ghosts, buildGhostHouses(getCurrentMapDefinition()), currentGameState.pellets, currentGameState.time, true
+        );
 
-    for (let y = 0; y < getMapRowCount(currentMap); y++) {
-        for (let x = 0; x < getMapColumnCount(currentMap); x++) {
+        for (let y = 0; y < getMapRowCount(currentMap); y++) {
+            for (let x = 0; x < getMapColumnCount(currentMap); x++) {
 
-            if (currentMap.tiles[y][x] === "#") {
-                continue;
+                if (currentMap.tiles[y][x] === "#") {
+                    continue;
+                }
+
+                const owner = domain[y][x].owner;
+
+                if (!owner || owner === "") {
+                    continue;
+                }
+
+                let color;
+                if (owner === "pacman") {
+                    color = DOMAIN_COLORS.pacman;
+                }
+
+                if (owner.startsWith("ghost")) {
+                    const index = getGhostIndex(owner);
+                    color = ghosts[index]?.color
+                        ? hexToRgb(ghosts[index].color)
+                        : getGhostColorRgb(index);
+                }
+
+                if (!color) {
+                    continue;
+                }
+
+                const r = color[0];
+                const g = color[1];
+                const b = color[2];
+
+                ctx.fillStyle =
+                    `rgba(${r}, ${g}, ${b}, ${DOMAIN_ALPHA})`;
+
+                ctx.fillRect(
+                    x * CELL,
+                    y * CELL,
+                    CELL,
+                    CELL
+                );
             }
-
-            const owner = domain[y][x].owner;
-
-            if (!owner || owner === "") {
-                continue;
-            }
-
-            let color;
-            if (owner === "pacman") {
-                color = DOMAIN_COLORS.pacman;
-            }
-
-            if (owner.startsWith("ghost")) {
-                const index = getGhostIndex(owner);
-                color = ghosts[index]?.color
-                    ? hexToRgb(ghosts[index].color)
-                    : getGhostColorRgb(index);
-            }
-
-            if (!color) {
-                continue;
-            }
-
-            const r = color[0];
-            const g = color[1];
-            const b = color[2];
-
-            ctx.fillStyle =
-                `rgba(${r}, ${g}, ${b}, ${DOMAIN_ALPHA})`;
-
-            ctx.fillRect(
-                x * CELL,
-                y * CELL,
-                CELL,
-                CELL
-            );
         }
     }
+
+    return {
+        draw
+    }
 }
-
-
-// ============================================================
-// DOMAIN OWNERS
-// ============================================================

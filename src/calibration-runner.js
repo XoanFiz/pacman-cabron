@@ -236,9 +236,145 @@ function createRbfmCalibrationExperiment({
     };
 }
 
+///////////////////////////////////////////////////////
+// game adapters
+function getStateKey(state) {
+    return buildStateKey(state);
+}
 
+
+function getNodeType(state) {
+    return state.firstActor === "player"
+        ? "max"
+        : "min";
+}
+
+
+function* createSuccessorIterator(state) {
+    if (state.terminal) {
+        return;
+    }
+
+    if (state.firstActor === "ghosts") {
+        for (const ghostDirections of getSearchGhostActionProfiles(state)) {
+            const nextState = advanceSearchState(
+                state,
+                ghostDirections,
+                null
+            );
+
+            yield {
+                state: nextState,
+                value: evaluateSearchState(nextState),
+                duration: nextState.time - state.time,
+                action: {
+                    ghostDirections,
+                    playerDirection: null
+                }
+            };
+        }
+
+        return;
+    }
+
+    if (state.firstActor === "player") {
+        for (const playerDirection of getSearchPlayerActionProfiles(state)) {
+            if (!playerDirection) {
+                continue;
+            }
+
+            const nextState = advanceSearchState(
+                state,
+                [],
+                playerDirection
+            );
+
+            yield {
+                state: nextState,
+                value: evaluateSearchState(nextState),
+                duration: nextState.time - state.time,
+                action: {
+                    ghostDirections: [],
+                    playerDirection
+                }
+            };
+        }
+    }
+}
+///////////////////////////////////////////////
+
+function calculateReferenceValue(
+    initialState,
+    horizonSeconds = 10
+) {
+    if (
+        !Number.isFinite(horizonSeconds) ||
+        horizonSeconds < 0
+    ) {
+        throw new TypeError(
+            "horizonSeconds must be a finite non-negative number."
+        );
+    }
+
+    const deadline = initialState.time + horizonSeconds;
+    const memo = new Map();
+    const active = new Set();
+
+    function minimax(state) {
+        if (
+            state.terminal ||
+            state.time >= deadline
+        ) {
+            return evaluateSearchState(state);
+        }
+
+        const key = `${getStateKey(state)}|${state.time}`;
+
+        if (memo.has(key)) {
+            return memo.get(key);
+        }
+
+        // Prevent infinite recursion if a zero-duration cycle exists.
+        if (active.has(key)) {
+            return evaluateSearchState(state);
+        }
+
+        active.add(key);
+
+        try {
+            const isMaxNode = getNodeType(state) === "max";
+            let bestValue = isMaxNode ? -Infinity : Infinity;
+            let hasSuccessor = false;
+
+            for (const transition of createSuccessorIterator(state)) {
+                hasSuccessor = true;
+
+                const value = minimax(transition.state);
+
+                if (isMaxNode) {
+                    bestValue = Math.max(bestValue, value);
+                } else {
+                    bestValue = Math.min(bestValue, value);
+                }
+            }
+
+            const value = hasSuccessor
+                ? bestValue
+                : evaluateSearchState(state);
+
+            memo.set(key, value);
+
+            return value;
+        } finally {
+            active.delete(key);
+        }
+    }
+
+    return minimax(initialState);
+}
 
 const calibration = createRbfmCalibration(getCurrentMapDefinition());
+
 
 const search = createUnboundedBestFirstMinimax({
     getStateKey,
