@@ -90,68 +90,6 @@ function createGameRules(parameters = {}) {
     // PAC-MAN
     // ============================================================
 
-    function updatePlayer(dt) {
-        const gs = gameState();
-        const player = gs.player;
-
-        if (player.direction.x === 0 && player.direction.y === 0) {
-            tryChangeDirection();
-            return;
-        }
-
-        player.progress += PACMAN_SPEED * dt;
-
-        while (player.progress >= 1) {
-            player.progress -= 1;
-
-            player.x = map.wrap(
-                player.x + player.direction.x,
-                map.getMapColumnCount(map.currentMap)
-            );
-
-            player.y = map.wrap(
-                player.y + player.direction.y,
-                map.getMapRowCount(map.currentMap)
-            );
-
-            player.px = player.x;
-            player.py = player.y;
-
-            eatPellet();
-
-            if (state.selectedCharacter !== "pacman" && gs.running) {
-                player.nextDirection =
-                    intelligence.choosePacmanDirection(
-                        intelligence.getCurrentSearchContext()
-                    );
-            }
-
-            const desiredDirection =
-                state.selectedCharacter === "pacman"
-                    ? findPressedDirection(player.x, player.y)
-                    : player.nextDirection;
-
-            if (
-                desiredDirection &&
-                map.canMove(player.x, player.y, desiredDirection)
-            ) {
-                setPlayerDirection(desiredDirection);
-            }
-
-            if (!map.canMove(player.x, player.y, player.direction)) {
-                setPlayerDirection({ x: 0, y: 0 });
-                player.progress = 0;
-                break;
-            }
-        }
-
-        player.px =
-            player.x + player.direction.x * player.progress;
-
-        player.py =
-            player.y + player.direction.y * player.progress;
-    }
-
     function setPlayerDirection(direction) {
         const player = gameState().player;
         player.direction = { ...direction };
@@ -176,22 +114,6 @@ function createGameRules(parameters = {}) {
         }
 
         return null;
-    }
-
-    function tryChangeDirection() {
-        const gs = gameState();
-        const player = gs.player;
-        const desiredDirection =
-            state.selectedCharacter === "pacman"
-                ? findPressedDirection(player.x, player.y)
-                : player.nextDirection;
-
-        if (
-            desiredDirection &&
-            map.canMove(player.x, player.y, desiredDirection)
-        ) {
-            setPlayerDirection(desiredDirection);
-        }
     }
 
     // ============================================================
@@ -241,39 +163,23 @@ function createGameRules(parameters = {}) {
     }
 
     // Eating a power pellet is a decision event for every ghost that is
-    // not on its way home. The ghosts controlled by the player read the
-    // held keys at that very moment, while the rest are queued for the
-    // search at the current time.
+    // not on its way home. All of them, including the player-controlled
+    // one, are resolved by resolveDecisions at the same event.
     function activateFrightenedMode() {
-        const gs = gameState();
-
-        for (const ghost of gs.ghosts) {
+        for (const ghost of gameState().ghosts) {
             if (ghost.eaten) continue;
 
             ghost.frightened = true;
             ghost.frightenedTimer = FRIGHTENED_DURATION;
             ghost.speed = FRIGHTENED_GHOST_SPEED;
 
-            ghost.decisionAtCentre = false;
-
-            if (getControlledGhost() === ghost) {
-                const possible = getImmediateGhostDirections(ghost);
-                const desired = findPressedDirection(ghost.x, ghost.y);
-                const chosen = desired && possible.some(direction =>
-                    direction.x === desired.x &&
-                    direction.y === desired.y
-                )
-                    ? desired
-                    : { ...ghost.direction };
-
-                applyGhostDecision(ghost, chosen);
-                ghost.needsDirection = false;
-                ghost.px = ghost.x + ghost.direction.x * ghost.progress;
-                ghost.py = ghost.y + ghost.direction.y * ghost.progress;
-            } else {
-                ghost.needsDirection = true;
-                ghost.pendingDecisionTime = gs.time;
+            // A ghost that arrived at a centre at this same event keeps its
+            // centre decision, where every direction is legal.
+            if (!ghost.needsDirection) {
+                ghost.decisionAtCentre = false;
             }
+
+            ghost.needsDirection = true;
         }
     }
 
@@ -351,107 +257,249 @@ function createGameRules(parameters = {}) {
         ] || null;
     }
 
-    function updateGhost(ghost, dt) {
+    // ============================================================
+    // EVENT SIMULATION
+    // ============================================================
+    //
+    // The game advances to the next event (a cell arrival, a frightened
+    // timer or a collision) instead of moving every character by the frame
+    // time. A frame only decides how much time is consumed, so the state at
+    // each decision is the same one the search simulates.
+
+    function updatePositions() {
         const gs = gameState();
 
-        ghost.progress ??= 0;
-        ghost.progress += ghost.speed * dt;
+        for (const character of [gs.player, ...gs.ghosts]) {
+            character.px =
+                character.x + character.direction.x * character.progress;
+            character.py =
+                character.y + character.direction.y * character.progress;
+        }
+    }
+
+    function moveCharacterToEvent(character, speed, elapsedTime) {
+        if (character.direction.x === 0 && character.direction.y === 0) {
+            return false;
+        }
+
+        character.progress += speed * elapsedTime;
+
+        if (character.progress < 1 - SEARCH_EPSILON) {
+            return false;
+        }
+
+        character.progress = Math.max(0, character.progress - 1);
+
+        character.x = map.wrap(
+            character.x + character.direction.x,
+            map.getMapColumnCount(map.currentMap)
+        );
+
+        character.y = map.wrap(
+            character.y + character.direction.y,
+            map.getMapRowCount(map.currentMap)
+        );
+
+        return true;
+    }
+
+    function updateGhostFrightenedTimer(ghost, elapsedTime) {
+        if (!ghost.frightened) return;
+
+        ghost.frightenedTimer -= elapsedTime;
+
+        if (ghost.frightenedTimer <= 0) {
+            ghost.frightened = false;
+            ghost.frightenedTimer = undefined;
+            ghost.speed = GHOST_SPEED;
+        }
+    }
+
+    function recoverGhostAtHouse(ghost, arrived) {
+        if (!arrived || !ghost.eaten) return;
 
         const ghostHouses = map.buildGhostHouses(map.getCurrentMapDefinition());
 
-        while (ghost.progress >= 1) {
-            ghost.progress -= 1;
-
-            ghost.x = map.wrap(
-                ghost.x + ghost.direction.x,
-                map.getMapColumnCount(map.currentMap)
-            );
-
-            ghost.y = map.wrap(
-                ghost.y + ghost.direction.y,
-                map.getMapRowCount(map.currentMap)
-            );
-
-            if (
-                ghost.eaten &&
-                ghostHouses.some(house =>
-                    ghost.x === house.x && ghost.y === house.y
-                )
-            ) {
-                ghost.eaten = false;
-                ghost.frightened = false;
-                ghost.speed = GHOST_SPEED;
-            }
-
-            const possibleDirections = map.getPossibleDirections(ghost);
-
-            if (possibleDirections.length === 0) {
-                ghost.direction = { x: 0, y: 0 };
-                break;
-            }
-
-            if (ghost.eaten) {
-                ghost.needsDirection = true;
-                ghost.decisionAtCentre = true;
-                ghost.pendingDecisionTime =
-                    gs.time - ghost.progress / EATEN_GHOST_SPEED;
-                break;
-            }
-
-            if (getControlledGhost() === ghost) {
-                const desiredDirection = findPressedDirection(
-                    ghost.x,
-                    ghost.y
-                );
-
-                if (
-                    desiredDirection &&
-                    map.canMove(ghost.x, ghost.y, desiredDirection)
-                ) {
-                    ghost.direction = { ...desiredDirection };
-                } else if (!map.canMove(ghost.x, ghost.y, ghost.direction)) {
-                    ghost.direction = { ...possibleDirections[0] };
-                }
-
-                ghost.needsDirection = false;
-            } else {
-                ghost.needsDirection = true;
-                ghost.decisionAtCentre = true;
-                ghost.pendingDecisionTime =
-                    gs.time - ghost.progress / ghost.speed;
-            }
-
-            break;
-        }
-
-        ghost.px = ghost.x + ghost.direction.x * ghost.progress;
-        ghost.py = ghost.y + ghost.direction.y * ghost.progress;
-    }
-
-    // ============================================================
-    // COLLISIONS
-    // ============================================================
-
-    function checkGhostCollisions(ghosts, player) {
-        for (const ghost of ghosts) {
-            const dx = ghost.px - player.px;
-            const dy = ghost.py - player.py;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance >= GHOST_COLLISION_DISTANCE) {
-                continue;
-            }
-
-            if (ghost.eaten) continue;
-
-            if (ghost.frightened) {
-                eatGhost(ghost);
-                continue;
-            }
-
-            loseLife();
+        if (!ghostHouses.some(house =>
+            ghost.x === house.x && ghost.y === house.y
+        )) {
             return;
         }
+
+        ghost.eaten = false;
+        ghost.frightened = false;
+        ghost.frightenedTimer = undefined;
+        ghost.speed = GHOST_SPEED;
+        ghost.needsDirection = true;
+        ghost.decisionAtCentre = true;
+    }
+
+    function advanceCharactersToEvent(elapsedTime) {
+        const gs = gameState();
+
+        gs.time += elapsedTime;
+
+        const playerArrived = moveCharacterToEvent(
+            gs.player,
+            PACMAN_SPEED,
+            elapsedTime
+        );
+
+        if (playerArrived) {
+            gs.player.ready = true;
+        }
+
+        for (const ghost of gs.ghosts) {
+            const arrived = moveCharacterToEvent(
+                ghost,
+                ghost.speed,
+                elapsedTime
+            );
+
+            if (arrived) {
+                ghost.needsDirection = true;
+                ghost.decisionAtCentre = true;
+            }
+
+            updateGhostFrightenedTimer(ghost, elapsedTime);
+            recoverGhostAtHouse(ghost, arrived);
+        }
+
+        return playerArrived;
+    }
+
+    // Time at which the player and the ghost are close enough to collide,
+    // or Infinity when they never will.
+    function getCollisionTime(
+        player,
+        ghost,
+        playerVelocityX,
+        playerVelocityY
+    ) {
+        if (ghost.eaten) {
+            return Infinity;
+        }
+
+        const relativeX =
+            ghost.x +
+            ghost.direction.x * ghost.progress -
+            (player.x + player.direction.x * player.progress);
+
+        const relativeY =
+            ghost.y +
+            ghost.direction.y * ghost.progress -
+            (player.y + player.direction.y * player.progress);
+
+        const ghostSpeed = ghost.speed;
+
+        const relativeVelocityX =
+            ghost.direction.x * ghostSpeed - playerVelocityX;
+
+        const relativeVelocityY =
+            ghost.direction.y * ghostSpeed - playerVelocityY;
+
+        const relativeVelocitySquared =
+            relativeVelocityX * relativeVelocityX +
+            relativeVelocityY * relativeVelocityY;
+
+        const distanceSquared =
+            relativeX * relativeX +
+            relativeY * relativeY;
+
+        if (distanceSquared <= GHOST_COLLISION_DISTANCE ** 2) {
+            return 0;
+        }
+
+        if (relativeVelocitySquared === 0) {
+            return Infinity;
+        }
+
+        const linear =
+            2 * (
+                relativeX * relativeVelocityX +
+                relativeY * relativeVelocityY
+            );
+
+        const discriminant =
+            linear * linear -
+            4 * relativeVelocitySquared *
+            (distanceSquared - GHOST_COLLISION_DISTANCE ** 2);
+
+        if (discriminant < 0) {
+            return Infinity;
+        }
+
+        const collisionTime =
+            (-linear - Math.sqrt(discriminant)) /
+            (2 * relativeVelocitySquared);
+
+        return collisionTime >= 0 ? collisionTime : Infinity;
+    }
+
+    function getTimeToNextEvent(gs) {
+        let timeToNextEvent = Infinity;
+        let collisionedGhostIndex = -1;
+
+        const considerEvent = (time, ghostIndex = -1) => {
+            if (time < timeToNextEvent) {
+                timeToNextEvent = time;
+                collisionedGhostIndex = ghostIndex;
+                return;
+            }
+
+            if (
+                time === timeToNextEvent &&
+                ghostIndex >= 0 &&
+                collisionedGhostIndex < 0
+            ) {
+                collisionedGhostIndex = ghostIndex;
+            }
+        };
+
+        const considerArrival = (character, speed) => {
+            if (character.direction.x === 0 && character.direction.y === 0) {
+                return;
+            }
+
+            considerEvent(
+                Math.max(0, 1 - character.progress) / speed
+            );
+        };
+
+        if (!gs.player.ready) {
+            considerArrival(gs.player, PACMAN_SPEED);
+        }
+
+        const playerVelocityX = gs.player.direction.x * PACMAN_SPEED;
+        const playerVelocityY = gs.player.direction.y * PACMAN_SPEED;
+
+        for (let index = 0; index < gs.ghosts.length; index++) {
+            const ghost = gs.ghosts[index];
+
+            if (!ghost.needsDirection) {
+                considerArrival(ghost, ghost.speed);
+            }
+
+            if (ghost.frightened) {
+                considerEvent(ghost.frightenedTimer);
+            }
+
+            const collisionTime = getCollisionTime(
+                gs.player,
+                ghost,
+                playerVelocityX,
+                playerVelocityY
+            );
+
+            if (Number.isFinite(collisionTime)) {
+                considerEvent(collisionTime, index);
+            }
+        }
+
+        return {
+            timeToNextEvent,
+            collisionedGhostIndex
+        };
     }
 
     function eatGhost(ghost) {
@@ -491,6 +539,170 @@ function createGameRules(parameters = {}) {
     // UPDATE
     // ============================================================
 
+    function getReadyGhostIndices() {
+        const indices = [];
+
+        gameState().ghosts.forEach((ghost, index) => {
+            if (ghost.needsDirection) {
+                indices.push(index);
+            }
+        });
+
+        return indices;
+    }
+
+    // The player controls the selected ghost only while it is not eaten.
+    function getControlledGhostIndex() {
+        const ghost = getControlledGhost();
+
+        if (!ghost || ghost.eaten) {
+            return -1;
+        }
+
+        return gameState().ghosts.indexOf(ghost);
+    }
+
+    // The search breaks ties between the player and the ghosts with a hash
+    // of the state key. Reusing it here keeps the live decision order and
+    // the search predictions identical.
+    function getFirstActor(playerReady, readyGhostIndices) {
+        if (playerReady && readyGhostIndices.length === 0) {
+            return "player";
+        }
+
+        if (!playerReady && readyGhostIndices.length > 0) {
+            return "ghosts";
+        }
+
+        if (!playerReady) {
+            return null;
+        }
+
+        const searchState = intelligence.createCurrentGameSearchState(
+            intelligence.getCurrentSearchContext(),
+            readyGhostIndices,
+            true
+        );
+
+        return searchState.firstActor;
+    }
+
+    // Returns true when the player consumed its decision. A player blocked
+    // at a centre without input stays ready so a later key can start it.
+    function decidePlayer(readyGhostIndices) {
+        const gs = gameState();
+        const player = gs.player;
+        let direction = null;
+
+        if (state.selectedCharacter === "pacman") {
+            const desired = findPressedDirection(player.x, player.y);
+
+            if (desired && map.canMove(player.x, player.y, desired)) {
+                direction = desired;
+            }
+        } else {
+            const chosen = intelligence.choosePacmanDirection(
+                intelligence.getCurrentSearchContext(),
+                readyGhostIndices
+            );
+
+            if (chosen && map.canMove(player.x, player.y, chosen)) {
+                direction = chosen;
+            }
+        }
+
+        if (direction) {
+            setPlayerDirection(direction);
+            player.ready = false;
+
+            return true;
+        }
+
+        if (
+            (player.direction.x !== 0 || player.direction.y !== 0) &&
+            map.canMove(player.x, player.y, player.direction)
+        ) {
+            player.ready = false;
+
+            return true;
+        }
+
+        setPlayerDirection({ x: 0, y: 0 });
+        player.ready = true;
+
+        return false;
+    }
+
+    function decideGhosts(readyGhostIndices) {
+        const gs = gameState();
+        const controlledIndex = getControlledGhostIndex();
+        const automatedIndices = readyGhostIndices.filter(
+            index => index !== controlledIndex
+        );
+
+        const directions = automatedIndices.length > 0
+            ? intelligence.chooseGhostDirections(
+                intelligence.getCurrentSearchContext(),
+                automatedIndices
+            )
+            : new Map();
+
+        for (const index of readyGhostIndices) {
+            const ghost = gs.ghosts[index];
+
+            if (index === controlledIndex) {
+                const possible = getImmediateGhostDirections(ghost);
+                const desired = findPressedDirection(ghost.x, ghost.y);
+                const chosen = desired && possible.some(direction =>
+                    direction.x === desired.x &&
+                    direction.y === desired.y
+                )
+                    ? desired
+                    : { ...ghost.direction };
+
+                applyGhostDecision(ghost, chosen);
+            } else {
+                applyGhostDecision(ghost, directions.get(index));
+            }
+
+            ghost.needsDirection = false;
+        }
+    }
+
+    // Resolves every actor that must decide at the current event. Actors
+    // decide one at a time, in the same order the search uses, because a
+    // joint event becomes a chain of single-actor decisions.
+    function resolveDecisions() {
+        const gs = gameState();
+        const readyGhostIndices = getReadyGhostIndices();
+        const playerReady = gs.player.ready === true;
+
+        if (!playerReady && readyGhostIndices.length === 0) {
+            return false;
+        }
+
+        const firstActor = getFirstActor(playerReady, readyGhostIndices);
+        let resolved = false;
+
+        if (firstActor === "player" && playerReady) {
+            resolved = decidePlayer(readyGhostIndices);
+
+            if (!resolved && readyGhostIndices.length > 0) {
+                decideGhosts(readyGhostIndices);
+                resolved = true;
+            }
+        } else if (readyGhostIndices.length > 0) {
+            decideGhosts(readyGhostIndices);
+            resolved = true;
+        } else {
+            resolved = decidePlayer(readyGhostIndices);
+        }
+
+        updatePositions();
+
+        return resolved;
+    }
+
     function update(dt) {
         const gs = gameState();
 
@@ -507,77 +719,62 @@ function createGameRules(parameters = {}) {
 
         if (!gs.running) return;
 
-        gs.time += dt;
+        let remaining = Math.max(0, dt);
+        let iterations = 0;
 
-        for (const ghost of gs.ghosts) {
-            if (ghost.frightened) {
-                ghost.frightenedTimer -= dt;
-                if (ghost.frightenedTimer <= 0) {
-                    ghost.frightened = false;
-                    ghost.frightenedTimer = undefined;
-                    ghost.speed = GHOST_SPEED;
+        while (remaining > 0 && gs.running) {
+            if (++iterations > 10000) {
+                console.warn("[rules] event loop guard reached");
+                break;
+            }
+
+            if (resolveDecisions()) {
+                continue;
+            }
+
+            const {
+                timeToNextEvent,
+                collisionedGhostIndex
+            } = getTimeToNextEvent(gs);
+
+            if (!Number.isFinite(timeToNextEvent)) {
+                advanceCharactersToEvent(remaining);
+                remaining = 0;
+                break;
+            }
+
+            if (timeToNextEvent > remaining) {
+                advanceCharactersToEvent(remaining);
+                remaining = 0;
+                break;
+            }
+
+            const elapsed = Math.max(0, timeToNextEvent);
+
+            const playerArrived = advanceCharactersToEvent(elapsed);
+            remaining -= elapsed;
+
+            if (playerArrived) {
+                eatPellet();
+
+                if (!gs.running) {
+                    break;
+                }
+            }
+
+            if (collisionedGhostIndex >= 0) {
+                const ghost = gs.ghosts[collisionedGhostIndex];
+
+                if (ghost.frightened) {
+                    eatGhost(ghost);
+                } else if (!ghost.eaten) {
+                    loseLife();
+                    break;
                 }
             }
         }
 
-        updatePlayer(dt);
-
-        // Decisions caused by the power pellet take effect before the
-        // ghosts move this frame, so they react at the same instant they
-        // were frightened.
-        resolvePendingGhostDecisions(gs);
-
-        for (const ghost of gs.ghosts) {
-            updateGhost(ghost, dt);
-        }
-
-        // Decisions caused by reaching a cell centre are only known after
-        // moving the ghosts.
-        resolvePendingGhostDecisions(gs);
-
-        checkGhostCollisions(gs.ghosts, gs.player);
-    }
-
-    function resolvePendingGhostDecisions(gs) {
-        const pendingGhosts = gs.ghosts
-            .filter(ghost => ghost.needsDirection)
-            .sort((a, b) => a.pendingDecisionTime - b.pendingDecisionTime);
-        const decisionGroups = [];
-
-        for (const ghost of pendingGhosts) {
-            const lastGroup = decisionGroups[decisionGroups.length - 1];
-
-            if (
-                lastGroup &&
-                Math.abs(ghost.pendingDecisionTime - lastGroup.time) <= SEARCH_EPSILON
-            ) {
-                lastGroup.ghosts.push(ghost);
-            } else {
-                decisionGroups.push({
-                    time: ghost.pendingDecisionTime,
-                    ghosts: [ghost]
-                });
-            }
-        }
-
-        for (const group of decisionGroups) {
-            const readyGhostIndices = group.ghosts.map(
-                ghost => gs.ghosts.indexOf(ghost)
-            );
-
-            const directions = intelligence.chooseGhostDirections(
-                intelligence.getCurrentSearchContext(),
-                readyGhostIndices
-            );
-
-            for (const ghost of group.ghosts) {
-                const ghostIndex = gs.ghosts.indexOf(ghost);
-                applyGhostDecision(ghost, directions.get(ghostIndex));
-                ghost.needsDirection = false;
-                ghost.px = ghost.x + ghost.direction.x * ghost.progress;
-                ghost.py = ghost.y + ghost.direction.y * ghost.progress;
-            }
-        }
+        updatePositions();
     }
 
     // ============================================================
@@ -597,6 +794,7 @@ function createGameRules(parameters = {}) {
         player.progress = 0;
         player.direction = { x: 0, y: 0 };
         player.nextDirection = { x: 0, y: 0 };
+        player.ready = true;
 
         const ghostStarts = mapDefinition.ghostStarts;
 
@@ -614,6 +812,7 @@ function createGameRules(parameters = {}) {
             ghost.decisionAtCentre = true;
             ghost.eaten = false;
             ghost.frightened = false;
+            ghost.frightenedTimer = undefined;
             ghost.speed = GHOST_SPEED;
         });
     }
@@ -641,15 +840,6 @@ function createGameRules(parameters = {}) {
 
             state.statusElement.textContent = "";
             ui.updatePauseButton();
-
-            if (state.selectedCharacter !== "pacman") {
-                gs.player.nextDirection =
-                    intelligence.choosePacmanDirection(
-                        intelligence.getCurrentSearchContext()
-                    );
-            }
-
-            tryChangeDirection();
         }
     }
 
