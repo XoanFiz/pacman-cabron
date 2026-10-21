@@ -13,7 +13,7 @@ function createGameMap(parameters = {}) {
 
     const DIRECTIONS = geometry.DIRECTIONS;
 
-    // Late-bound runtime dependencies (wired by game.js once created).
+    // Late-bound runtime dependencies (wired by main.js once created).
     const runtime = {
         resetGame: () => undefined,
         getCurrentSearchContext: () => null,
@@ -584,12 +584,12 @@ function createGameMap(parameters = {}) {
     }
 
     // ============================================================
-    // MAP EDITOR
+    // MAP EDITOR / CALIBRATION
     // ============================================================
-
-    const CALIBRATION_TARGET_SAMPLES = 8;
-    const CALIBRATION_MAX_STEPS = 2048;
-    const CALIBRATION_REFERENCE_HORIZON_SECONDS = 2;
+    //
+    // Calibration runs in a Worker, i.e. in another thread with its own
+    // global scope. The message contract lives in calibration/protocol.js;
+    // this file is the main-thread side and must use its constants.
 
     function getMapSignature(definition) {
         return JSON.stringify({
@@ -605,13 +605,8 @@ function createGameMap(parameters = {}) {
             status: "pending",
             mapSignature: getMapSignature(definition),
             sampleCount: 0,
-            targetSamples: CALIBRATION_TARGET_SAMPLES,
-            parameters: {
-                targetSamples: CALIBRATION_TARGET_SAMPLES,
-                maxSteps: CALIBRATION_MAX_STEPS,
-                maxSamplesPerStep: 1,
-                referenceHorizonSeconds: CALIBRATION_REFERENCE_HORIZON_SECONDS
-            }
+            targetSamples: CALIBRATION_DEFAULT_OPTIONS.targetSamples,
+            parameters: { ...CALIBRATION_DEFAULT_OPTIONS }
         };
     }
 
@@ -730,7 +725,7 @@ function createGameMap(parameters = {}) {
                 return;
             }
 
-            const worker = new Worker("./src/calibration-worker.js");
+            const worker = new Worker("./src/calibration/worker.js");
 
             definition.calibration = {
                 ...definition.calibration,
@@ -738,14 +733,14 @@ function createGameMap(parameters = {}) {
                 parameters: {
                     ...definition.calibration?.parameters,
                     referenceHorizonSeconds:
-                        CALIBRATION_REFERENCE_HORIZON_SECONDS
+                        CALIBRATION_DEFAULT_OPTIONS.referenceHorizonSeconds
                 }
             };
 
             console.log(
                 `[calibration] ${definition.id}: started ` +
-                `(target ${CALIBRATION_TARGET_SAMPLES} samples, ` +
-                `max ${CALIBRATION_MAX_STEPS} steps).`
+                `(target ${CALIBRATION_DEFAULT_OPTIONS.targetSamples} samples, ` +
+                `max ${CALIBRATION_DEFAULT_OPTIONS.maxSteps} steps).`
             );
 
             let settled = false;
@@ -780,7 +775,7 @@ function createGameMap(parameters = {}) {
             worker.onmessage = event => {
                 const message = event.data;
 
-                if (message.type === "progress") {
+                if (message.type === CALIBRATION_MESSAGE.progress) {
                     const status = message.status;
                     definition.calibration = {
                         ...definition.calibration,
@@ -799,21 +794,21 @@ function createGameMap(parameters = {}) {
                     return;
                 }
 
-                if (message.type === "error") {
+                if (message.type === CALIBRATION_MESSAGE.error) {
                     finishWithError(message.error);
                     return;
                 }
 
-                if (message.type !== "result") return;
+                if (message.type !== CALIBRATION_MESSAGE.result) return;
 
                 const result = message.result;
                 const completed =
-                    message.status.finishReason === "target-samples";
+                    message.status.finishReason === CALIBRATION_FINISH_REASON.targetSamples;
 
                 console.log(
                     `[calibration] ${definition.id}: ` +
                     `${completed ? "completed" : "incomplete"} ` +
-                    `(${message.status.completed}/${CALIBRATION_TARGET_SAMPLES} samples, ` +
+                    `(${message.status.completed}/${CALIBRATION_DEFAULT_OPTIONS.targetSamples} samples, ` +
                     `reason: ${message.status.finishReason}).`
                 );
 
@@ -825,22 +820,16 @@ function createGameMap(parameters = {}) {
                     parameters: {
                         ...result.parameters,
                         referenceHorizonSeconds:
-                            CALIBRATION_REFERENCE_HORIZON_SECONDS
+                            CALIBRATION_DEFAULT_OPTIONS.referenceHorizonSeconds
                     }
                 });
             };
 
             worker.postMessage({
-                type: "start",
+                type: CALIBRATION_MESSAGE.start,
                 map: definition,
                 initialState,
-                options: {
-                    targetSamples: CALIBRATION_TARGET_SAMPLES,
-                    maxSteps: CALIBRATION_MAX_STEPS,
-                    maxSamplesPerStep: 1,
-                    referenceHorizonSeconds:
-                        CALIBRATION_REFERENCE_HORIZON_SECONDS
-                }
+                options: { ...CALIBRATION_DEFAULT_OPTIONS }
             });
         });
     }

@@ -1,11 +1,11 @@
 /* global importScripts, self */
 
 importScripts(
-    "./game-config.js",
-    "./game-map-geometry.js",
-    "./game-model.js",
+    "./config.js",
+    "./map-geometry.js",
+    "./model.js",
     "./randomized-best-first-minimax.js",
-    "./game-strategy.js"
+    "./strategy.js"
 );
 
 const config = createGameConfig();

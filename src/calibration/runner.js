@@ -1,4 +1,27 @@
 
+// ============================================================
+// RBFM CALIBRATION — generic engine
+// ============================================================
+//
+// This file knows nothing about Pac-Man. Everything game-specific is
+// injected through four adapters:
+//
+//   getStateKey(state)             -> stable string key for transpositions
+//   getNodeType(state)             -> "min" | "max"
+//   createSuccessorIterator(state) -> iterator of { state, value, duration, action }
+//   evaluateState(state)           -> number
+//
+// The runner drives the same RBFM used by the game, measures the error
+// between each node estimate and a bounded exact minimax (the reference
+// value) and exposes per-bucket corrections: f (mean error) and g
+// (variance) keyed by `${searchCount},${successors.length}`.
+//
+// Callers: src/calibration/worker.js (Pac-Man adapters) and any other
+// game that instantiates createGameStrategy.
+//
+// Load order: expects protocol.js in the same context for the
+// shared finishReason constants (target-samples / max-steps).
+
 function createRbfmCalibration(map) {
     if (!map) {
         throw new Error(
@@ -132,26 +155,8 @@ function createRbfmCalibration(map) {
     };
 }
 
-function* createRbfmSuccessorIterator(state) {
-    for (const profile of getSearchActionProfiles(state)) {
-        const nextState = profile.nextState;
-
-        yield {
-            state: nextState,
-            value: evaluateSearchState(nextState),
-            duration: nextState.time - state.time,
-            action: {
-                ghostDirections: profile.ghostDirections,
-                playerDirection: profile.playerDirection
-            }
-        };
-    }
-}
-
-
 function createRbfmCalibrationExperiment({
     calibration,
-    search,
     getReferenceValue,
     maxSamplesPerStep = 1
 }) {
@@ -241,82 +246,28 @@ function createRbfmCalibrationExperiment({
     };
 }
 
-///////////////////////////////////////////////////////
-// game adapters
-function getStateKey(state) {
-    return buildStateKey(state);
-}
-
-
-function* createSuccessorIterator(state) {
-    if (state.terminal) {
-        return;
-    }
-
-    if (state.firstActor === "ghosts") {
-        for (const ghostDirections of getSearchGhostActionProfiles(state)) {
-            const nextState = advanceSearchState(
-                state,
-                ghostDirections,
-                null
-            );
-
-            yield {
-                state: nextState,
-                value: evaluateSearchState(nextState),
-                duration: nextState.time - state.time,
-                action: {
-                    ghostDirections,
-                    playerDirection: null
-                }
-            };
-        }
-
-        return;
-    }
-
-    if (state.firstActor === "player") {
-        for (const playerDirection of getSearchPlayerActionProfiles(state)) {
-            if (!playerDirection) {
-                continue;
-            }
-
-            const nextState = advanceSearchState(
-                state,
-                [],
-                playerDirection
-            );
-
-            yield {
-                state: nextState,
-                value: evaluateSearchState(nextState),
-                duration: nextState.time - state.time,
-                action: {
-                    ghostDirections: [],
-                    playerDirection
-                }
-            };
-        }
-    }
-}
-
-
-function createRbfmCalibrationRunner({
-    map,
-    initialState,
-    targetSamples = 256,
-    maxSteps = 10000,
-    maxSamplesPerStep = 1,
-    getReferenceValue = state => calculateReferenceValue(state),
-    getStateKey: stateKey = getStateKey,
+function createReferenceValue({
+    getStateKey,
     getNodeType,
-    createSuccessorIterator: successorIterator = createSuccessorIterator,
-    evaluateState = evaluateSearchState
+    createSuccessorIterator,
+    evaluateState
 } = {}) {
+    if (
+        typeof getStateKey !== "function" ||
+        typeof getNodeType !== "function" ||
+        typeof createSuccessorIterator !== "function" ||
+        typeof evaluateState !== "function"
+    ) {
+        throw new TypeError(
+            "createReferenceValue requires getStateKey, getNodeType, createSuccessorIterator and evaluateState."
+        );
+    }
 
-    function calculateReferenceValue(
+    // Bounded exact minimax: leaves are evaluated with the injected
+    // evaluateState and the horizon is measured in the state's own time
+    // units. This is the reference the calibration compares against.
+    return function calculateReferenceValue(
         initialState,
-        getNodeType,
         horizonSeconds = 10
     ) {
         if (
@@ -337,7 +288,7 @@ function createRbfmCalibrationRunner({
                 state.terminal ||
                 state.time >= deadline
             ) {
-                return evaluateSearchState(state);
+                return evaluateState(state);
             }
 
             const key = `${getStateKey(state)}|${state.time}`;
@@ -348,7 +299,7 @@ function createRbfmCalibrationRunner({
 
             // Prevent infinite recursion if a zero-duration cycle exists.
             if (active.has(key)) {
-                return evaluateSearchState(state);
+                return evaluateState(state);
             }
 
             active.add(key);
@@ -372,7 +323,7 @@ function createRbfmCalibrationRunner({
 
                 const value = hasSuccessor
                     ? bestValue
-                    : evaluateSearchState(state);
+                    : evaluateState(state);
 
                 memo.set(key, value);
 
@@ -383,8 +334,22 @@ function createRbfmCalibrationRunner({
         }
 
         return minimax(initialState);
-    }
+    };
+}
 
+function createRbfmCalibrationRunner({
+    map,
+    initialState,
+    targetSamples = 256,
+    maxSteps = 10000,
+    maxSamplesPerStep = 1,
+    referenceHorizonSeconds = 10,
+    getReferenceValue = null,
+    getStateKey,
+    getNodeType,
+    createSuccessorIterator,
+    evaluateState
+} = {}) {
     if (!map) {
         throw new TypeError("createRbfmCalibrationRunner requires a map.");
     }
@@ -409,17 +374,46 @@ function createRbfmCalibrationRunner({
         );
     }
 
+    if (
+        typeof getStateKey !== "function" ||
+        typeof getNodeType !== "function" ||
+        typeof createSuccessorIterator !== "function" ||
+        typeof evaluateState !== "function"
+    ) {
+        throw new TypeError(
+            "createRbfmCalibrationRunner requires the adapters getStateKey, getNodeType, createSuccessorIterator and evaluateState."
+        );
+    }
+
+    if (
+        !Number.isFinite(referenceHorizonSeconds) ||
+        referenceHorizonSeconds < 0
+    ) {
+        throw new RangeError(
+            "referenceHorizonSeconds must be a finite non-negative number."
+        );
+    }
+
+    const calculateReferenceValue = createReferenceValue({
+        getStateKey,
+        getNodeType,
+        createSuccessorIterator,
+        evaluateState
+    });
+    const referenceValueFor = typeof getReferenceValue === "function"
+        ? getReferenceValue
+        : state => calculateReferenceValue(state, referenceHorizonSeconds);
+
     const calibration = createRbfmCalibration(map);
     const search = createRandomizedBestFirstMinimax({
-        getStateKey: stateKey,
+        getStateKey,
         getNodeType,
-        createSuccessorIterator: successorIterator,
+        createSuccessorIterator,
         onNodeVisit: calibration.onNodeVisit
     });
     const experiment = createRbfmCalibrationExperiment({
         calibration,
-        search,
-        getReferenceValue,
+        getReferenceValue: referenceValueFor,
         maxSamplesPerStep
     });
 
@@ -454,10 +448,10 @@ function createRbfmCalibrationRunner({
 
         if (status.completed >= targetSamples) {
             finished = true;
-            finishReason = "target-samples";
+            finishReason = CALIBRATION_FINISH_REASON.targetSamples;
         } else if (steps >= maxSteps) {
             finished = true;
-            finishReason = "max-steps";
+            finishReason = CALIBRATION_FINISH_REASON.maxSteps;
         }
 
         return status;

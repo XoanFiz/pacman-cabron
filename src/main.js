@@ -1,8 +1,8 @@
 (() => {
     const scripts = [
-        "locales.js", "game-config.js", "game-bindings.js", "game-model.js", "game-state.js", "game-map-storage.js", "game-map-geometry.js", "randomized-best-first-minimax.js", "calibration-runner.js", "game-map.js",
-        "game-strategy.js", "game-ai-controller.js", "game-rules.js", "game-renderer.js",
-        "game-ui.js", "game-editor.js", "game-input.js", "game-runtime.js"
+        "locales.js", "config.js", "bindings.js", "model.js", "state.js", "map-storage.js", "map-geometry.js", "randomized-best-first-minimax.js", "calibration/protocol.js", "map.js",
+        "strategy.js", "ai-controller.js", "rules.js", "renderer.js",
+        "ui.js", "editor.js", "input.js", "runtime.js"
     ];
 
     const loadScript = index => {

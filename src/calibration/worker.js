@@ -1,13 +1,32 @@
 /* global importScripts, self */
 
 importScripts(
-    "game-config.js",
-    "game-map-geometry.js",
-    "game-model.js",
-    "game-strategy.js",
-    "randomized-best-first-minimax.js",
-    "calibration-runner.js"
+    "protocol.js",
+    "../config.js",
+    "../map-geometry.js",
+    "../model.js",
+    "../strategy.js",
+    "../randomized-best-first-minimax.js",
+    "runner.js"
 );
+
+// ============================================================
+// CALIBRATION WORKER
+// ============================================================
+//
+// Runs in a dedicated thread. The only channel with the main thread is
+// postMessage; this worker's globals are private and never visible to the
+// page. The message contract (types, options, status/result shapes) is
+// declared in protocol.js.
+//
+// Responsibilities, in order:
+//   1. restore the structured-cloned request (map definition + state),
+//   2. build a game strategy,
+//   3. expose the four calibration adapters (the only Pac-Man-specific
+//      code in the calibration path),
+//   4. drive the generic runner and report progress/complete/result/error.
+//
+// No calibration algorithm lives here.
 
 const config = createGameConfig();
 const geometry = createGameMapGeometry();
@@ -50,27 +69,11 @@ function restoreState(state) {
     };
 }
 
-function runCalibration(request) {
-    const currentMap = restoreMap(request.map);
-    const strategy = createGameStrategy({
-        map: currentMap,
-        geometry,
-        model,
-        config,
-        rmfMinimax: createRandomizedBestFirstMinimax
-    });
-
-    // The calibration runner resolves several of its own adapter helpers
-    // (used inside calculateReferenceValue) from the global scope.
-    globalThis.buildStateKey = strategy.buildStateKey;
-    globalThis.evaluateSearchState = strategy.evaluateSearchState;
-    globalThis.advanceSearchState = strategy.advanceSearchState;
-    globalThis.getSearchGhostActionProfiles = strategy.getSearchGhostActionProfiles;
-    globalThis.getSearchPlayerActionProfiles = strategy.getSearchPlayerActionProfiles;
-
-    const initialState = restoreState(request.initialState);
-    const options = request.options;
-    const createSuccessorIterator = function* (state) {
+// Translates the game strategy into the four adapters the generic runner
+// understands. This is the only place where Pac-Man semantics leak into
+// the calibration machinery (node type orientation lives here).
+function createCalibrationAdapters(strategy) {
+    function* createSuccessorIterator(state) {
         for (const profile of strategy.getSearchActionProfiles(state)) {
             const nextState = strategy.advanceSearchState(
                 state,
@@ -85,22 +88,35 @@ function runCalibration(request) {
                 action: profile
             };
         }
+    }
+
+    return {
+        getStateKey: state => strategy.buildStateKey(state),
+        getNodeType: state => strategy.getNodeType(state),
+        createSuccessorIterator,
+        evaluateState: state => strategy.evaluateSearchState(state)
     };
+}
+
+function runCalibration(request) {
+    const currentMap = restoreMap(request.map);
+    const strategy = createGameStrategy({
+        map: currentMap,
+        geometry,
+        model,
+        config,
+        rmfMinimax: createRandomizedBestFirstMinimax
+    });
+    const options = normalizeCalibrationOptions(request.options);
 
     const runner = createRbfmCalibrationRunner({
         map: currentMap,
-        initialState,
+        initialState: restoreState(request.initialState),
         targetSamples: options.targetSamples,
         maxSteps: options.maxSteps,
         maxSamplesPerStep: options.maxSamplesPerStep,
-        getStateKey: strategy.buildStateKey,
-        getNodeType: strategy.getNodeType,
-        createSuccessorIterator,
-        evaluateState: strategy.evaluateSearchState,
-        getReferenceValue: state => calculateReferenceValue(
-            state,
-            options.referenceHorizonSeconds
-        )
+        referenceHorizonSeconds: options.referenceHorizonSeconds,
+        ...createCalibrationAdapters(strategy)
     });
 
     function step() {
@@ -109,12 +125,14 @@ function runCalibration(request) {
         try {
             status = runner.step();
         } catch (error) {
-            self.postMessage({ type: "error", error: String(error) });
+            self.postMessage({ type: CALIBRATION_MESSAGE.error, error: String(error) });
             return;
         }
 
         self.postMessage({
-            type: status.finished ? "complete" : "progress",
+            type: status.finished
+                ? CALIBRATION_MESSAGE.complete
+                : CALIBRATION_MESSAGE.progress,
             status
         });
 
@@ -124,7 +142,7 @@ function runCalibration(request) {
         }
 
         self.postMessage({
-            type: "result",
+            type: CALIBRATION_MESSAGE.result,
             status,
             result: runner.getResult()
         });
@@ -134,11 +152,11 @@ function runCalibration(request) {
 }
 
 self.onmessage = event => {
-    if (event.data?.type !== "start") return;
+    if (event.data?.type !== CALIBRATION_MESSAGE.start) return;
 
     try {
         runCalibration(event.data);
     } catch (error) {
-        self.postMessage({ type: "error", error: String(error) });
+        self.postMessage({ type: CALIBRATION_MESSAGE.error, error: String(error) });
     }
 };
