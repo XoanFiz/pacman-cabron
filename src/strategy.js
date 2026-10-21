@@ -1674,12 +1674,7 @@ function createGameStrategy(parameters = {}) {
     // tables are better than deterministic guesses. Buckets without data
     // fall back to the average observed deviation, and every deviation is
     // floored so the search never becomes fully deterministic.
-    function getCalibrationFallbackDeviation() {
-        // Buckets without observations use the base deviation, not zero.
-        return config.BASE_STD;
-    }
-
-    function getCalibrationDistribution(node, fallbackDeviation) {
+    function getCalibrationDistribution(node) {
         const calibration = map?.calibration;
 
         if (
@@ -1706,19 +1701,8 @@ function createGameStrategy(parameters = {}) {
                     config.CALIBRATION_MIN_STD,
                     Math.sqrt(Math.max(0, variance))
                 )
-                : fallbackDeviation
+                : config.BASE_STD
         };
-    }
-
-    function refreshRbfmDistributions() {
-        const fallbackDeviation = getCalibrationFallbackDeviation();
-
-        for (const node of rbfmSearch.nodes.values()) {
-            node.distribution = getCalibrationDistribution(
-                node,
-                fallbackDeviation
-            );
-        }
     }
 
     // The calibration is updated while the game runs (the worker reports
@@ -1733,7 +1717,6 @@ function createGameStrategy(parameters = {}) {
             }
             : undefined;
 
-        refreshRbfmDistributions();
     }
 
     function* createGameRbfmSuccessors(state) {
@@ -1803,6 +1786,7 @@ function createGameStrategy(parameters = {}) {
         getNodeType: getNodeType,
         createSuccessorIterator: createGameRbfmSuccessors,
         onWalkLimit: warnWalkLimit,
+        getDistribution: getCalibrationDistribution,
         maxExtendDepth: config.SEARCH_MAX_EXTEND_DEPTH
     });
 
@@ -1823,15 +1807,13 @@ function createGameStrategy(parameters = {}) {
             state.time
         );
 
-        refreshRbfmDistributions();
         return root;
     }
 
     function ensureExpanded(node) {
         if (!node.expansionComplete) {
             rbfmSearch.expandNode(node, node.state.time);
-            refreshRbfmDistributions();
-        }
+            }
     }
 
     function getBestAction(node) {
@@ -1846,11 +1828,9 @@ function createGameStrategy(parameters = {}) {
             return;
         }
 
-        refreshRbfmDistributions();
         rbfmSearch.rootDecision(
             rbfmSearch.root.state.time
         );
-        refreshRbfmDistributions();
     }
 
     function getFallbackGhostDirections(searchContext, indices) {
@@ -1960,8 +1940,7 @@ function createGameStrategy(parameters = {}) {
         const imported = rbfmSearch.importGraph(graph);
 
         if (imported) {
-            refreshRbfmDistributions();
-        }
+            }
 
         return imported;
     }

@@ -16,6 +16,7 @@ function createRandomizedBestFirstMinimax({
     createSuccessorIterator,
     onNodeVisit = null,
     onWalkLimit = null,
+    getDistribution = null,
     maxExtendDepth = 4096
 }) {
     if (typeof getStateKey !== "function") {
@@ -49,6 +50,15 @@ function createRandomizedBestFirstMinimax({
         );
     }
 
+    if (
+        getDistribution !== null &&
+        typeof getDistribution !== "function"
+    ) {
+        throw new TypeError(
+            "getDistribution must be a function or null."
+        );
+    }
+
     if (!Number.isInteger(maxExtendDepth) || maxExtendDepth <= 0) {
         throw new RangeError(
             "maxExtendDepth must be a positive integer."
@@ -71,7 +81,9 @@ function createRandomizedBestFirstMinimax({
             : Infinity;
 
         for (const edge of edges) {
-            const distribution = edge.child.distribution;
+            const distribution = getDistribution !== null
+                ? getDistribution(edge.child)
+                : edge.child.distribution;
 
             if (
                 !distribution ||
@@ -312,9 +324,13 @@ function createRandomizedBestFirstMinimax({
     // ========================================================
 
     function getComparableValue(node) {
-        return node.distribution &&
-            Number.isFinite(node.distribution.mean)
-            ? node.distribution.mean
+        const distribution = getDistribution !== null
+            ? getDistribution(node)
+            : node.distribution;
+
+        return distribution &&
+            Number.isFinite(distribution.mean)
+            ? distribution.mean
             : node.value;
     }
 
@@ -434,6 +450,37 @@ function createRandomizedBestFirstMinimax({
     // the path crossed a long chain or a cycle of already expanded nodes.
     // The walk is bounded and a revisited node stops it, keeping the current
     // static evaluation instead of expanding further.
+    // Picks a child not yet on the current path. This is what lets the walk
+    // escape a cycle instead of stopping at the first revisit; when every
+    // child is visited the node is a dead end and the static value stays.
+    function chooseUnvisitedChild(node, mode, visited) {
+        ensureSuccessorOrder(node);
+
+        if (node.successors.length === 0) {
+            return null;
+        }
+
+        if (mode === "improve") {
+            for (const edge of node.successors) {
+                if (!visited.has(edge.child)) {
+                    return edge;
+                }
+            }
+
+            return null;
+        }
+
+        const candidates = node.successors.filter(
+            edge => !visited.has(edge.child)
+        );
+
+        if (candidates.length === 0) {
+            return null;
+        }
+
+        return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
     function extend(node, mode, currentTime) {
         if (mode !== "improve" && mode !== "worsen") {
             throw new TypeError(
@@ -477,24 +524,16 @@ function createRandomizedBestFirstMinimax({
                 break;
             }
 
-            const edge = currentMode === "improve"
-                ? getBestChild(current)
-                : getRandomChild(current);
+            const edge = chooseUnvisitedChild(
+                current,
+                currentMode,
+                visited
+            );
 
-            if (edge === null) {
-                expandedNode = current;
-                break;
-            }
-
-            // End of the walkable tree: a revisited node or a path deeper
-            // than the hard limit. Keep the static evaluation and stop.
-            if (
-                visited.has(edge.child) ||
-                path.length >= maxExtendDepth
-            ) {
-                const reason = visited.has(edge.child)
-                    ? "cycle"
-                    : "depth";
+            // End of the walkable tree: every child was already visited or
+            // the path reached the hard limit. Keep the static evaluation.
+            if (edge === null || path.length >= maxExtendDepth) {
+                const reason = edge === null ? "cycle" : "depth";
 
                 safeguardCounts[reason]++;
 
