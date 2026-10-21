@@ -163,6 +163,12 @@ function createGameAiController(parameters = {}) {
     }
 
     function advanceSearch() {
+        // With a worker the main strategy is only a fallback; looking it up
+        // here would rebuild the map signature on every frame.
+        if (workerBridge?.ownsStrategyData) {
+            return;
+        }
+
         ensureStrategy().advanceSearch();
     }
 

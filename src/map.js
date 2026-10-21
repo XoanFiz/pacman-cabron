@@ -827,6 +827,7 @@ function createGameMap(parameters = {}) {
         return new Promise(resolve => {
             const worker = new Worker("./src/calibration/worker.js");
             let lastHeartbeatAt = Date.now();
+            let lastPersistAt = 0;
 
             definition.calibration = {
                 ...definition.calibration,
@@ -897,10 +898,17 @@ function createGameMap(parameters = {}) {
                         progress: status
                     };
 
-                    // Persist and hand the partial tables to the game only
-                    // when a new sample lands, not on every step.
+                    // Hand the partial tables to the game when a new sample
+                    // lands, but persist the maps at most every 10 seconds:
+                    // writing all maps on every sample stutters the game.
                     if (status.completed !== previousSampleCount) {
-                        void persistMaps();
+                        const now = Date.now();
+
+                        if (now - lastPersistAt >= 10000) {
+                            lastPersistAt = now;
+                            void persistMaps();
+                        }
+
                         notifyCalibration(definition);
                         console.log(
                             `[calibration] ${definition.id}: ` +

@@ -2168,6 +2168,54 @@ function createGameStrategy(parameters = {}) {
         ]));
     }
 
+    // Instant fallback used when the buffer misses and a worker owns the
+    // search: continue if possible, otherwise take the first legal move.
+    // It must never start a search on the main thread.
+    function getCheapGhostDirections(state, indices) {
+        const directions = new Map();
+
+        for (const index of indices) {
+            const ghost = state.ghosts[index];
+            const legal = getSearchDirections(state, ghost, true);
+            const continues = legal.find(direction =>
+                direction.x === ghost.direction.x &&
+                direction.y === ghost.direction.y
+            );
+            const first = legal.find(direction =>
+                direction.x !== 0 || direction.y !== 0
+            );
+
+            directions.set(
+                index,
+                continues
+                    ? { ...continues }
+                    : first
+                        ? { ...first }
+                        : { x: 0, y: 0 }
+            );
+        }
+
+        return directions;
+    }
+
+    function getCheapPlayerDirection(state) {
+        const player = state.player;
+        const legal = getSearchDirections(state, player, false);
+        const continues = legal.find(direction =>
+            direction.x === player.direction.x &&
+            direction.y === player.direction.y
+        );
+        const first = legal.find(direction =>
+            direction.x !== 0 || direction.y !== 0
+        );
+
+        return continues
+            ? { ...continues }
+            : first
+                ? { ...first }
+                : { ...player.direction };
+    }
+
     function chooseGhostDirections(
         searchContext,
         readyGhostIndices,
@@ -2195,6 +2243,11 @@ function createGameStrategy(parameters = {}) {
                 index,
                 { ...direction }
             ]));
+        }
+
+        // The worker owns the search: never run it on the main thread.
+        if (worker) {
+            return getCheapGhostDirections(state, readyGhostIndices);
         }
 
         const root = setSearchRootFromState(state);
@@ -2244,6 +2297,10 @@ function createGameStrategy(parameters = {}) {
 
         if (buffered?.playerDirection) {
             return { ...buffered.playerDirection };
+        }
+
+        if (worker) {
+            return getCheapPlayerDirection(state);
         }
 
         const root = setSearchRootFromState(state);
