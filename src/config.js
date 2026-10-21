@@ -1,4 +1,5 @@
 function createGameConfig() {
+    // TODO: remove configuration here that is not for the game rules. 
     return Object.freeze({
         CELL: 28,
         DOMAIN_ALPHA: 0.35,

@@ -110,6 +110,7 @@ function runCalibration(request) {
     const options = normalizeCalibrationOptions(request.options);
     const resume = normalizeCalibrationResume(request.resume);
     const strategyGraph = request.strategyGraph || null;
+    const assumed = request.assumed || null;
 
     if (strategyGraph) {
         strategy.importGraph(strategyGraph);
@@ -122,7 +123,8 @@ function runCalibration(request) {
         `[calibration worker] ${request.map.id}: start ` +
         `(target ${options.targetSamples}, max ${options.maxSteps} steps, ` +
         `resume ${resumeCount} sample(s), ` +
-        `graph ${strategyGraph ? strategyGraph.nodes.length : 0} node(s)).`
+        `graph ${strategyGraph ? strategyGraph.nodes.length : 0} node(s), ` +
+        `assumed ${assumed ? "yes" : "no"}).`
     );
 
     const runner = createRbfmCalibrationRunner({
@@ -135,6 +137,7 @@ function runCalibration(request) {
         referenceMaxStates: options.referenceMaxStates,
         minimumStandardDeviation: config.CALIBRATION_MIN_STD,
         priorStandardDeviation: config.BASE_STD,
+        assumedCalibration: assumed,
         lookupStateValue: strategyGraph
             ? (state, stateKey) => strategy.lookupGraphValue(state, stateKey)
             : null,

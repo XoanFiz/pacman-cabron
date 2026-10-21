@@ -748,7 +748,12 @@ function createGameMap(parameters = {}) {
     // Calibrates a single definition in the background. Returns a
     // promise that resolves with the final calibration object (never
     // rejects). `onProgress` receives the worker progress status.
-    function calibrateMap(definition, { onProgress } = {}) {
+    function calibrateMap(definition, {
+        onProgress,
+        useGraph = true,
+        fresh = false,
+        allowDriftRetry = true
+    } = {}) {
         if (calibrationInFlight.has(definition.id)) {
             return calibrationInFlight.get(definition.id);
         }
@@ -788,11 +793,20 @@ function createGameMap(parameters = {}) {
             }
 
             const worker = new Worker("./src/calibration/worker.js");
-            const resume = getCalibrationResume(definition);
+            const resume = fresh
+                ? { samples: {} }
+                : getCalibrationResume(definition);
             const resumeCount = Object.values(resume.samples)
                 .reduce((sum, errors) => sum + errors.length, 0);
-            const strategyGraph = typeof runtime.getStrategyGraph === "function"
+            const strategyGraph = useGraph &&
+                typeof runtime.getStrategyGraph === "function"
                 ? runtime.getStrategyGraph(definition.id)
+                : null;
+            const assumedCalibration = !fresh && definition.calibration?.f
+                ? {
+                    f: { ...definition.calibration.f },
+                    g: { ...(definition.calibration.g || {}) }
+                }
                 : null;
             let lastHeartbeatAt = Date.now();
 
@@ -812,7 +826,8 @@ function createGameMap(parameters = {}) {
                 `(target ${CALIBRATION_DEFAULT_OPTIONS.targetSamples} samples, ` +
                 `max ${CALIBRATION_DEFAULT_OPTIONS.maxSteps} steps, ` +
                 `resuming ${resumeCount} sample(s), ` +
-                `graph ${strategyGraph ? strategyGraph.nodes.length : 0} node(s)).`
+                `graph ${strategyGraph ? strategyGraph.nodes.length : 0} node(s), ` +
+                `assumed ${assumedCalibration ? "yes" : "no"}).`
             );
 
             let settled = false;
@@ -824,6 +839,7 @@ function createGameMap(parameters = {}) {
                 definition.calibration = calibration;
                 void persistMaps();
                 notifyCalibration(definition);
+                calibrationInFlight.delete(definition.id);
                 resolve(calibration);
             };
 
@@ -901,20 +917,23 @@ function createGameMap(parameters = {}) {
                 if (message.type !== CALIBRATION_MESSAGE.result) return;
 
                 const result = message.result;
+                const finishReason = message.status.finishReason;
                 const completed =
-                    message.status.finishReason === CALIBRATION_FINISH_REASON.targetSamples;
+                    finishReason === CALIBRATION_FINISH_REASON.targetSamples;
+                const drifted =
+                    finishReason === CALIBRATION_FINISH_REASON.drift;
 
                 console.log(
                     `[calibration] ${definition.id}: ` +
-                    `${completed ? "completed" : "incomplete"} ` +
+                    `${completed ? "completed" : drifted ? "drifted" : "incomplete"} ` +
                     `(${message.status.completed}/${CALIBRATION_DEFAULT_OPTIONS.targetSamples} samples, ` +
-                    `reason: ${message.status.finishReason}, ` +
+                    `reason: ${finishReason}, ` +
                     `${message.status.buckets} bucket(s), ` +
                     `${message.status.elapsedMs} ms).`
                 );
 
                 finish({
-                    status: completed ? "completed" : "incomplete",
+                    status: completed ? "completed" : drifted ? "drift" : "incomplete",
                     version: CALIBRATION_VERSION,
                     mapSignature: getMapSignature(definition),
                     completedAt: Date.now(),
@@ -925,6 +944,19 @@ function createGameMap(parameters = {}) {
                             CALIBRATION_DEFAULT_OPTIONS.referenceHorizonSeconds
                     }
                 });
+
+                if (drifted && allowDriftRetry) {
+                    console.warn(
+                        `[calibration] ${definition.id}: drift detected ` +
+                        `(p=${message.status.drift?.pValue}); recalibrating ` +
+                        "from an unexplored graph."
+                    );
+                    void calibrateMap(definition, {
+                        useGraph: false,
+                        fresh: true,
+                        allowDriftRetry: false
+                    });
+                }
             };
 
             worker.postMessage({
@@ -933,7 +965,8 @@ function createGameMap(parameters = {}) {
                 initialState,
                 options: { ...CALIBRATION_DEFAULT_OPTIONS },
                 resume,
-                strategyGraph
+                strategyGraph,
+                assumed: assumedCalibration
             });
         });
 

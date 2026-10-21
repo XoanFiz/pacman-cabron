@@ -52,8 +52,8 @@ function createGameRuntime(parameters = {}) {
 
         map.ensureMapCalibrated(map.getCurrentMapDefinition());
 
-        // Calibrate every other map definition in the background.
-        void map.calibrateAllMaps();
+        // Only the active map is calibrated here; every other map is
+        // calibrated when it becomes active.
 
         map.updateMapSelector();
         rules.resetGame();

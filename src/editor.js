@@ -558,6 +558,7 @@ function createGameEditor(parameters = {}) {
         }
         rules.resetGame();
         map.updateCharacterChoices();
+        void map.ensureMapCalibrated(map.getCurrentMapDefinition());
     });
 
     return {

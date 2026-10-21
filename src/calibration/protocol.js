@@ -31,7 +31,9 @@
 //
 // status (produced by runner.js) is:
 //   { steps, pending, completed, targetSamples, finished, finishReason,
-//     buckets, samples, elapsedMs, percent, etaMs }
+//     buckets, samples, elapsedMs, percent, etaMs, drift }
+// `drift` is { samples, windowSize, pValue, drifted }: the running
+// p-value test of the new samples against the assumed calibration.
 // `buckets` is how many calibration buckets have samples, `elapsedMs` is
 // the time spent in this run and `percent`/`etaMs` estimate how much is
 // left (etaMs is null while there is not enough data).
@@ -55,7 +57,8 @@ const CALIBRATION_MESSAGE = Object.freeze({
 
 const CALIBRATION_FINISH_REASON = Object.freeze({
     targetSamples: "target-samples",
-    maxSteps: "max-steps"
+    maxSteps: "max-steps",
+    drift: "drift"
 });
 
 // Bumped whenever the calibration payload or the search convention that
@@ -65,8 +68,10 @@ const CALIBRATION_VERSION = 2;
 // Used by the main thread to build the request and by the worker as the
 // fallback when a field is missing.
 const CALIBRATION_DEFAULT_OPTIONS = Object.freeze({
-    targetSamples: 8,
-    maxSteps: 2048,
+    // The drift monitor validates the last 50 samples; the extra samples
+    // let the test fire before the run would otherwise end.
+    targetSamples: 60,
+    maxSteps: 4096,
     maxSamplesPerStep: 1,
     // Two simulated seconds of exact minimax; the explored strategy graph
     // supplies values for the states it already knows and the state budget

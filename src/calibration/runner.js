@@ -192,9 +192,113 @@ function createRbfmCalibration(map, seed = {}) {
     };
 }
 
+// Two-sided normal tail, erf-based (Numerical Recipes approximation).
+function normalErfc(x) {
+    const z = Math.abs(x);
+    const t = 1 / (1 + 0.5 * z);
+    const chain =
+        1.00002368 +
+        t * (0.37409196 +
+        t * (0.09678418 +
+        t * (-0.18628806 +
+        t * (0.27886807 +
+        t * (-1.13520398 +
+        t * (1.48851587 +
+        t * (-0.82215223 +
+        t * 0.17087277)))))));
+    const y = t * Math.exp(-z * z - 1.26551223 + t * chain);
+
+    return x >= 0 ? y : 2 - y;
+}
+
+function twoSidedPValue(z) {
+    return Math.min(1, Math.max(0, normalErfc(Math.abs(z) / Math.SQRT2)));
+}
+
+// Fisher's method: -2 * sum(ln p) follows a chi-square with 2n degrees of
+// freedom, whose upper tail has this closed form for even degrees.
+function combinePValues(pValues) {
+    const n = pValues.length;
+
+    if (n === 0) {
+        return 1;
+    }
+
+    let statistic = 0;
+
+    for (const pValue of pValues) {
+        statistic += -2 * Math.log(Math.max(pValue, Number.MIN_VALUE));
+    }
+
+    const half = statistic / 2;
+    let term = 1;
+    let sum = 1;
+
+    for (let k = 1; k < n; k++) {
+        term *= half / k;
+        sum += term;
+    }
+
+    return Math.min(1, Math.exp(-half) * sum);
+}
+
+// Rolling window of observed errors tested against the assumed calibration.
+function createCalibrationDriftMonitor({
+    windowSize = 50,
+    confidence = 0.95
+} = {}) {
+    if (!Number.isInteger(windowSize) || windowSize <= 0) {
+        throw new RangeError("windowSize must be a positive integer.");
+    }
+
+    if (!Number.isFinite(confidence) || confidence <= 0 || confidence >= 1) {
+        throw new RangeError("confidence must be in (0, 1).");
+    }
+
+    const threshold = 1 - confidence;
+    let pValues = [];
+
+    function add({ error, mean, standardDeviation }) {
+        if (
+            !Number.isFinite(error) ||
+            !Number.isFinite(mean) ||
+            !Number.isFinite(standardDeviation) ||
+            standardDeviation <= 0
+        ) {
+            return false;
+        }
+
+        pValues.push(twoSidedPValue((error - mean) / standardDeviation));
+
+        if (pValues.length > windowSize) {
+            pValues.shift();
+        }
+
+        return true;
+    }
+
+    function getStatus() {
+        const pValue = combinePValues(pValues);
+
+        return {
+            samples: pValues.length,
+            windowSize,
+            pValue,
+            drifted: pValues.length >= windowSize && pValue < threshold
+        };
+    }
+
+    function reset() {
+        pValues = [];
+    }
+
+    return { add, getStatus, reset };
+}
+
 function createRbfmCalibrationExperiment({
     calibration,
     getReferenceValue,
+    onSample = null,
     maxSamplesPerStep = 1
 }) {
     const pending = new Map();
@@ -252,6 +356,14 @@ function createRbfmCalibrationExperiment({
 
                 if (!recorded) {
                     continue;
+                }
+
+                if (typeof onSample === "function") {
+                    onSample({
+                        error: referenceValue - node.value,
+                        searchCount: node.searchCount,
+                        childCount: node.successors.length
+                    });
                 }
 
                 completed.add(node);
@@ -420,6 +532,9 @@ function createRbfmCalibrationRunner({
     minimumStandardDeviation = 0,
     priorStandardDeviation = 0,
     lookupStateValue = null,
+    assumedCalibration = null,
+    driftWindowSize = 50,
+    driftConfidence = 0.95,
     getReferenceValue = null,
     seed = null,
     getStateKey,
@@ -489,6 +604,15 @@ function createRbfmCalibrationRunner({
         );
     }
 
+    if (
+        assumedCalibration !== null &&
+        typeof assumedCalibration !== "object"
+    ) {
+        throw new TypeError(
+            "assumedCalibration must be an object or null."
+        );
+    }
+
     const calculateReferenceValue = createReferenceValue({
         getStateKey,
         getNodeType,
@@ -501,6 +625,31 @@ function createRbfmCalibrationRunner({
         ? getReferenceValue
         : state => calculateReferenceValue(state, referenceHorizonSeconds);
 
+    const driftMonitor = createCalibrationDriftMonitor({
+        windowSize: driftWindowSize,
+        confidence: driftConfidence
+    });
+
+    function recordDriftSample({ error, searchCount, childCount }) {
+        if (!assumedCalibration) {
+            return;
+        }
+
+        const key = `${searchCount},${childCount}`;
+        const mean = Number(assumedCalibration.f?.[key]);
+        const variance = Number(assumedCalibration.g?.[key]);
+
+        if (!Number.isFinite(mean) || !Number.isFinite(variance)) {
+            return;
+        }
+
+        driftMonitor.add({
+            error,
+            mean,
+            standardDeviation: Math.sqrt(Math.max(0, variance))
+        });
+    }
+
     const calibration = createRbfmCalibration(map, seed || {});
     const search = createRandomizedBestFirstMinimax({
         getStateKey,
@@ -511,6 +660,7 @@ function createRbfmCalibrationRunner({
     const experiment = createRbfmCalibrationExperiment({
         calibration,
         getReferenceValue: referenceValueFor,
+        onSample: recordDriftSample,
         maxSamplesPerStep
     });
 
@@ -548,7 +698,10 @@ function createRbfmCalibrationRunner({
     function updateCompletion() {
         const status = experiment.getStatus();
 
-        if (status.completed >= targetSamples) {
+        if (driftMonitor.getStatus().drifted) {
+            finished = true;
+            finishReason = CALIBRATION_FINISH_REASON.drift;
+        } else if (status.completed >= targetSamples) {
             finished = true;
             finishReason = CALIBRATION_FINISH_REASON.targetSamples;
         } else if (steps >= maxSteps) {
@@ -600,7 +753,8 @@ function createRbfmCalibrationRunner({
             finished,
             finishReason,
             buckets: calibration.getBucketCount(),
-            samples: calibration.getSnapshot()
+            samples: calibration.getSnapshot(),
+            drift: driftMonitor.getStatus()
         };
     }
 
@@ -624,13 +778,15 @@ function createRbfmCalibrationRunner({
             finishReason: status.finishReason,
             f: Object.fromEntries(tables.f),
             g: Object.fromEntries(tables.g),
-            samples: status.samples
+            samples: status.samples,
+            drift: status.drift
         };
     }
 
     function reset() {
         calibration.clear();
         experiment.clear();
+        driftMonitor.reset();
         search.nodes.clear();
         search.root = null;
         steps = 0;
