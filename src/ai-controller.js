@@ -193,16 +193,30 @@ function createGameAiController(parameters = {}) {
         }
     }
 
-    function getStrategyValues(mapId) {
+    // The worker owns the value table. Without a worker the local strategy
+    // still provides it for the calibration request.
+    function persistStrategyValues(mapId) {
+        if (workerBridge?.persistData) {
+            return workerBridge.persistData(mapId);
+        }
+
         if (!strategy || !strategyMapId || strategyMapId !== mapId) {
-            return null;
+            return Promise.resolve(false);
         }
 
         try {
-            return strategy.exportValueTable();
+            return Promise.resolve(
+                map.saveStrategyValues(
+                    strategyMapId,
+                    strategy.exportValueTable()
+                )
+            ).catch(error => {
+                console.warn("Unable to save the strategy values.", error);
+                return false;
+            });
         } catch (error) {
             console.warn("Unable to export the strategy values.", error);
-            return null;
+            return Promise.resolve(false);
         }
     }
 
@@ -253,6 +267,6 @@ function createGameAiController(parameters = {}) {
         setCalibration,
         loadPersistedStrategyGraph,
         persistStrategyGraph,
-        getStrategyValues
+        persistStrategyValues
     };
 }

@@ -38,12 +38,25 @@
         let revision = 0;
         let receivedRevision = 0;
         let activeMapId = null;
+        let persistId = 0;
+        const persistRequests = new Map();
 
         worker.onmessage = event => {
             const message = event.data;
 
             if (message?.type === STRATEGY_BUFFER_MESSAGE.error) {
                 console.warn("Strategy worker failed.", message.error);
+                return;
+            }
+
+            if (message?.type === STRATEGY_BUFFER_MESSAGE.persisted) {
+                const resolve = persistRequests.get(message.requestId);
+
+                if (resolve) {
+                    persistRequests.delete(message.requestId);
+                    resolve(Boolean(message.saved));
+                }
+
                 return;
             }
 
@@ -90,8 +103,26 @@
                 });
             },
             persist() {
-                worker.postMessage({
-                    type: STRATEGY_BUFFER_MESSAGE.persist
+                void this.persistData();
+            },
+            persistData(mapId = null) {
+                return new Promise(resolve => {
+                    const requestId = ++persistId;
+                    const timeout = setTimeout(() => {
+                        persistRequests.delete(requestId);
+                        resolve(false);
+                    }, 5000);
+
+                    persistRequests.set(requestId, saved => {
+                        clearTimeout(timeout);
+                        resolve(saved);
+                    });
+
+                    worker.postMessage({
+                        type: STRATEGY_BUFFER_MESSAGE.persist,
+                        requestId,
+                        mapId
+                    });
                 });
             },
             getAction(mode, stateKey) {
@@ -175,7 +206,7 @@
             getCurrentSearchContext: intelligence.getCurrentSearchContext,
             createCurrentGameSearchState: intelligence.createCurrentGameSearchState,
             setCalibration: intelligence.setCalibration,
-            getStrategyValues: intelligence.getStrategyValues
+            persistStrategyValues: intelligence.persistStrategyValues
         });
 
         runtime.start();

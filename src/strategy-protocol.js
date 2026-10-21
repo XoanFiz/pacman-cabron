@@ -23,9 +23,14 @@
 //   }
 //
 // persist (main -> worker):
-//   { type }
-// Asks for an immediate save, used on pagehide. The worker also saves
-// periodically and before rebuilding the strategy for another map.
+//   { type, requestId?, mapId? }
+// Asks for an immediate save, used on pagehide and before starting a
+// calibration. With requestId the worker answers persisted once the
+// transaction has finished. The worker also saves periodically and
+// before rebuilding the strategy for another map.
+//
+// persisted (worker -> main):
+//   { type, requestId, saved }
 //
 // buffer (worker -> main):
 //   {
@@ -46,6 +51,7 @@
 const STRATEGY_BUFFER_MESSAGE = Object.freeze({
     anchor: "anchor",
     persist: "persist",
+    persisted: "persisted",
     buffer: "buffer",
     error: "error"
 });

@@ -90,37 +90,55 @@ async function loadPersistedGraph(definition) {
     }
 }
 
-// The worker is the owner of the explored graph, so it is also the one
-// that writes it. The main thread only persists as a no-worker fallback.
-function persistGraph() {
+// The worker is the owner of the explored graph and of its value table,
+// so it is also the one that writes both. The main thread only persists
+// as a no-worker fallback.
+function persistStrategyData(expectedMapId = null) {
     if (!strategy || !strategyMapId || !strategyMapSignature) {
-        return false;
+        return Promise.resolve(false);
+    }
+
+    if (expectedMapId && expectedMapId !== strategyMapId) {
+        return Promise.resolve(false);
     }
 
     try {
         const graph = strategy.exportGraph();
+        const values = strategy.exportValueTable();
+        const metadata = {
+            mapSignature: strategyMapSignature,
+            strategyVersion: STRATEGY_VERSION
+        };
 
         graphDirty = false;
 
-        void mapStorage.saveStrategyGraph(strategyMapId, graph, {
-            mapSignature: strategyMapSignature,
-            strategyVersion: STRATEGY_VERSION
-        }).catch(error => {
+        return Promise.all([
+            mapStorage.saveStrategyGraph(
+                strategyMapId,
+                graph,
+                metadata
+            ),
+            mapStorage.saveStrategyValues(
+                strategyMapId,
+                values,
+                metadata
+            )
+        ]).then(() => true).catch(error => {
             graphDirty = true;
             console.warn(
-                "[strategy worker] unable to save the strategy graph.",
+                "[strategy worker] unable to save the strategy data.",
                 error
             );
-        });
 
-        return true;
+            return false;
+        });
     } catch (error) {
         console.warn(
-            "[strategy worker] unable to export the strategy graph.",
+            "[strategy worker] unable to export the strategy data.",
             error
         );
 
-        return false;
+        return Promise.resolve(false);
     }
 }
 
@@ -133,7 +151,7 @@ function ensureStrategy(definition) {
 
     // The previous map's tree is saved before it is discarded.
     if (strategy) {
-        persistGraph();
+        void persistStrategyData();
     }
 
     strategySignature = signature;
@@ -154,7 +172,7 @@ function ensureStrategy(definition) {
 
 setInterval(() => {
     if (graphDirty) {
-        persistGraph();
+        void persistStrategyData();
     }
 }, STRATEGY_GRAPH_SAVE_INTERVAL_MS);
 
@@ -288,7 +306,18 @@ self.onmessage = event => {
     const message = event.data;
 
     if (message?.type === STRATEGY_BUFFER_MESSAGE.persist) {
-        persistGraph();
+        void persistStrategyData(message.mapId || null).then(saved => {
+            if (message.requestId === undefined) {
+                return;
+            }
+
+            self.postMessage({
+                type: STRATEGY_BUFFER_MESSAGE.persisted,
+                requestId: message.requestId,
+                saved
+            });
+        });
+
         return;
     }
 

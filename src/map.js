@@ -19,15 +19,15 @@ function createGameMap(parameters = {}) {
         getCurrentSearchContext: () => null,
         createCurrentGameSearchState: () => null,
         setCalibration: () => undefined,
-        getStrategyValues: () => null
+        persistStrategyValues: () => Promise.resolve(false)
     };
 
-    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState, setCalibration, getStrategyValues }) {
+    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState, setCalibration, persistStrategyValues }) {
         if (resetGame) runtime.resetGame = resetGame;
         if (getCurrentSearchContext) runtime.getCurrentSearchContext = getCurrentSearchContext;
         if (createCurrentGameSearchState) runtime.createCurrentGameSearchState = createCurrentGameSearchState;
         if (setCalibration) runtime.setCalibration = setCalibration;
-        if (getStrategyValues) runtime.getStrategyValues = getStrategyValues;
+        if (persistStrategyValues) runtime.persistStrategyValues = persistStrategyValues;
     }
 
     // ============================================================
@@ -810,15 +810,12 @@ function createGameMap(parameters = {}) {
                 g: { ...(definition.calibration.g || {}) }
             }
             : null;
-        const values = typeof runtime.getStrategyValues === "function"
-            ? runtime.getStrategyValues(definition.id)
-            : null;
-
         // The calibration worker reads the value table from IndexedDB, so
-        // it has to be committed before the worker starts.
-        if (values) {
+        // it has to be committed before the worker starts. The strategy
+        // worker owns the table; the no-worker fallback saves the local one.
+        if (typeof runtime.persistStrategyValues === "function") {
             try {
-                await saveStrategyValues(definition.id, values);
+                await runtime.persistStrategyValues(definition.id);
             } catch (error) {
                 console.warn(
                     `[calibration] ${definition.id}: unable to store the value table.`,
