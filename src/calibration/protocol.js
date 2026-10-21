@@ -19,7 +19,8 @@
 //     initialState, // strategy.createCurrentGameSearchState(...) output
 //     options,      // see normalizeCalibrationOptions()
 //     resume,       // optional partial results, see normalizeCalibrationResume()
-//     strategyGraph // optional explored graph used to deepen the reference
+// The explored strategy values are not sent: the worker reads the map's
+// value table from IndexedDB (strategy-values store) to deepen the reference.
 //   }
 //
 // Responses (worker -> main thread):

@@ -116,7 +116,7 @@
             getCurrentSearchContext: intelligence.getCurrentSearchContext,
             createCurrentGameSearchState: intelligence.createCurrentGameSearchState,
             setCalibration: intelligence.setCalibration,
-            getStrategyGraph: intelligence.getStrategyGraph
+            getStrategyValues: intelligence.getStrategyValues
         });
 
         runtime.start();
@@ -125,9 +125,7 @@
             intelligence.persistStrategyGraph();
         });
 
-        window.setInterval(() => {
-            intelligence.persistStrategyGraph();
-        }, 60000);
+
         window.PACMAN_GAME = { config, state, map, intelligence, rules, ui, renderer, editor, runtime };
     }
 

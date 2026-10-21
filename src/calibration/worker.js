@@ -7,6 +7,7 @@ importScripts(
     "../model.js",
     "../strategy.js",
     "../randomized-best-first-minimax.js",
+    "../map-storage.js",
     "runner.js"
 );
 
@@ -31,6 +32,7 @@ importScripts(
 const config = createGameConfig();
 const geometry = createGameMapGeometry();
 const model = createGameModel();
+const mapStorage = createGameMapStorage();
 
 function restoreMap(definition) {
     return {
@@ -98,7 +100,7 @@ function createCalibrationAdapters(strategy) {
     };
 }
 
-function runCalibration(request) {
+async function runCalibration(request) {
     const currentMap = restoreMap(request.map);
     const strategy = createGameStrategy({
         map: currentMap,
@@ -109,12 +111,42 @@ function runCalibration(request) {
     });
     const options = normalizeCalibrationOptions(request.options);
     const resume = normalizeCalibrationResume(request.resume);
-    const strategyGraph = request.strategyGraph || null;
     const assumed = request.assumed || null;
 
-    if (strategyGraph) {
-        strategy.importGraph(strategyGraph);
+    let valueTable = null;
+
+    try {
+        const record = await mapStorage.loadStrategyValues(request.map.id);
+
+        if (record?.values) {
+            const signature = JSON.stringify({
+                tiles: currentMap.tiles,
+                edges: [...currentMap.edges].sort(),
+                playerStart: currentMap.playerStart,
+                ghostStarts: currentMap.ghostStarts
+            });
+
+            if (
+                record.mapSignature === signature &&
+                record.calibrationVersion === CALIBRATION_VERSION
+            ) {
+                valueTable = record.values;
+            }
+        }
+    } catch (error) {
+        console.warn(
+            "[calibration worker] unable to read the strategy values.",
+            error
+        );
     }
+
+    const lookupStateValue = valueTable
+        ? (state, stateKey) => {
+            const value = valueTable[stateKey];
+
+            return Number.isFinite(value) ? value : null;
+        }
+        : null;
     const startedAt = Date.now();
     const resumeCount = Object.values(resume.samples)
         .reduce((sum, errors) => sum + errors.length, 0);
@@ -123,7 +155,7 @@ function runCalibration(request) {
         `[calibration worker] ${request.map.id}: start ` +
         `(target ${options.targetSamples}, max ${options.maxSteps} steps, ` +
         `resume ${resumeCount} sample(s), ` +
-        `graph ${strategyGraph ? strategyGraph.nodes.length : 0} node(s), ` +
+        `values ${valueTable ? Object.keys(valueTable).length : 0}, ` +
         `assumed ${assumed ? "yes" : "no"}).`
     );
 
@@ -138,9 +170,7 @@ function runCalibration(request) {
         minimumStandardDeviation: config.CALIBRATION_MIN_STD,
         priorStandardDeviation: config.BASE_STD,
         assumedCalibration: assumed,
-        lookupStateValue: strategyGraph
-            ? (state, stateKey) => strategy.lookupGraphValue(state, stateKey)
-            : null,
+        lookupStateValue,
         seed: resume,
         ...createCalibrationAdapters(strategy)
     });
@@ -234,9 +264,10 @@ function runCalibration(request) {
 self.onmessage = event => {
     if (event.data?.type !== CALIBRATION_MESSAGE.start) return;
 
-    try {
-        runCalibration(event.data);
-    } catch (error) {
-        self.postMessage({ type: CALIBRATION_MESSAGE.error, error: String(error) });
-    }
+    runCalibration(event.data).catch(error => {
+        self.postMessage({
+            type: CALIBRATION_MESSAGE.error,
+            error: String(error)
+        });
+    });
 };

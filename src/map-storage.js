@@ -1,13 +1,17 @@
 function createGameMapStorage({
     databaseName = "pacman-cabron",
-    databaseVersion = 2
+    databaseVersion = 3
 } = {}) {
+    const root = typeof self !== "undefined"
+        ? self
+        : (typeof window !== "undefined" ? window : null);
     const MAP_STORE = "maps";
     const METADATA_STORE = "metadata";
     const STRATEGY_STORE = "strategy-graphs";
+    const STRATEGY_VALUES_STORE = "strategy-values";
 
     function isAvailable() {
-        return typeof window !== "undefined" && "indexedDB" in window;
+        return Boolean(root) && "indexedDB" in root;
     }
 
     function requestAsPromise(request) {
@@ -23,7 +27,7 @@ function createGameMapStorage({
         }
 
         return new Promise((resolve, reject) => {
-            const request = window.indexedDB.open(databaseName, databaseVersion);
+            const request = root.indexedDB.open(databaseName, databaseVersion);
 
             request.onupgradeneeded = () => {
                 const database = request.result;
@@ -38,6 +42,10 @@ function createGameMapStorage({
 
                 if (!database.objectStoreNames.contains(STRATEGY_STORE)) {
                     database.createObjectStore(STRATEGY_STORE, { keyPath: "mapId" });
+                }
+
+                if (!database.objectStoreNames.contains(STRATEGY_VALUES_STORE)) {
+                    database.createObjectStore(STRATEGY_VALUES_STORE, { keyPath: "mapId" });
                 }
             };
 
@@ -180,11 +188,75 @@ function createGameMapStorage({
         }
     }
 
+    async function loadStrategyValues(mapId) {
+        const database = await openDatabase();
+
+        if (!database) {
+            return null;
+        }
+
+        try {
+            const transaction = database.transaction(
+                STRATEGY_VALUES_STORE,
+                "readonly"
+            );
+            const request = transaction
+                .objectStore(STRATEGY_VALUES_STORE)
+                .get(mapId);
+
+            return await requestAsPromise(request);
+        } finally {
+            database.close();
+        }
+    }
+
+    async function saveStrategyValues(mapId, values, metadata = {}) {
+        const database = await openDatabase();
+
+        if (!database) {
+            return false;
+        }
+
+        try {
+            await new Promise((resolve, reject) => {
+                const transaction = database.transaction(
+                    STRATEGY_VALUES_STORE,
+                    "readwrite"
+                );
+
+                transaction.objectStore(STRATEGY_VALUES_STORE).put({
+                    mapId,
+                    ...metadata,
+                    values,
+                    savedAt: Date.now()
+                });
+
+                transaction.oncomplete = resolve;
+                transaction.onerror = () => reject(
+                    transaction.error || new Error(
+                        "Unable to save the strategy values in IndexedDB."
+                    )
+                );
+                transaction.onabort = () => reject(
+                    transaction.error || new Error(
+                        "IndexedDB strategy values transaction aborted."
+                    )
+                );
+            });
+
+            return true;
+        } finally {
+            database.close();
+        }
+    }
+
     return {
         isAvailable,
         load,
         save,
         loadStrategyGraph,
-        saveStrategyGraph
+        saveStrategyGraph,
+        loadStrategyValues,
+        saveStrategyValues
     };
 }

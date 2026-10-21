@@ -19,15 +19,15 @@ function createGameMap(parameters = {}) {
         getCurrentSearchContext: () => null,
         createCurrentGameSearchState: () => null,
         setCalibration: () => undefined,
-        getStrategyGraph: () => null
+        getStrategyValues: () => null
     };
 
-    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState, setCalibration, getStrategyGraph }) {
+    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState, setCalibration, getStrategyValues }) {
         if (resetGame) runtime.resetGame = resetGame;
         if (getCurrentSearchContext) runtime.getCurrentSearchContext = getCurrentSearchContext;
         if (createCurrentGameSearchState) runtime.createCurrentGameSearchState = createCurrentGameSearchState;
         if (setCalibration) runtime.setCalibration = setCalibration;
-        if (getStrategyGraph) runtime.getStrategyGraph = getStrategyGraph;
+        if (getStrategyValues) runtime.getStrategyValues = getStrategyValues;
     }
 
     // ============================================================
@@ -748,18 +748,27 @@ function createGameMap(parameters = {}) {
     // Calibrates a single definition in the background. Returns a
     // promise that resolves with the final calibration object (never
     // rejects). `onProgress` receives the worker progress status.
-    function calibrateMap(definition, {
-        onProgress,
-        useGraph = true,
-        fresh = false,
-        allowDriftRetry = true
-    } = {}) {
+    function calibrateMap(definition, options = {}) {
         if (calibrationInFlight.has(definition.id)) {
             return calibrationInFlight.get(definition.id);
         }
 
-        const calibrationPromise = new Promise(resolve => {
-            if (typeof Worker !== "function") {
+        const calibrationPromise = calibrateMapRun(definition, options);
+
+        calibrationInFlight.set(definition.id, calibrationPromise);
+        calibrationPromise.finally(() => {
+            calibrationInFlight.delete(definition.id);
+        });
+
+        return calibrationPromise;
+    }
+
+    async function calibrateMapRun(definition, {
+        onProgress,
+        fresh = false,
+        allowDriftRetry = true
+    } = {}) {
+        if (typeof Worker !== "function") {
                 definition.calibration = {
                     ...definition.calibration,
                     status: "error",
@@ -769,8 +778,7 @@ function createGameMap(parameters = {}) {
                     `[calibration] ${definition.id}: Web Worker unavailable.`
                 );
                 void persistMaps();
-                resolve(definition.calibration);
-                return;
+                return definition.calibration;
             }
 
             let initialState;
@@ -788,26 +796,39 @@ function createGameMap(parameters = {}) {
                     error
                 );
                 void persistMaps();
-                resolve(definition.calibration);
-                return;
+                return definition.calibration;
             }
 
+        const resume = fresh
+            ? { samples: {} }
+            : getCalibrationResume(definition);
+        const resumeCount = Object.values(resume.samples)
+            .reduce((sum, errors) => sum + errors.length, 0);
+        const assumedCalibration = !fresh && definition.calibration?.f
+            ? {
+                f: { ...definition.calibration.f },
+                g: { ...(definition.calibration.g || {}) }
+            }
+            : null;
+        const values = typeof runtime.getStrategyValues === "function"
+            ? runtime.getStrategyValues(definition.id)
+            : null;
+
+        // The calibration worker reads the value table from IndexedDB, so
+        // it has to be committed before the worker starts.
+        if (values) {
+            try {
+                await saveStrategyValues(definition.id, values);
+            } catch (error) {
+                console.warn(
+                    `[calibration] ${definition.id}: unable to store the value table.`,
+                    error
+                );
+            }
+        }
+
+        return new Promise(resolve => {
             const worker = new Worker("./src/calibration/worker.js");
-            const resume = fresh
-                ? { samples: {} }
-                : getCalibrationResume(definition);
-            const resumeCount = Object.values(resume.samples)
-                .reduce((sum, errors) => sum + errors.length, 0);
-            const strategyGraph = useGraph &&
-                typeof runtime.getStrategyGraph === "function"
-                ? runtime.getStrategyGraph(definition.id)
-                : null;
-            const assumedCalibration = !fresh && definition.calibration?.f
-                ? {
-                    f: { ...definition.calibration.f },
-                    g: { ...(definition.calibration.g || {}) }
-                }
-                : null;
             let lastHeartbeatAt = Date.now();
 
             definition.calibration = {
@@ -826,7 +847,7 @@ function createGameMap(parameters = {}) {
                 `(target ${CALIBRATION_DEFAULT_OPTIONS.targetSamples} samples, ` +
                 `max ${CALIBRATION_DEFAULT_OPTIONS.maxSteps} steps, ` +
                 `resuming ${resumeCount} sample(s), ` +
-                `graph ${strategyGraph ? strategyGraph.nodes.length : 0} node(s), ` +
+                `values ${values ? Object.keys(values).length : 0}, ` +
                 `assumed ${assumedCalibration ? "yes" : "no"}).`
             );
 
@@ -952,7 +973,6 @@ function createGameMap(parameters = {}) {
                         "from an unexplored graph."
                     );
                     void calibrateMap(definition, {
-                        useGraph: false,
                         fresh: true,
                         allowDriftRetry: false
                     });
@@ -965,17 +985,9 @@ function createGameMap(parameters = {}) {
                 initialState,
                 options: { ...CALIBRATION_DEFAULT_OPTIONS },
                 resume,
-                strategyGraph,
                 assumed: assumedCalibration
             });
         });
-
-        calibrationInFlight.set(definition.id, calibrationPromise);
-        calibrationPromise.finally(() => {
-            calibrationInFlight.delete(definition.id);
-        });
-
-        return calibrationPromise;
     }
 
     // Definitions known to the game, deduplicated by id (map.maps already
@@ -1180,6 +1192,16 @@ function createGameMap(parameters = {}) {
         });
     }
 
+    function saveStrategyValues(mapId, values) {
+        const definition = map.maps.find(item => item.id === mapId) ||
+            getCurrentMapDefinition();
+
+        return mapStorage.saveStrategyValues(mapId, values, {
+            mapSignature: getMapSignature(definition),
+            calibrationVersion: CALIBRATION_VERSION
+        });
+    }
+
     function buildGraph(definition = map.currentMap) {
         return geometry.buildGraph(
             definition,
@@ -1230,6 +1252,7 @@ function createGameMap(parameters = {}) {
         findReferenceCalibration,
         loadStrategyGraph,
         saveStrategyGraph,
+        saveStrategyValues,
         buildGraph,
         canMove
     };

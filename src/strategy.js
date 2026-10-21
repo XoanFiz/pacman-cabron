@@ -1922,14 +1922,8 @@ function createGameStrategy(parameters = {}) {
             ? { ...action.playerDirection }
             : { ...searchContext.player.direction };
     }
-    function lookupGraphValue(state, stateKey = buildStateKey(state)) {
-        const node = rbfmSearch.nodes.get(stateKey);
-
-        if (!node || !node.expansionComplete) {
-            return null;
-        }
-
-        return Number.isFinite(node.value) ? node.value : null;
+    function exportValueTable() {
+        return rbfmSearch.exportValueTable();
     }
 
     function exportGraph() {
@@ -1962,6 +1956,6 @@ function createGameStrategy(parameters = {}) {
         setCalibration,
         exportGraph,
         importGraph,
-        lookupGraphValue
+        exportValueTable
     }
 }

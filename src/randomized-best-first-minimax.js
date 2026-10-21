@@ -685,6 +685,23 @@ function createRandomizedBestFirstMinimax({
         };
     };
 
+    // Compact table for consumers that only need the explored values (for
+    // example the calibration reference): stateKey -> value, no states.
+    search.exportValueTable = function () {
+        const table = {};
+
+        for (const node of nodes.values()) {
+            if (
+                node.expansionComplete &&
+                Number.isFinite(node.value)
+            ) {
+                table[node.key] = node.value;
+            }
+        }
+
+        return table;
+    };
+
     search.importGraph = function (graph) {
         if (
             !graph ||
