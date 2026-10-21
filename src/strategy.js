@@ -955,24 +955,32 @@ function createGameStrategy(parameters = {}) {
     // movement progress and decision readiness, distinguishing states
     // whose future transitions may differ despite sharing cell positions.
     function buildStateKey(state) {
-        const characterKey = character => [
-            character.x,
-            character.y,
-            character.direction.x,
-            character.direction.y,
-            Number(character.progress.toFixed(5)),
-            Boolean(character.frightened),
-            Number.isFinite(character.frightenedTimer)
-                ? Number(character.frightenedTimer.toFixed(5))
-                : null,
-            Boolean(character.eaten),
-            character.nextDirection
-                ? character.nextDirection.x
-                : null,
-            character.nextDirection
-                ? character.nextDirection.y
-                : null
-        ].join(",");
+        // A character that is ready to choose at a cell centre is about to
+        // replace its direction, so the current one does not affect its
+        // transitions and is left out of the key. If it is ready while still
+        // between cells (a power pellet makes ghosts decide there), the
+        // direction is kept because the position depends on it.
+        const characterKey = (character, ready) => {
+            const atCentre = ready && character.progress === 0;
+            const nextDirection = atCentre
+                ? null
+                : character.nextDirection;
+
+            return [
+                character.x,
+                character.y,
+                atCentre ? null : character.direction.x,
+                atCentre ? null : character.direction.y,
+                Number(character.progress.toFixed(5)),
+                Boolean(character.frightened),
+                Number.isFinite(character.frightenedTimer)
+                    ? Number(character.frightenedTimer.toFixed(5))
+                    : null,
+                Boolean(character.eaten),
+                nextDirection ? nextDirection.x : null,
+                nextDirection ? nextDirection.y : null
+            ].join(",");
+        };
 
         // I do not include time in the key: the domain evaluation uses the arrival time relative to the state's timestamp, 
         // and the remaining fear time is already represented within each ghost. This allows for the sharing of equivalent 
@@ -982,8 +990,10 @@ function createGameStrategy(parameters = {}) {
             state.lives,
             state.terminal,
             state.controlledGhostIndex,
-            characterKey(state.player),
-            state.ghosts.map(characterKey),
+            characterKey(state.player, state.readyPlayer),
+            state.ghosts.map((ghost, index) =>
+                characterKey(ghost, state.readyGhosts[index])
+            ),
             state.readyPlayer,
             state.readyGhosts
         ]);
