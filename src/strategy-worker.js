@@ -1,6 +1,7 @@
 /* global importScripts, self */
 
 importScripts(
+    "./calibration/protocol.js",
     "./config.js",
     "./map-geometry.js",
     "./model.js",
