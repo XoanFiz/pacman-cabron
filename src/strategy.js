@@ -961,16 +961,21 @@ function createGameStrategy(parameters = {}) {
         // between cells (a power pellet makes ghosts decide there), the
         // direction is kept because the position depends on it.
         const characterKey = (character, ready) => {
-            const atCentre = ready && character.progress === 0;
-            const nextDirection = atCentre
+            // A character that is about to choose at a cell centre replaces
+            // its direction, so the current one does not affect it. Between
+            // cells the position and the continue option still depend on it,
+            // so it is kept for those decisions.
+            const decidesAtCentre =
+                ready && character.decisionAtCentre !== false;
+            const nextDirection = decidesAtCentre
                 ? null
                 : character.nextDirection;
 
             return [
                 character.x,
                 character.y,
-                atCentre ? null : character.direction.x,
-                atCentre ? null : character.direction.y,
+                decidesAtCentre ? null : character.direction.x,
+                decidesAtCentre ? null : character.direction.y,
                 Number(character.progress.toFixed(5)),
                 Boolean(character.frightened),
                 Number.isFinite(character.frightenedTimer)
@@ -978,7 +983,8 @@ function createGameStrategy(parameters = {}) {
                     : null,
                 Boolean(character.eaten),
                 nextDirection ? nextDirection.x : null,
-                nextDirection ? nextDirection.y : null
+                nextDirection ? nextDirection.y : null,
+                ready ? Boolean(character.decisionAtCentre !== false) : null
             ].join(",");
         };
 
@@ -1085,8 +1091,24 @@ function createGameStrategy(parameters = {}) {
     // The human-controlled ghost is moved by the player: its next
     // direction is not known before it reaches a cell centre, so the
     // search treats it like any other ghost.
+    function isSearchDecidingBetweenCells(ghost) {
+        return ghost.progress > 0 && ghost.decisionAtCentre === false;
+    }
+
     function getSearchGhostDirections(state, index) {
-        return getSearchDirections(state, state.ghosts[index], true);
+        const ghost = state.ghosts[index];
+
+        // A ghost that decides between cells, as happens when Pac-Man eats
+        // a power pellet, can only continue along its corridor or turn
+        // back. Sideways turns are not physically possible there.
+        if (isSearchDecidingBetweenCells(ghost)) {
+            return [
+                { ...ghost.direction },
+                { x: -ghost.direction.x, y: -ghost.direction.y }
+            ];
+        }
+
+        return getSearchDirections(state, ghost, true);
     }
 
     // Reverses a ghost's movement without teleporting it to a cell center.
@@ -1164,6 +1186,13 @@ function createGameStrategy(parameters = {}) {
             }
 
             setSearchGhostState(ghost, "frightened");
+
+            // A ghost that arrived at a cell centre at this same event
+            // keeps its centre decision, where every direction is legal.
+            if (!state.readyGhosts[ghostIndex]) {
+                ghost.decisionAtCentre = false;
+            }
+
             state.readyGhosts[ghostIndex] = true;
         }
     }
@@ -1214,6 +1243,7 @@ function createGameStrategy(parameters = {}) {
                 nextDirection: { ...start.direction },
                 progress: 0,
                 needsDirection: false,
+                decisionAtCentre: true,
                 eaten: false,
                 frightened: false,
                 frightenedTimer: undefined,
@@ -1428,7 +1458,24 @@ function createGameStrategy(parameters = {}) {
                     );
                 }
 
-                next.ghosts[index].direction = { ...direction };
+                const ghost = next.ghosts[index];
+                const previous = state.ghosts[index];
+                const continues =
+                    direction.x === ghost.direction.x &&
+                    direction.y === ghost.direction.y;
+                const reverses =
+                    direction.x === -ghost.direction.x &&
+                    direction.y === -ghost.direction.y;
+
+                if (reverses && previous.progress > 0) {
+                    reverseSearchGhost(ghost);
+                } else if (
+                    !isSearchDecidingBetweenCells(previous) ||
+                    continues
+                ) {
+                    ghost.direction = { ...direction };
+                }
+
                 next.readyGhosts[index] = false;
             }
         } else if (state.firstActor === "player") {
@@ -1473,6 +1520,10 @@ function createGameStrategy(parameters = {}) {
             );
 
             state.readyGhosts[ghostIndex] = arrived;
+
+            if (arrived) {
+                ghost.decisionAtCentre = true;
+            }
 
             updateSearchGhostFrightenedTimer(ghost, elapsedTime);
 

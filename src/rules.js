@@ -240,13 +240,40 @@ function createGameRules(parameters = {}) {
         ui.updateUI();
     }
 
+    // Eating a power pellet is a decision event for every ghost that is
+    // not on its way home. The ghosts controlled by the player read the
+    // held keys at that very moment, while the rest are queued for the
+    // search at the current time.
     function activateFrightenedMode() {
-        for (const ghost of gameState().ghosts) {
+        const gs = gameState();
+
+        for (const ghost of gs.ghosts) {
             if (ghost.eaten) continue;
 
             ghost.frightened = true;
             ghost.frightenedTimer = FRIGHTENED_DURATION;
             ghost.speed = FRIGHTENED_GHOST_SPEED;
+
+            ghost.decisionAtCentre = false;
+
+            if (getControlledGhost() === ghost) {
+                const possible = getImmediateGhostDirections(ghost);
+                const desired = findPressedDirection(ghost.x, ghost.y);
+                const chosen = desired && possible.some(direction =>
+                    direction.x === desired.x &&
+                    direction.y === desired.y
+                )
+                    ? desired
+                    : { ...ghost.direction };
+
+                applyGhostDecision(ghost, chosen);
+                ghost.needsDirection = false;
+                ghost.px = ghost.x + ghost.direction.x * ghost.progress;
+                ghost.py = ghost.y + ghost.direction.y * ghost.progress;
+            } else {
+                ghost.needsDirection = true;
+                ghost.pendingDecisionTime = gs.time;
+            }
         }
     }
 
@@ -263,6 +290,51 @@ function createGameRules(parameters = {}) {
 
         ghost.direction.x *= -1;
         ghost.direction.y *= -1;
+    }
+
+    // Between cells a ghost cannot turn sideways: the only directions it
+    // can take without leaving the corridor are continuing and reversing.
+    // At a cell centre every legal direction is available.
+    function isDecidingBetweenCells(ghost) {
+        return ghost.progress > 0 && ghost.decisionAtCentre === false;
+    }
+
+    function getImmediateGhostDirections(ghost) {
+        if (isDecidingBetweenCells(ghost)) {
+            return [
+                { ...ghost.direction },
+                { x: -ghost.direction.x, y: -ghost.direction.y }
+            ];
+        }
+
+        return map.getPossibleDirections(ghost);
+    }
+
+    // Applies a decision without teleporting the ghost. A reversal between
+    // cells moves the ghost to the cell it was coming from and flips its
+    // progress, which keeps its physical position unchanged.
+    function applyGhostDecision(ghost, direction) {
+        if (!direction) {
+            return;
+        }
+
+        const continues =
+            direction.x === ghost.direction.x &&
+            direction.y === ghost.direction.y;
+        const reverses =
+            direction.x === -ghost.direction.x &&
+            direction.y === -ghost.direction.y;
+
+        if (reverses && ghost.progress > 0) {
+            reverseGhostDirection(ghost);
+            return;
+        }
+
+        if (isDecidingBetweenCells(ghost) && !continues) {
+            return;
+        }
+
+        ghost.direction = { ...direction };
     }
 
     // ============================================================
@@ -320,6 +392,7 @@ function createGameRules(parameters = {}) {
 
             if (ghost.eaten) {
                 ghost.needsDirection = true;
+                ghost.decisionAtCentre = true;
                 ghost.pendingDecisionTime =
                     gs.time - ghost.progress / EATEN_GHOST_SPEED;
                 break;
@@ -343,6 +416,7 @@ function createGameRules(parameters = {}) {
                 ghost.needsDirection = false;
             } else {
                 ghost.needsDirection = true;
+                ghost.decisionAtCentre = true;
                 ghost.pendingDecisionTime =
                     gs.time - ghost.progress / ghost.speed;
             }
@@ -448,10 +522,23 @@ function createGameRules(parameters = {}) {
 
         updatePlayer(dt);
 
+        // Decisions caused by the power pellet take effect before the
+        // ghosts move this frame, so they react at the same instant they
+        // were frightened.
+        resolvePendingGhostDecisions(gs);
+
         for (const ghost of gs.ghosts) {
             updateGhost(ghost, dt);
         }
 
+        // Decisions caused by reaching a cell centre are only known after
+        // moving the ghosts.
+        resolvePendingGhostDecisions(gs);
+
+        checkGhostCollisions(gs.ghosts, gs.player);
+    }
+
+    function resolvePendingGhostDecisions(gs) {
         const pendingGhosts = gs.ghosts
             .filter(ghost => ghost.needsDirection)
             .sort((a, b) => a.pendingDecisionTime - b.pendingDecisionTime);
@@ -485,14 +572,12 @@ function createGameRules(parameters = {}) {
 
             for (const ghost of group.ghosts) {
                 const ghostIndex = gs.ghosts.indexOf(ghost);
-                ghost.direction = directions.get(ghostIndex);
+                applyGhostDecision(ghost, directions.get(ghostIndex));
                 ghost.needsDirection = false;
                 ghost.px = ghost.x + ghost.direction.x * ghost.progress;
                 ghost.py = ghost.y + ghost.direction.y * ghost.progress;
             }
         }
-
-        checkGhostCollisions(gs.ghosts, gs.player);
     }
 
     // ============================================================
@@ -526,6 +611,7 @@ function createGameRules(parameters = {}) {
             ghost.nextDirection = { ...start.direction };
             ghost.progress = 0;
             ghost.needsDirection = false;
+            ghost.decisionAtCentre = true;
             ghost.eaten = false;
             ghost.frightened = false;
             ghost.speed = GHOST_SPEED;

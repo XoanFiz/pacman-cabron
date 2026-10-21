@@ -13,7 +13,8 @@ function createGameModel() {
         return {
             x: start.x, y: start.y, px: start.x, py: start.y, color,
             direction: { ...start.direction }, nextDirection: { ...start.direction },
-            frightened: false, eaten: false, progress: 0, speed
+            frightened: false, eaten: false, progress: 0, speed,
+            decisionAtCentre: true
         };
     }
 
