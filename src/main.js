@@ -114,7 +114,8 @@
         map.bindRuntime({
             resetGame: rules.resetGame,
             getCurrentSearchContext: intelligence.getCurrentSearchContext,
-            createCurrentGameSearchState: intelligence.createCurrentGameSearchState
+            createCurrentGameSearchState: intelligence.createCurrentGameSearchState,
+            setCalibration: intelligence.setCalibration
         });
 
         runtime.start();

@@ -124,6 +124,10 @@ function createGameAiController(parameters = {}) {
         ensureStrategy().advanceSearch();
     }
 
+    function setCalibration(calibration) {
+        ensureStrategy().setCalibration(calibration);
+    }
+
     function calculateDomain(...args) {
         return ensureStrategy().calculateDomain(...args);
     }
@@ -143,6 +147,7 @@ function createGameAiController(parameters = {}) {
         advanceSearch,
         calculateDomain,
         createCurrentGameSearchState,
-        getNodetype
+        getNodetype,
+        setCalibration
     };
 }

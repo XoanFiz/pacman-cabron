@@ -97,7 +97,8 @@ function createGameStrategy(parameters = {}) {
         TOTAL_PELLET_VALUE,
         TOTAL_NORMAL_VALUE,
         INITIAL_LIVES,
-        SEARCH_LIFE_PRIORITY
+        SEARCH_LIFE_PRIORITY,
+        SEARCH_TERMINAL_VALUE
     } = config;
 
     // PRIORITY QUEUE
@@ -231,10 +232,13 @@ function createGameStrategy(parameters = {}) {
         }
     }
 
+    // The objective is written as ghost advantage (Pac-Man's shrinking
+    // territory, ghost proximity, ghost-owned pellets and lost lives raise
+    // it), so Pac-Man minimizes it and the ghosts maximize it.
     function getNodeType(state) {
         return state.firstActor === "player"
-            ? "max"
-            : "min";
+            ? "min"
+            : "max";
     }
 
 
@@ -791,7 +795,7 @@ function createGameStrategy(parameters = {}) {
                 : 1;
         const proximityAdjustedNormalScore =
             normalScore * normalArrivalMultiplier;
-        const pelletCount = pellets.length;
+        const pelletCount = pellets.size;
         const pelletValue =
             pelletCount > 0
                 ? TOTAL_PELLET_VALUE / pelletCount
@@ -824,7 +828,9 @@ function createGameStrategy(parameters = {}) {
                 const ghostOwner = domain[y][x].owner;
 
 
-                if (ghostOwner === "")
+                // Only cells the ghosts control count: those are the
+                // ones they can deny to Pac-Man.
+                if (!ghostOwner.startsWith("ghost"))
                     continue;
 
                 const travelTime =
@@ -1021,7 +1027,9 @@ function createGameStrategy(parameters = {}) {
             SEARCH_LIFE_PRIORITY;
 
         if (state.terminal) {
-            return lifePenalty;
+            // Pac-Man is out: the best outcome for the ghosts and the worst
+            // for Pac-Man. Finite because the RBFM rejects Infinity.
+            return lifePenalty + SEARCH_TERMINAL_VALUE;
         }
 
         const domain = calculateDomain(state.player, state.ghosts, state.respawnState.houses, state.pellets, state.time, true);
@@ -1662,13 +1670,41 @@ function createGameStrategy(parameters = {}) {
     // The game and calibration use the same RBFM engine. This adapter only
     // translates game states into generic RBFM transitions and exposes the
     // actions selected by the root edges.
-    function getCalibrationDistribution(node) {
+    // Any calibration with samples is usable, completed or not: partial
+    // tables are better than deterministic guesses. Buckets without data
+    // fall back to the average observed deviation, and every deviation is
+    // floored so the search never becomes fully deterministic.
+    function getCalibrationFallbackDeviation(calibration) {
+        const variances = Object.values(calibration?.g || {})
+            .map(Number)
+            .filter(value => Number.isFinite(value) && value >= 0);
+
+        if (variances.length === 0) {
+            return config.CALIBRATION_MIN_STD;
+        }
+
+        return Math.max(
+            config.CALIBRATION_MIN_STD,
+            Math.sqrt(
+                variances.reduce((sum, value) => sum + value, 0) /
+                variances.length
+            )
+        );
+    }
+
+    function getCalibrationDistribution(node, fallbackDeviation) {
         const calibration = map?.calibration;
 
-        if (calibration?.status !== "completed") {
+        if (
+            !calibration ||
+            calibration.version !== CALIBRATION_VERSION ||
+            Object.keys(calibration.f || {}).length === 0
+        ) {
+            // No calibration at all: keep the prior deviation instead of
+            // collapsing to a deterministic walk.
             return {
                 mean: node.value,
-                standardDeviation: 0
+                standardDeviation: config.CALIBRATION_MIN_STD
             };
         }
 
@@ -1678,17 +1714,41 @@ function createGameStrategy(parameters = {}) {
 
         return {
             mean: node.value + (Number.isFinite(correction) ? correction : 0),
-            standardDeviation: Math.sqrt(Math.max(
-                0,
-                Number.isFinite(variance) ? variance : 0
-            ))
+            standardDeviation: Number.isFinite(variance)
+                ? Math.max(
+                    config.CALIBRATION_MIN_STD,
+                    Math.sqrt(Math.max(0, variance))
+                )
+                : fallbackDeviation
         };
     }
 
     function refreshRbfmDistributions() {
+        const fallbackDeviation = getCalibrationFallbackDeviation(
+            map?.calibration
+        );
+
         for (const node of rbfmSearch.nodes.values()) {
-            node.distribution = getCalibrationDistribution(node);
+            node.distribution = getCalibrationDistribution(
+                node,
+                fallbackDeviation
+            );
         }
+    }
+
+    // The calibration is updated while the game runs (the worker reports
+    // partial tables). The strategy snapshots the map, so the tables have
+    // to be pushed into that snapshot and the node distributions rebuilt.
+    function setCalibration(calibration) {
+        map.calibration = calibration
+            ? {
+                ...calibration,
+                f: { ...(calibration.f || {}) },
+                g: { ...(calibration.g || {}) }
+            }
+            : undefined;
+
+        refreshRbfmDistributions();
     }
 
     function* createGameRbfmSuccessors(state) {
@@ -1893,6 +1953,7 @@ function createGameStrategy(parameters = {}) {
         advanceSearch,
         chooseGhostDirections,
         choosePacmanDirection,
-        getNodeType
+        getNodeType,
+        setCalibration
     }
 }

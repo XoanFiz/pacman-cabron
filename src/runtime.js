@@ -36,6 +36,16 @@ function createGameRuntime(parameters = {}) {
         // immediately: `ensureMapCalibrated` reuses a completed reference
         // calibration when one exists (predefined maps are only a
         // fallback), otherwise it starts its own background calibration.
+        console.log(
+            "[calibration] startup: " +
+            map.maps
+                .map(definition =>
+                    `${definition.id}:${definition.calibration?.status || "none"}` +
+                    `(${definition.calibration?.sampleCount || 0})`
+                )
+                .join(", ")
+        );
+
         map.ensureMapCalibrated(map.getCurrentMapDefinition());
 
         // Calibrate every other map definition in the background.

@@ -17,13 +17,15 @@ function createGameMap(parameters = {}) {
     const runtime = {
         resetGame: () => undefined,
         getCurrentSearchContext: () => null,
-        createCurrentGameSearchState: () => null
+        createCurrentGameSearchState: () => null,
+        setCalibration: () => undefined
     };
 
-    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState }) {
+    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState, setCalibration }) {
         if (resetGame) runtime.resetGame = resetGame;
         if (getCurrentSearchContext) runtime.getCurrentSearchContext = getCurrentSearchContext;
         if (createCurrentGameSearchState) runtime.createCurrentGameSearchState = createCurrentGameSearchState;
+        if (setCalibration) runtime.setCalibration = setCalibration;
     }
 
     // ============================================================
@@ -58,7 +60,14 @@ function createGameMap(parameters = {}) {
                 ? { ...calibration.parameters }
                 : undefined,
             f: calibration.f ? { ...calibration.f } : {},
-            g: calibration.g ? { ...calibration.g } : {}
+            g: calibration.g ? { ...calibration.g } : {},
+            samples: calibration.samples
+                ? Object.fromEntries(
+                    Object.entries(calibration.samples).map(
+                        ([key, errors]) => [key, [...errors]]
+                    )
+                )
+                : undefined
         };
     }
 
@@ -603,6 +612,7 @@ function createGameMap(parameters = {}) {
     function createPendingCalibration(definition) {
         return {
             status: "pending",
+            version: CALIBRATION_VERSION,
             mapSignature: getMapSignature(definition),
             sampleCount: 0,
             targetSamples: CALIBRATION_DEFAULT_OPTIONS.targetSamples,
@@ -610,8 +620,54 @@ function createGameMap(parameters = {}) {
         };
     }
 
+    function isCalibrationVersionCurrent(calibration) {
+        return calibration?.version === CALIBRATION_VERSION;
+    }
+
     function isCalibrationCompleted(definition) {
-        return definition?.calibration?.status === "completed";
+        return definition?.calibration?.status === "completed" &&
+            isCalibrationVersionCurrent(definition.calibration);
+    }
+
+    function hasCalibrationSamples(definition) {
+        const calibration = definition?.calibration;
+
+        return isCalibrationVersionCurrent(calibration) &&
+            Boolean(calibration.samples) &&
+            Object.keys(calibration.samples).length > 0;
+    }
+
+    function hasUsableCalibration(definition) {
+        const calibration = definition?.calibration;
+
+        return isCalibrationVersionCurrent(calibration) &&
+            Number(calibration.sampleCount) > 0 &&
+            Object.keys(calibration.f || {}).length > 0;
+    }
+
+    function getCalibrationResume(definition) {
+        const calibration = definition?.calibration;
+
+        if (
+            !isCalibrationVersionCurrent(calibration) ||
+            calibration.status === "completed"
+        ) {
+            return { samples: {} };
+        }
+
+        return {
+            samples: calibration.samples && typeof calibration.samples === "object"
+                ? calibration.samples
+                : {}
+        };
+    }
+
+    function notifyCalibration(definition) {
+        if (definition.id !== map.activeMapId) {
+            return;
+        }
+
+        runtime.setCalibration(definition.calibration);
     }
 
     // ============================================================
@@ -691,7 +747,11 @@ function createGameMap(parameters = {}) {
     // promise that resolves with the final calibration object (never
     // rejects). `onProgress` receives the worker progress status.
     function calibrateMap(definition, { onProgress } = {}) {
-        return new Promise(resolve => {
+        if (calibrationInFlight.has(definition.id)) {
+            return calibrationInFlight.get(definition.id);
+        }
+
+        const calibrationPromise = new Promise(resolve => {
             if (typeof Worker !== "function") {
                 definition.calibration = {
                     ...definition.calibration,
@@ -726,9 +786,14 @@ function createGameMap(parameters = {}) {
             }
 
             const worker = new Worker("./src/calibration/worker.js");
+            const resume = getCalibrationResume(definition);
+            const resumeCount = Object.values(resume.samples)
+                .reduce((sum, errors) => sum + errors.length, 0);
+            let lastHeartbeatAt = Date.now();
 
             definition.calibration = {
                 ...definition.calibration,
+                version: CALIBRATION_VERSION,
                 status: "running",
                 parameters: {
                     ...definition.calibration?.parameters,
@@ -740,7 +805,8 @@ function createGameMap(parameters = {}) {
             console.log(
                 `[calibration] ${definition.id}: started ` +
                 `(target ${CALIBRATION_DEFAULT_OPTIONS.targetSamples} samples, ` +
-                `max ${CALIBRATION_DEFAULT_OPTIONS.maxSteps} steps).`
+                `max ${CALIBRATION_DEFAULT_OPTIONS.maxSteps} steps, ` +
+                `resuming ${resumeCount} sample(s)).`
             );
 
             let settled = false;
@@ -751,6 +817,7 @@ function createGameMap(parameters = {}) {
                 worker.terminate();
                 definition.calibration = calibration;
                 void persistMaps();
+                notifyCalibration(definition);
                 resolve(calibration);
             };
 
@@ -777,17 +844,43 @@ function createGameMap(parameters = {}) {
 
                 if (message.type === CALIBRATION_MESSAGE.progress) {
                     const status = message.status;
+                    const previousSampleCount =
+                        definition.calibration.sampleCount;
+
                     definition.calibration = {
                         ...definition.calibration,
+                        version: CALIBRATION_VERSION,
                         status: "running",
                         sampleCount: status.completed,
+                        steps: status.steps,
+                        samples: status.samples,
                         progress: status
                     };
-                    console.log(
-                        `[calibration] ${definition.id}: ` +
-                        `${status.completed}/${status.targetSamples} samples ` +
-                        `(step ${status.steps}, ${status.pending} pending).`
-                    );
+
+                    // Persist and hand the partial tables to the game only
+                    // when a new sample lands, not on every step.
+                    if (status.completed !== previousSampleCount) {
+                        void persistMaps();
+                        notifyCalibration(definition);
+                        console.log(
+                            `[calibration] ${definition.id}: ` +
+                            `${status.completed}/${status.targetSamples} samples ` +
+                            `(${Math.round((status.percent || 0) * 100)}%, ` +
+                            `eta ${formatCalibrationEta(status.etaMs)}), ` +
+                            `step ${status.steps}, ${status.buckets} bucket(s).`
+                        );
+                    } else if (Date.now() - lastHeartbeatAt > 2000) {
+                        lastHeartbeatAt = Date.now();
+                        console.log(
+                            `[calibration] ${definition.id}: ` +
+                            `step ${status.steps}, ${status.pending} pending, ` +
+                            `${status.completed}/${status.targetSamples} samples ` +
+                            `(${Math.round((status.percent || 0) * 100)}%, ` +
+                            `eta ${formatCalibrationEta(status.etaMs)}), ` +
+                            `${status.buckets} bucket(s).`
+                        );
+                    }
+
                     if (typeof onProgress === "function") {
                         onProgress(status);
                     }
@@ -809,11 +902,14 @@ function createGameMap(parameters = {}) {
                     `[calibration] ${definition.id}: ` +
                     `${completed ? "completed" : "incomplete"} ` +
                     `(${message.status.completed}/${CALIBRATION_DEFAULT_OPTIONS.targetSamples} samples, ` +
-                    `reason: ${message.status.finishReason}).`
+                    `reason: ${message.status.finishReason}, ` +
+                    `${message.status.buckets} bucket(s), ` +
+                    `${message.status.elapsedMs} ms).`
                 );
 
                 finish({
                     status: completed ? "completed" : "incomplete",
+                    version: CALIBRATION_VERSION,
                     mapSignature: getMapSignature(definition),
                     completedAt: Date.now(),
                     ...result,
@@ -829,40 +925,88 @@ function createGameMap(parameters = {}) {
                 type: CALIBRATION_MESSAGE.start,
                 map: definition,
                 initialState,
-                options: { ...CALIBRATION_DEFAULT_OPTIONS }
+                options: { ...CALIBRATION_DEFAULT_OPTIONS },
+                resume
             });
         });
+
+        calibrationInFlight.set(definition.id, calibrationPromise);
+        calibrationPromise.finally(() => {
+            calibrationInFlight.delete(definition.id);
+        });
+
+        return calibrationPromise;
     }
 
-    // Returns the first completed calibration among the definitions
-    // (predefined maps included), used as a playable fallback.
-    function findReferenceCalibration() {
-        for (const definition of map.maps) {
-            if (isCalibrationCompleted(definition)) {
-                return { sourceId: definition.id, calibration: definition.calibration };
-            }
-        }
+    // Definitions known to the game, deduplicated by id (map.maps already
+    // contains the predefined ones after loading, but not before).
+    function getAllDefinitions() {
+        const byId = new Map();
+
         for (const definition of PREDEFINED_MAPS) {
-            if (isCalibrationCompleted(definition)) {
-                return { sourceId: definition.id, calibration: definition.calibration };
+            byId.set(definition.id, definition);
+        }
+
+        for (const definition of map.maps) {
+            byId.set(definition.id, definition);
+        }
+
+        return Array.from(byId.values());
+    }
+
+    // Returns the calibration used as a playable fallback: a completed one
+    // if any exists, otherwise the most advanced partial calibration.
+    function findReferenceCalibration() {
+        const definitions = getAllDefinitions();
+        const completed = definitions.find(isCalibrationCompleted);
+
+        if (completed) {
+            return { sourceId: completed.id, calibration: completed.calibration };
+        }
+
+        let best = null;
+
+        for (const definition of definitions) {
+            const calibration = definition.calibration;
+            const sampleCount = Number(calibration?.sampleCount) || 0;
+
+            if (sampleCount <= 0 || !isCalibrationVersionCurrent(calibration)) {
+                continue;
+            }
+
+            if (!best || sampleCount > best.sampleCount) {
+                best = { sourceId: definition.id, calibration, sampleCount };
             }
         }
-        return null;
+
+        return best
+            ? { sourceId: best.sourceId, calibration: best.calibration }
+            : null;
     }
 
     // Inheritance of a reference calibration: keeps the same f/g tables
     // but records provenance so it is clear it was borrowed.
     function inheritCalibration(definition, reference) {
+        const completed = reference.calibration?.status === "completed";
+
         definition.calibration = {
             ...cloneCalibration(reference.calibration),
-            status: "completed",
+            // Borrowed tables are a fallback, not this map's evidence: keep
+            // them out of the resume seed so this map still measures itself.
+            samples: undefined,
+            status: completed ? "completed" : "incomplete",
             inheritedFrom: reference.sourceId,
             mapSignature: getMapSignature(definition),
-            completedAt: Date.now()
+            ...(completed ? { completedAt: Date.now() } : {})
         };
     }
 
     let calibrationQueue = Promise.resolve();
+
+    // One calibration per definition at a time: startup schedules the
+    // active map and then every pending map, and both paths may reach the
+    // same definition.
+    const calibrationInFlight = new Map();
 
     // Ensures a single definition ends up with a completed calibration:
     // if it already has one, resolves immediately; otherwise it is
@@ -876,6 +1020,16 @@ function createGameMap(parameters = {}) {
                     return definition.calibration;
                 }
 
+                // A map with its own samples resumes its calibration; a map
+                // that already has usable tables (own or inherited) gets its
+                // real calibration in the background.
+                if (
+                    hasCalibrationSamples(definition) ||
+                    hasUsableCalibration(definition)
+                ) {
+                    return calibrateMap(definition);
+                }
+
                 const reference = findReferenceCalibration();
 
                 if (reference) {
@@ -885,6 +1039,7 @@ function createGameMap(parameters = {}) {
                         `from "${reference.sourceId}".`
                     );
                     void persistMaps();
+                    notifyCalibration(definition);
                     return definition.calibration;
                 }
 
@@ -898,11 +1053,13 @@ function createGameMap(parameters = {}) {
     // the background; the first map that gets a real calibration
     // becomes the reference borrowed by the rest.
     function calibrateAllMaps() {
-        const pending = map.maps
-            .concat(PREDEFINED_MAPS)
+        const pending = getAllDefinitions()
             .filter(definition => !isCalibrationCompleted(definition));
 
         if (pending.length === 0) {
+            console.log(
+                "[calibration] every map already has a completed calibration."
+            );
             return calibrationQueue;
         }
 

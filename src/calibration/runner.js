@@ -22,7 +22,7 @@
 // Load order: expects protocol.js in the same context for the
 // shared finishReason constants (target-samples / max-steps).
 
-function createRbfmCalibration(map) {
+function createRbfmCalibration(map, seed = {}) {
     if (!map) {
         throw new Error(
             "createRbfmCalibration requires a map."
@@ -30,6 +30,27 @@ function createRbfmCalibration(map) {
     }
 
     const samples = new Map();
+
+    // Seed from a previous run so calibration can resume instead of
+    // starting from zero. Keys are `${searchCount},${childCount}` and the
+    // values are the raw error samples recorded for that bucket.
+    for (const [key, errors] of Object.entries(seed?.samples || {})) {
+        const [s, d] = String(key).split(",").map(Number);
+
+        if (
+            !Number.isInteger(s) || s <= 0 ||
+            !Number.isInteger(d) || d <= 0 ||
+            !Array.isArray(errors)
+        ) {
+            continue;
+        }
+
+        const clean = errors.map(Number).filter(Number.isFinite);
+
+        if (clean.length > 0) {
+            samples.set(key, { s, d, errors: clean });
+        }
+    }
     const observations = [];
     const nodeStats = new Map();
 
@@ -133,6 +154,20 @@ function createRbfmCalibration(map) {
         return count;
     }
 
+    function getBucketCount() {
+        return samples.size;
+    }
+
+    function getSnapshot() {
+        const snapshot = {};
+
+        for (const [key, sample] of samples) {
+            snapshot[key] = sample.errors.slice();
+        }
+
+        return snapshot;
+    }
+
     function getObservations() {
         return observations;
     }
@@ -149,6 +184,8 @@ function createRbfmCalibration(map) {
         onNodeVisit,
         getTables,
         getSampleCount,
+        getBucketCount,
+        getSnapshot,
         getObservations,
         getNodeStats,
         clear
@@ -250,7 +287,8 @@ function createReferenceValue({
     getStateKey,
     getNodeType,
     createSuccessorIterator,
-    evaluateState
+    evaluateState,
+    maxStates = Infinity
 } = {}) {
     if (
         typeof getStateKey !== "function" ||
@@ -260,6 +298,12 @@ function createReferenceValue({
     ) {
         throw new TypeError(
             "createReferenceValue requires getStateKey, getNodeType, createSuccessorIterator and evaluateState."
+        );
+    }
+
+    if (!(maxStates === Infinity || (Number.isInteger(maxStates) && maxStates > 0))) {
+        throw new RangeError(
+            "maxStates must be a positive integer or Infinity."
         );
     }
 
@@ -282,6 +326,7 @@ function createReferenceValue({
         const deadline = initialState.time + horizonSeconds;
         const memo = new Map();
         const active = new Set();
+        let visited = 0;
 
         function minimax(state) {
             if (
@@ -301,6 +346,12 @@ function createReferenceValue({
             if (active.has(key)) {
                 return evaluateState(state);
             }
+
+            if (visited >= maxStates) {
+                return evaluateState(state);
+            }
+
+            visited++;
 
             active.add(key);
 
@@ -344,7 +395,10 @@ function createRbfmCalibrationRunner({
     maxSteps = 10000,
     maxSamplesPerStep = 1,
     referenceHorizonSeconds = 10,
+    referenceMaxStates = Infinity,
+    minimumStandardDeviation = 0,
     getReferenceValue = null,
+    seed = null,
     getStateKey,
     getNodeType,
     createSuccessorIterator,
@@ -394,17 +448,27 @@ function createRbfmCalibrationRunner({
         );
     }
 
+    if (
+        !Number.isFinite(minimumStandardDeviation) ||
+        minimumStandardDeviation < 0
+    ) {
+        throw new RangeError(
+            "minimumStandardDeviation must be a finite non-negative number."
+        );
+    }
+
     const calculateReferenceValue = createReferenceValue({
         getStateKey,
         getNodeType,
         createSuccessorIterator,
-        evaluateState
+        evaluateState,
+        maxStates: referenceMaxStates
     });
     const referenceValueFor = typeof getReferenceValue === "function"
         ? getReferenceValue
         : state => calculateReferenceValue(state, referenceHorizonSeconds);
 
-    const calibration = createRbfmCalibration(map);
+    const calibration = createRbfmCalibration(map, seed || {});
     const search = createRandomizedBestFirstMinimax({
         getStateKey,
         getNodeType,
@@ -431,7 +495,10 @@ function createRbfmCalibrationRunner({
 
             node.distribution = {
                 mean: node.value + correction,
-                standardDeviation: Math.sqrt(Math.max(0, variance))
+                standardDeviation: Math.max(
+                    minimumStandardDeviation,
+                    Math.sqrt(Math.max(0, variance))
+                )
             };
         }
     }
@@ -496,7 +563,9 @@ function createRbfmCalibrationRunner({
             completed: experimentStatus.completed,
             targetSamples,
             finished,
-            finishReason
+            finishReason,
+            buckets: calibration.getBucketCount(),
+            samples: calibration.getSnapshot()
         };
     }
 
@@ -511,12 +580,16 @@ function createRbfmCalibrationRunner({
             parameters: {
                 targetSamples,
                 maxSteps,
-                maxSamplesPerStep
+                maxSamplesPerStep,
+                referenceHorizonSeconds,
+                referenceMaxStates
             },
-            completed: status.finished && status.finishReason === "target-samples",
+            completed: status.finished &&
+                status.finishReason === CALIBRATION_FINISH_REASON.targetSamples,
             finishReason: status.finishReason,
             f: Object.fromEntries(tables.f),
-            g: Object.fromEntries(tables.g)
+            g: Object.fromEntries(tables.g),
+            samples: status.samples
         };
     }
 

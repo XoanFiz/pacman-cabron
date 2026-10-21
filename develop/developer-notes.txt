@@ -1,25 +1,17 @@
 TODO
 Game freezes with stack overflow on randomized-best-first-minimax after a while
-Continuation script: finish RBFM calibration and persist calibrated map data
-    Finish the RBFM calibration runner, including a clear completion condition, progress reporting, and a stable result format that can be consumed by map creation.
-    Define the calibration payload stored with each map: map identity/version, RBFM parameters, observations or derived values, sample count, completion status, and creation timestamp.
-    Integrate calibration lazily into buildMapData so normal map creation remains fast and calibration runs only when the map has no valid cached calibration.
-    Keep buildMapData deterministic while calibration is pending: return the map data immediately and expose calibration readiness/progress without blocking gameplay.
-    Add IndexedDB persistence for map definitions and their RBFM calibration payloads so custom and built-in maps can be reused across browser sessions.
-    Add a small map-calibration storage layer with schema/version handling, read/write error handling, and graceful fallback when IndexedDB is unavailable.
-    Reuse cached map and calibration data when the map definition and calibration parameters match; invalidate stale entries when either changes.
-    Make map selection and map editing update the persisted entry without duplicating map data or calibration records.
-    Wire calibration loading, lazy execution, persistence, and progress reporting into the game startup flow and map editor.
+Another idea that occurred to me: the graph exploration performed during a session to generate a map could be saved for future sessions—just like the calibration data—and the calibration process itself could also utilize this version of the graph. This is a different graph from the map's graph; it is the map's strategy graph.
+Calibration follow-ups
     Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
-Clarify chat-gpt refactor doubts
-    Why it keeps using, or if, the old frontier to get the next candidates?
+    Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
+    Add a schema/migration step for the IndexedDB stores (currently database version 1) and a way to remove custom maps.
+    Review the calibration reference settings (0.5 s horizon, 2000 states): a 2 s horizon made a single calibration step take minutes.
+Allow a way to remove ghosts. Recover the color for the new ghosts if done. 
 Fix characters traversing walls
-Move many things from game-map to game-rules.
-Correct frontier management to avoid expanding nodes from abandoned branches, while preserving deduplication and valid alternative paths.
-Move strategic state-tree exploration into a Web Worker so it runs concurrently without blocking the game loop. Refactor search to use explicit serializable state, add worker messaging and lifecycle/error handling, and integrate asynchronous results with the game loop.
-    Adapt the search state to make it serializable and independent of the global game state. 
-
-    Implement Web Worker communication, lifecycle, and error handling.
+Move many things from map.js to rules.js.
+Prune the strategic search tree: RBFM nodes are never removed, so it grows for the whole game (memory and CPU per frame).
+Strategy worker
+    It runs the same search as the main thread, so its result is only reused when the state key matches. Decide whether it becomes the only search owner or is removed.
 Improve strategy. Ghosts are not guarding successfully, oscillation or lack of determination when keeping a position doesn't make them sharp enough. Eaten ghosts are too reluctant to return home. Normal ghosts are too reluctant to close Pac-man domain further when it is cornered. Pac-man is too reluctant to explore in depth and jump out of local optimums. 
 Make front screen more coherent
 Make walls map better: still too difficult because it is too narrow.
@@ -27,30 +19,16 @@ Make Pac-man's mouth still when he just lost a life or game is over.
 
 SUGGESTIONS
 Campaign mode?
-When a map is edited add the modified map as fixed selectable one. Add also a way to remove them. They are stored in localStorage.
+When a map is edited it becomes a selectable custom map (already stored in IndexedDB); add a way to remove custom maps.
 Allow manipulating number of lifes in the map editor.
 Do not use ghost + a number as the ghost name for the unknown colors. Try to recover the color name from a library to do so. If there is a second ghost with the same color name then you can add a number. This requirement needs a library for colors in multiple languages ​​or a mapping in the language file.
 More than one Pac-man
 
 AGENT NOTES:
-Copilot, please take the following points into account when working:
+Automated agents, please take the following points into account when working:
 - Do not waste time checking every possible language. Test only English and one else and ensure that all languages have the same structure. To test this use automatic tools and include them in this project for the developers to use. Include them in the develop directory.
 - After doing changes check if the request is here and ask to delete it and include it in the commit and the commit message.
 - After doing any changes check if this file was changed by the human developer and include the change in the commit message.
 - Limit Playwright tests to save tokens. Ask developer to either perform the tests by themself or let Copilot do them. If the developer chooses the first option, give them a list of the tests to do.
 - All the useful tools used to make tests and propagate changes, like those to the language files, should be progressively added and updated in the develop directory for any developer to work, with comments detailing what are they used for.
 - Do not automatically pick a TODO or SUGGESTIONS task and engage it. Do it just when a developer asks it to.
-
-
-game-intelligence.js interface: these are the functions that are used outside game-intelligence:
-- calculateDomain: only to calculate Voronoi domain regions in game-renderer to display
-- advanceStrategicSearch: used in game-runtime, but the idea is to be used from an independent thread
-- chooseStrategicGhostDirections, chooseStrategicPacmanDirection: used from game-rules, but game-rules is the most intern part of game-runtime
-
-game-intelligence.js: unwished dependencies: 
-player	state.player	Pac-Man's position, direction, movement progress, and other attributes.
-ghosts	state.ghosts	Position, direction, movement progress, and state of each ghost.
-pellets	state.pellets	Pellets remaining in the game.
-lives	state.lives	Remaining lives; affects transitions and evaluation.
-gameTime	state.time or state.gameTime	Game time, required to evaluate temporal states.
-

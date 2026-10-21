@@ -108,6 +108,16 @@ function runCalibration(request) {
         rmfMinimax: createRandomizedBestFirstMinimax
     });
     const options = normalizeCalibrationOptions(request.options);
+    const resume = normalizeCalibrationResume(request.resume);
+    const startedAt = Date.now();
+    const resumeCount = Object.values(resume.samples)
+        .reduce((sum, errors) => sum + errors.length, 0);
+
+    console.log(
+        `[calibration worker] ${request.map.id}: start ` +
+        `(target ${options.targetSamples}, max ${options.maxSteps} steps, ` +
+        `resume ${resumeCount} sample(s)).`
+    );
 
     const runner = createRbfmCalibrationRunner({
         map: currentMap,
@@ -116,18 +126,68 @@ function runCalibration(request) {
         maxSteps: options.maxSteps,
         maxSamplesPerStep: options.maxSamplesPerStep,
         referenceHorizonSeconds: options.referenceHorizonSeconds,
+        referenceMaxStates: options.referenceMaxStates,
+        minimumStandardDeviation: config.CALIBRATION_MIN_STD,
+        seed: resume,
         ...createCalibrationAdapters(strategy)
     });
+
+    let lastLoggedAt = Date.now();
+    let lastCompleted = resumeCount;
+
+    function reportProgress(status) {
+        const now = Date.now();
+        const newSample = status.completed !== lastCompleted;
+        const heartbeat = now - lastLoggedAt > 2000;
+
+        if (!newSample && !heartbeat) {
+            return;
+        }
+
+        lastCompleted = status.completed;
+        lastLoggedAt = now;
+
+        console.log(
+            `[calibration worker] ${request.map.id}: ` +
+            `${Math.round(status.percent * 100)}%, ` +
+            `${status.completed}/${status.targetSamples} samples, ` +
+            `step ${status.steps}/${options.maxSteps}, ` +
+            `${status.pending} pending, ${status.buckets} bucket(s), ` +
+            `eta ${formatCalibrationEta(status.etaMs)} ` +
+            `(${status.elapsedMs} ms).`
+        );
+    }
 
     function step() {
         let status;
 
         try {
-            status = runner.step();
+            status = {
+                ...runner.step(),
+                elapsedMs: Date.now() - startedAt
+            };
         } catch (error) {
+            console.error(
+                `[calibration worker] ${request.map.id}: failed.`,
+                error
+            );
             self.postMessage({ type: CALIBRATION_MESSAGE.error, error: String(error) });
             return;
         }
+
+        status = {
+            ...status,
+            ...estimateCalibrationProgress({
+                completed: status.completed,
+                targetSamples: status.targetSamples,
+                steps: status.steps,
+                maxSteps: options.maxSteps,
+                elapsedMs: status.elapsedMs,
+                resumedSamples: resumeCount
+            })
+        };
+
+        reportProgress(status);
 
         self.postMessage({
             type: status.finished
@@ -140,6 +200,13 @@ function runCalibration(request) {
             setTimeout(step, 0);
             return;
         }
+
+        console.log(
+            `[calibration worker] ${request.map.id}: ${status.finishReason} ` +
+            `(${status.completed}/${status.targetSamples} samples, ` +
+            `${status.steps} steps, ${status.buckets} bucket(s), ` +
+            `${status.elapsedMs} ms).`
+        );
 
         self.postMessage({
             type: CALIBRATION_MESSAGE.result,
