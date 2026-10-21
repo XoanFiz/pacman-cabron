@@ -7,7 +7,7 @@ Calibration follow-ups
 Allow a way to remove ghosts. Recover the color for the new ghosts if done. 
 Fix characters traversing walls
 Move many things from map.js to rules.js.
-Prune the strategic search tree: RBFM nodes are never removed, so it grows for the whole game (memory and CPU per frame).
+Prune the strategic search tree: RBFM nodes are never removed, so it grows for the whole game (memory and CPU per frame). The extend walk also starts at the root each time, so its cost is the tree height; a frontier-based expansion would avoid both.
 Strategy worker
     It runs the same search as the main thread, so its result is only reused when the state key matches. Decide whether it becomes the only search owner or is removed.
 Improve strategy. Ghosts are not guarding successfully, oscillation or lack of determination when keeping a position doesn't make them sharp enough. Eaten ghosts are too reluctant to return home. Normal ghosts are too reluctant to close Pac-man domain further when it is cornered. Pac-man is too reluctant to explore in depth and jump out of local optimums. 

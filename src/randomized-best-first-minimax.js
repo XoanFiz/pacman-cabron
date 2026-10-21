@@ -15,6 +15,7 @@ function createRandomizedBestFirstMinimax({
     getNodeType,
     createSuccessorIterator,
     onNodeVisit = null,
+    onWalkLimit = null,
     maxExtendDepth = 4096
 }) {
     if (typeof getStateKey !== "function") {
@@ -39,11 +40,25 @@ function createRandomizedBestFirstMinimax({
         );
     }
 
+    if (
+        onWalkLimit !== null &&
+        typeof onWalkLimit !== "function"
+    ) {
+        throw new TypeError(
+            "onWalkLimit must be a function or null."
+        );
+    }
+
     if (!Number.isInteger(maxExtendDepth) || maxExtendDepth <= 0) {
         throw new RangeError(
             "maxExtendDepth must be a positive integer."
         );
     }
+
+    const safeguardCounts = {
+        cycle: 0,
+        depth: 0
+    };
 
     function chooseRandomChild(node, edges) {
         if (edges.length === 0) {
@@ -477,6 +492,23 @@ function createRandomizedBestFirstMinimax({
                 visited.has(edge.child) ||
                 path.length >= maxExtendDepth
             ) {
+                const reason = visited.has(edge.child)
+                    ? "cycle"
+                    : "depth";
+
+                safeguardCounts[reason]++;
+
+                if (onWalkLimit !== null) {
+                    onWalkLimit({
+                        reason,
+                        pathLength: path.length,
+                        maxExtendDepth,
+                        nodeCount: nodes.size,
+                        mode: currentMode,
+                        safeguards: { ...safeguardCounts }
+                    });
+                }
+
                 expandedNode = current;
                 break;
             }
@@ -562,6 +594,8 @@ function createRandomizedBestFirstMinimax({
     search.updateNodeValue = updateNodeValue;
     search.getBestChild = getBestChild;
     search.rootDecision = rootDecision;
+
+    search.safeguards = safeguardCounts;
 
     search.setRoot = function (
         state,

@@ -1783,10 +1783,26 @@ function createGameStrategy(parameters = {}) {
             : null;
     }
 
+    // The walk is bounded; when the bound is hit the search keeps the
+    // static value, and this warning makes it visible in the console.
+    let lastWalkLimitWarningAt = 0;
+
+    function warnWalkLimit(info) {
+        const now = Date.now();
+
+        if (now - lastWalkLimitWarningAt < 2000) {
+            return;
+        }
+
+        lastWalkLimitWarningAt = now;
+        console.warn("[rbfm] walk limit reached", info);
+    }
+
     const rbfmSearch = rmfMinimax({
         getStateKey: buildStateKey,
         getNodeType: getNodeType,
         createSuccessorIterator: createGameRbfmSuccessors,
+        onWalkLimit: warnWalkLimit,
         maxExtendDepth: config.SEARCH_MAX_EXTEND_DEPTH
     });
 
