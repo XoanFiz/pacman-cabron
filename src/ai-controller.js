@@ -170,6 +170,19 @@ function createGameAiController(parameters = {}) {
         }
     }
 
+    function getStrategyGraph(mapId) {
+        if (!strategy || !strategyMapId || strategyMapId !== mapId) {
+            return null;
+        }
+
+        try {
+            return strategy.exportGraph();
+        } catch (error) {
+            console.warn("Unable to export the strategy graph.", error);
+            return null;
+        }
+    }
+
     function persistStrategyGraph() {
         if (!strategy || !strategyMapId) {
             return;
@@ -207,6 +220,7 @@ function createGameAiController(parameters = {}) {
         getNodetype,
         setCalibration,
         loadPersistedStrategyGraph,
-        persistStrategyGraph
+        persistStrategyGraph,
+        getStrategyGraph
     };
 }

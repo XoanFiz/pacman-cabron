@@ -18,14 +18,16 @@ function createGameMap(parameters = {}) {
         resetGame: () => undefined,
         getCurrentSearchContext: () => null,
         createCurrentGameSearchState: () => null,
-        setCalibration: () => undefined
+        setCalibration: () => undefined,
+        getStrategyGraph: () => null
     };
 
-    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState, setCalibration }) {
+    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState, setCalibration, getStrategyGraph }) {
         if (resetGame) runtime.resetGame = resetGame;
         if (getCurrentSearchContext) runtime.getCurrentSearchContext = getCurrentSearchContext;
         if (createCurrentGameSearchState) runtime.createCurrentGameSearchState = createCurrentGameSearchState;
         if (setCalibration) runtime.setCalibration = setCalibration;
+        if (getStrategyGraph) runtime.getStrategyGraph = getStrategyGraph;
     }
 
     // ============================================================
@@ -789,6 +791,9 @@ function createGameMap(parameters = {}) {
             const resume = getCalibrationResume(definition);
             const resumeCount = Object.values(resume.samples)
                 .reduce((sum, errors) => sum + errors.length, 0);
+            const strategyGraph = typeof runtime.getStrategyGraph === "function"
+                ? runtime.getStrategyGraph(definition.id)
+                : null;
             let lastHeartbeatAt = Date.now();
 
             definition.calibration = {
@@ -806,7 +811,8 @@ function createGameMap(parameters = {}) {
                 `[calibration] ${definition.id}: started ` +
                 `(target ${CALIBRATION_DEFAULT_OPTIONS.targetSamples} samples, ` +
                 `max ${CALIBRATION_DEFAULT_OPTIONS.maxSteps} steps, ` +
-                `resuming ${resumeCount} sample(s)).`
+                `resuming ${resumeCount} sample(s), ` +
+                `graph ${strategyGraph ? strategyGraph.nodes.length : 0} node(s)).`
             );
 
             let settled = false;
@@ -926,7 +932,8 @@ function createGameMap(parameters = {}) {
                 map: definition,
                 initialState,
                 options: { ...CALIBRATION_DEFAULT_OPTIONS },
-                resume
+                resume,
+                strategyGraph
             });
         });
 

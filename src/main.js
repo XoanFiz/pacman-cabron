@@ -115,7 +115,8 @@
             resetGame: rules.resetGame,
             getCurrentSearchContext: intelligence.getCurrentSearchContext,
             createCurrentGameSearchState: intelligence.createCurrentGameSearchState,
-            setCalibration: intelligence.setCalibration
+            setCalibration: intelligence.setCalibration,
+            getStrategyGraph: intelligence.getStrategyGraph
         });
 
         runtime.start();

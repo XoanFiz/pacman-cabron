@@ -288,6 +288,7 @@ function createReferenceValue({
     getNodeType,
     createSuccessorIterator,
     evaluateState,
+    lookupStateValue = null,
     maxStates = Infinity
 } = {}) {
     if (
@@ -304,6 +305,15 @@ function createReferenceValue({
     if (!(maxStates === Infinity || (Number.isInteger(maxStates) && maxStates > 0))) {
         throw new RangeError(
             "maxStates must be a positive integer or Infinity."
+        );
+    }
+
+    if (
+        lookupStateValue !== null &&
+        typeof lookupStateValue !== "function"
+    ) {
+        throw new TypeError(
+            "lookupStateValue must be a function or null."
         );
     }
 
@@ -336,7 +346,8 @@ function createReferenceValue({
                 return evaluateState(state);
             }
 
-            const key = `${getStateKey(state)}|${state.time}`;
+            const stateKey = getStateKey(state);
+            const key = `${stateKey}|${state.time}`;
 
             if (memo.has(key)) {
                 return memo.get(key);
@@ -345,6 +356,16 @@ function createReferenceValue({
             // Prevent infinite recursion if a zero-duration cycle exists.
             if (active.has(key)) {
                 return evaluateState(state);
+            }
+
+            // Reuse values already explored by the game graph: they are a
+            // deeper estimate than this bounded horizon can afford.
+            if (lookupStateValue !== null) {
+                const known = lookupStateValue(state, stateKey);
+
+                if (Number.isFinite(known)) {
+                    return known;
+                }
             }
 
             if (visited >= maxStates) {
@@ -398,6 +419,7 @@ function createRbfmCalibrationRunner({
     referenceMaxStates = Infinity,
     minimumStandardDeviation = 0,
     priorStandardDeviation = 0,
+    lookupStateValue = null,
     getReferenceValue = null,
     seed = null,
     getStateKey,
@@ -472,6 +494,7 @@ function createRbfmCalibrationRunner({
         getNodeType,
         createSuccessorIterator,
         evaluateState,
+        lookupStateValue,
         maxStates: referenceMaxStates
     });
     const referenceValueFor = typeof getReferenceValue === "function"

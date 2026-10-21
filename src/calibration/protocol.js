@@ -18,7 +18,8 @@
 //     map,          // map definition; edges are serialized as an array
 //     initialState, // strategy.createCurrentGameSearchState(...) output
 //     options,      // see normalizeCalibrationOptions()
-//     resume        // optional partial results, see normalizeCalibrationResume()
+//     resume,       // optional partial results, see normalizeCalibrationResume()
+//     strategyGraph // optional explored graph used to deepen the reference
 //   }
 //
 // Responses (worker -> main thread):
@@ -67,11 +68,11 @@ const CALIBRATION_DEFAULT_OPTIONS = Object.freeze({
     targetSamples: 8,
     maxSteps: 2048,
     maxSamplesPerStep: 1,
-    // A 2 s reference horizon makes a single calibration step take minutes;
-    // 0.5 s stays exact and keeps steps under a second. The state budget is
-    // a safety net for pathological trees.
-    referenceHorizonSeconds: 0.5,
-    referenceMaxStates: 2000
+    // Two simulated seconds of exact minimax; the explored strategy graph
+    // supplies values for the states it already knows and the state budget
+    // is the safety net for what it does not.
+    referenceHorizonSeconds: 2,
+    referenceMaxStates: 200
 });
 
 // Validates and completes an options object at the thread boundary, so a
