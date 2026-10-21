@@ -89,6 +89,11 @@
                     readyPlayer
                 });
             },
+            persist() {
+                worker.postMessage({
+                    type: STRATEGY_BUFFER_MESSAGE.persist
+                });
+            },
             getAction(mode, stateKey) {
                 const entry = buffer.get(stateKey);
 

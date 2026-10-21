@@ -1801,6 +1801,34 @@ function createGameStrategy(parameters = {}) {
         return worker?.getAction?.(mode, stateKey) || null;
     }
 
+    // Used by the worker to keep deepening the live line between anchors:
+    // it installs the root at the state the game is in and advanceSearch()
+    // then extends from it.
+    function advanceSearchFrom(
+        searchContext,
+        readyGhostIndices = [],
+        readyPlayer = false
+    ) {
+        let state = createCurrentGameSearchState(
+            searchContext,
+            readyGhostIndices,
+            readyPlayer
+        );
+        let guard = 0;
+
+        // The graph is only extended from decision states.
+        while (
+            !state.terminal &&
+            !state.readyPlayer &&
+            !state.readyGhosts.some(Boolean) &&
+            guard++ < 64
+        ) {
+            state = advanceSearchToNextEvent(state);
+        }
+
+        setSearchRootFromState(state);
+    }
+
     // Used by the game rules after a decision so the worker re-predicts
     // from the state the game actually reached, not from the alternatives
     // the buffer offered.
@@ -2275,6 +2303,7 @@ function createGameStrategy(parameters = {}) {
         createPolicyBufferJob,
         stepPolicyBufferJob,
         anchorSearchContext,
+        advanceSearchFrom,
         getNodeType,
         setCalibration,
         exportGraph,

@@ -207,6 +207,13 @@ function createGameAiController(parameters = {}) {
     }
 
     function persistStrategyGraph() {
+        // The worker owns the explored graph and saves it periodically.
+        // The local save stays only as a fallback when there is no worker.
+        if (workerBridge?.persist) {
+            workerBridge.persist();
+            return;
+        }
+
         if (!strategy || !strategyMapId) {
             return;
         }

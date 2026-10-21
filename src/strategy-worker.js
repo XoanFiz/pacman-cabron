@@ -32,10 +32,12 @@ const mapStorage = createGameMapStorage();
 let strategy = null;
 let strategySignature = null;
 let strategyMapId = null;
+let strategyMapSignature = null;
 let graphReady = Promise.resolve();
 let pendingAnchor = null;
 let currentJob = null;
 let jobId = 0;
+let graphDirty = false;
 
 // The strategy is rebuilt when the map changes, including its id: two
 // maps can share a layout but have different persisted graphs.
@@ -88,6 +90,40 @@ async function loadPersistedGraph(definition) {
     }
 }
 
+// The worker is the owner of the explored graph, so it is also the one
+// that writes it. The main thread only persists as a no-worker fallback.
+function persistGraph() {
+    if (!strategy || !strategyMapId || !strategyMapSignature) {
+        return false;
+    }
+
+    try {
+        const graph = strategy.exportGraph();
+
+        graphDirty = false;
+
+        void mapStorage.saveStrategyGraph(strategyMapId, graph, {
+            mapSignature: strategyMapSignature,
+            strategyVersion: STRATEGY_VERSION
+        }).catch(error => {
+            graphDirty = true;
+            console.warn(
+                "[strategy worker] unable to save the strategy graph.",
+                error
+            );
+        });
+
+        return true;
+    } catch (error) {
+        console.warn(
+            "[strategy worker] unable to export the strategy graph.",
+            error
+        );
+
+        return false;
+    }
+}
+
 function ensureStrategy(definition) {
     const signature = computeStrategySignature(definition);
 
@@ -95,8 +131,14 @@ function ensureStrategy(definition) {
         return strategy;
     }
 
+    // The previous map's tree is saved before it is discarded.
+    if (strategy) {
+        persistGraph();
+    }
+
     strategySignature = signature;
     strategyMapId = definition.id;
+    strategyMapSignature = mapSignature(definition);
     strategy = createGameStrategy({
         map: definition,
         geometry,
@@ -104,10 +146,17 @@ function ensureStrategy(definition) {
         config,
         rmfMinimax: createRandomizedBestFirstMinimax
     });
+    graphDirty = false;
     graphReady = loadPersistedGraph(definition);
 
     return strategy;
 }
+
+setInterval(() => {
+    if (graphDirty) {
+        persistGraph();
+    }
+}, STRATEGY_GRAPH_SAVE_INTERVAL_MS);
 
 // Only the entries added since the previous message are sent; the main
 // thread clears its buffer when the revision changes and merges after.
@@ -153,7 +202,10 @@ function startJob(anchor) {
         job.mapId = anchor.map.id;
         job.revision = anchor.revision;
         job.strategy = strategy;
+        job.anchor = anchor;
         job.posted = 0;
+        job.deepening = false;
+        graphDirty = true;
         currentJob = job;
 
         postBuffer(job, job.complete);
@@ -187,12 +239,58 @@ function scheduleStep(id) {
 
         if (!job.complete) {
             scheduleStep(job.id);
+            return;
         }
+
+        scheduleDeepening(job);
     }, 0);
+}
+
+// Between anchors the worker keeps extending the graph from the state the
+// game reached, the same way the main thread used to do every frame.
+function scheduleDeepening(job) {
+    setTimeout(() => {
+        if (currentJob !== job || !job.complete) {
+            return;
+        }
+
+        try {
+            if (!job.deepening) {
+                job.strategy.advanceSearchFrom(
+                    job.anchor.searchContext,
+                    job.anchor.readyGhostIndices || [],
+                    Boolean(job.anchor.readyPlayer)
+                );
+                job.deepening = true;
+            }
+
+            const startedAt = Date.now();
+
+            while (Date.now() - startedAt < 4) {
+                job.strategy.advanceSearch();
+            }
+
+            graphDirty = true;
+        } catch (error) {
+            postError(
+                { map: { id: job.mapId }, revision: job.revision },
+                error
+            );
+
+            return;
+        }
+
+        scheduleDeepening(job);
+    }, 16);
 }
 
 self.onmessage = event => {
     const message = event.data;
+
+    if (message?.type === STRATEGY_BUFFER_MESSAGE.persist) {
+        persistGraph();
+        return;
+    }
 
     if (message?.type !== STRATEGY_BUFFER_MESSAGE.anchor) {
         return;

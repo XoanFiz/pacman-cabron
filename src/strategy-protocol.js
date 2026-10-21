@@ -22,6 +22,11 @@
 //     readyPlayer
 //   }
 //
+// persist (main -> worker):
+//   { type }
+// Asks for an immediate save, used on pagehide. The worker also saves
+// periodically and before rebuilding the strategy for another map.
+//
 // buffer (worker -> main):
 //   {
 //     type, mapId, revision, complete,
@@ -40,9 +45,13 @@
 
 const STRATEGY_BUFFER_MESSAGE = Object.freeze({
     anchor: "anchor",
+    persist: "persist",
     buffer: "buffer",
     error: "error"
 });
+
+// How often the worker writes its strategy graph to IndexedDB.
+const STRATEGY_GRAPH_SAVE_INTERVAL_MS = 25000;
 
 // How far ahead, in game seconds, the worker predicts decisions.
 const STRATEGY_BUFFER_HORIZON_SECONDS = 1;
