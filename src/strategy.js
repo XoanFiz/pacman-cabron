@@ -1786,7 +1786,8 @@ function createGameStrategy(parameters = {}) {
     const rbfmSearch = rmfMinimax({
         getStateKey: buildStateKey,
         getNodeType: getNodeType,
-        createSuccessorIterator: createGameRbfmSuccessors
+        createSuccessorIterator: createGameRbfmSuccessors,
+        maxExtendDepth: config.SEARCH_MAX_EXTEND_DEPTH
     });
 
     function getOrSetSearchRoot(

@@ -1,11 +1,9 @@
 TODO
-Game freezes with stack overflow on randomized-best-first-minimax after a while
-Another idea that occurred to me: the graph exploration performed during a session to generate a map could be saved for future sessions—just like the calibration data—and the calibration process itself could also utilize this version of the graph. This is a different graph from the map's graph; it is the map's strategy graph.
 Calibration follow-ups
     Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
     Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
-    Add a schema/migration step for the IndexedDB stores (currently database version 1) and a way to remove custom maps.
-    Review the calibration reference settings (0.5 s horizon, 2000 states): a 2 s horizon made a single calibration step take minutes.
+    Add a schema/migration step for the IndexedDB stores (currently database version 2) and a way to remove custom maps.
+    Tune the calibration reference (2 s horizon, 200 states) against step time and calibration quality.
 Allow a way to remove ghosts. Recover the color for the new ghosts if done. 
 Fix characters traversing walls
 Move many things from map.js to rules.js.

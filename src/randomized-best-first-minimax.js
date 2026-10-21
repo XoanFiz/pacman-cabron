@@ -14,7 +14,8 @@ function createRandomizedBestFirstMinimax({
     getStateKey,
     getNodeType,
     createSuccessorIterator,
-    onNodeVisit = null
+    onNodeVisit = null,
+    maxExtendDepth = 4096
 }) {
     if (typeof getStateKey !== "function") {
         throw new TypeError("getStateKey must be a function.");
@@ -35,6 +36,12 @@ function createRandomizedBestFirstMinimax({
     ) {
         throw new TypeError(
             "onNodeVisit must be a function or null."
+        );
+    }
+
+    if (!Number.isInteger(maxExtendDepth) || maxExtendDepth <= 0) {
+        throw new RangeError(
+            "maxExtendDepth must be a positive integer."
         );
     }
 
@@ -407,6 +414,11 @@ function createRandomizedBestFirstMinimax({
     // RBFM EXPLORATION
     // ========================================================
 
+    // Walks down the selected path expanding the first unexpanded node.
+    // Iterative on purpose: the recursive version overflowed the stack when
+    // the path crossed a long chain or a cycle of already expanded nodes.
+    // The walk is bounded and a revisited node stops it, keeping the current
+    // static evaluation instead of expanding further.
     function extend(node, mode, currentTime) {
         if (mode !== "improve" && mode !== "worsen") {
             throw new TypeError(
@@ -418,55 +430,84 @@ function createRandomizedBestFirstMinimax({
             throw new TypeError(
                 "Current time must be a finite number."
             );
-        } 
-        
-        if (!node.expansionComplete) {
-            expandNode(node, currentTime);
+        }
 
-            if (onNodeVisit !== null) {
-                onNodeVisit(node);
+        const path = [];
+        const visited = new Set();
+        let current = node;
+        let currentMode = mode;
+        let time = currentTime;
+        let expandedNode = node;
+
+        while (true) {
+            if (!current.expansionComplete) {
+                expandNode(current, time);
+
+                if (onNodeVisit !== null) {
+                    onNodeVisit(current);
+                }
+
+                expandedNode = current;
+                break;
             }
 
-            return node;
+            recordSearchVisit(current);
+
+            if (onNodeVisit !== null) {
+                onNodeVisit(current);
+            }
+
+            if (current.successors.length === 0) {
+                expandedNode = current;
+                break;
+            }
+
+            const edge = currentMode === "improve"
+                ? getBestChild(current)
+                : getRandomChild(current);
+
+            if (edge === null) {
+                expandedNode = current;
+                break;
+            }
+
+            // End of the walkable tree: a revisited node or a path deeper
+            // than the hard limit. Keep the static evaluation and stop.
+            if (
+                visited.has(edge.child) ||
+                path.length >= maxExtendDepth
+            ) {
+                expandedNode = current;
+                break;
+            }
+
+            const sameType = edge.child.type === current.type;
+
+            const nextMode = currentMode === "improve"
+                ? (sameType ? "improve" : "worsen")
+                : (sameType ? "worsen" : "improve");
+
+            visited.add(current);
+            path.push({
+                node: current,
+                edge,
+                previousValue: edge.child.value
+            });
+
+            current = edge.child;
+            currentMode = nextMode;
+            time += edge.duration;
         }
 
-        recordSearchVisit(node);
+        for (let index = path.length - 1; index >= 0; index--) {
+            const frame = path[index];
 
-        if (onNodeVisit !== null) {
-            onNodeVisit(node);
+            if (frame.edge.child.value !== frame.previousValue) {
+                repositionSuccessor(frame.node, frame.edge);
+            }
+
+            updateNodeValue(frame.node);
         }
-
-        if (node.successors.length === 0) {
-            return node;
-        }
-
-        const edge = mode === "improve"
-            ? getBestChild(node)
-            : getRandomChild(node);
-
-        if (edge === null) {
-            return node;
-        }
-
-        const sameType = edge.child.type === node.type;
-
-        const nextMode = mode === "improve"
-            ? (sameType ? "improve" : "worsen")
-            : (sameType ? "worsen" : "improve");
-
-        const previousValue = edge.child.value;
-
-        const expandedNode = extend(
-            edge.child,
-            nextMode,
-            currentTime + edge.duration
-        );
-
-        if (edge.child.value !== previousValue) {
-            repositionSuccessor(node, edge);
-        }
-
-        updateNodeValue(node);
 
         return expandedNode;
     }
