@@ -43,8 +43,6 @@ function createGameRules(parameters = {}) {
     function resetLevel() {
         const gs = gameState();
 
-        state.inputDirection = { x: 0, y: 0 };
-
         map.currentMap = map.cloneMapDefinition(
             map.getCurrentMapDefinition()
         );
@@ -128,11 +126,15 @@ function createGameRules(parameters = {}) {
                     );
             }
 
-            const desiredDirection = state.selectedCharacter === "pacman"
-                ? state.inputDirection
-                : player.nextDirection;
+            const desiredDirection =
+                state.selectedCharacter === "pacman"
+                    ? findPressedDirection(player.x, player.y)
+                    : player.nextDirection;
 
-            if (map.canMove(player.x, player.y, desiredDirection)) {
+            if (
+                desiredDirection &&
+                map.canMove(player.x, player.y, desiredDirection)
+            ) {
                 setPlayerDirection(desiredDirection);
             }
 
@@ -159,14 +161,35 @@ function createGameRules(parameters = {}) {
         }
     }
 
+    // Held direction that is legal from this cell, most recent first.
+    function findPressedDirection(x, y) {
+        for (
+            let index = state.pressedDirections.length - 1;
+            index >= 0;
+            index--
+        ) {
+            const direction = map.DIRECTIONS[state.pressedDirections[index]];
+
+            if (direction && map.canMove(x, y, direction)) {
+                return direction;
+            }
+        }
+
+        return null;
+    }
+
     function tryChangeDirection() {
         const gs = gameState();
         const player = gs.player;
-        const desiredDirection = state.selectedCharacter === "pacman"
-            ? state.inputDirection
-            : player.nextDirection;
+        const desiredDirection =
+            state.selectedCharacter === "pacman"
+                ? findPressedDirection(player.x, player.y)
+                : player.nextDirection;
 
-        if (map.canMove(player.x, player.y, desiredDirection)) {
+        if (
+            desiredDirection &&
+            map.canMove(player.x, player.y, desiredDirection)
+        ) {
             setPlayerDirection(desiredDirection);
         }
     }
@@ -303,7 +326,10 @@ function createGameRules(parameters = {}) {
             }
 
             if (getControlledGhost() === ghost) {
-                const desiredDirection = state.inputDirection;
+                const desiredDirection = findPressedDirection(
+                    ghost.x,
+                    ghost.y
+                );
 
                 if (
                     desiredDirection &&
@@ -486,7 +512,6 @@ function createGameRules(parameters = {}) {
         player.progress = 0;
         player.direction = { x: 0, y: 0 };
         player.nextDirection = { x: 0, y: 0 };
-        state.inputDirection = { x: 0, y: 0 };
 
         const ghostStarts = mapDefinition.ghostStarts;
 
@@ -507,17 +532,23 @@ function createGameRules(parameters = {}) {
         });
     }
 
-    function setDirection(direction) {
+    // A direction key went down: remember it as held and, if the game was
+    // stopped, start it. Nothing is applied until a character reaches a
+    // cell centre, where the held keys are read again.
+    function pressDirection(name) {
         const gs = gameState();
 
         if (state.editorMode || gs.paused) {
             return;
         }
 
-        // Latch the input; it is read when the character reaches a centre.
-        state.inputDirection = { ...direction };
+        const index = state.pressedDirections.indexOf(name);
 
-        const controlledGhost = getControlledGhost();
+        if (index >= 0) {
+            state.pressedDirections.splice(index, 1);
+        }
+
+        state.pressedDirections.push(name);
 
         if (!gs.running && gs.deathTimer <= 0 && gs.lives > 0) {
             gs.running = true;
@@ -525,25 +556,34 @@ function createGameRules(parameters = {}) {
             state.statusElement.textContent = "";
             ui.updatePauseButton();
 
-            if (controlledGhost) {
-                if (map.canMove(controlledGhost.x, controlledGhost.y, direction)) {
-                    controlledGhost.direction = { ...direction };
-                }
-
+            if (state.selectedCharacter !== "pacman") {
                 gs.player.nextDirection =
                     intelligence.choosePacmanDirection(
                         intelligence.getCurrentSearchContext()
                     );
-                tryChangeDirection();
-            } else {
-                tryChangeDirection();
             }
+
+            tryChangeDirection();
         }
+    }
+
+    function releaseDirection(name) {
+        const index = state.pressedDirections.indexOf(name);
+
+        if (index >= 0) {
+            state.pressedDirections.splice(index, 1);
+        }
+    }
+
+    function releaseAllDirections() {
+        state.pressedDirections.length = 0;
     }
 
     return {
         resetGame,
         update,
-        setDirection
+        pressDirection,
+        releaseDirection,
+        releaseAllDirections
     };
 }

@@ -223,9 +223,9 @@ function createGameState(parameters = {}) {
         // Game state.
         currentGameState,
 
-        // Player input, latched and read only when a character reaches a
-        // cell centre. It is not part of the game state.
-        inputDirection: { x: 0, y: 0 },
+        // Direction keys currently held, most recent last. Read only when
+        // a character reaches a cell centre; never part of the game state.
+        pressedDirections: [],
 
         // Mutable UI / editor flags.
         selectedCharacter: "pacman",

@@ -20,17 +20,19 @@ function createGameInput(parameters = {}) {
         ] || null;
     }
 
+    const KEY_NAMES = {
+        ArrowUp: "up",
+        w: "up",
+        ArrowDown: "down",
+        s: "down",
+        ArrowLeft: "left",
+        a: "left",
+        ArrowRight: "right",
+        d: "right"
+    };
+
     function updatePressedDirectionButtons() {
-        const keys = {
-            ArrowUp: "up",
-            w: "up",
-            ArrowDown: "down",
-            s: "down",
-            ArrowLeft: "left",
-            a: "left",
-            ArrowRight: "right",
-            d: "right"
-        };
+        const keys = KEY_NAMES;
         const pressedDirections = new Set(
             Array.from(state.pressedDirectionKeys, key => keys[key])
         );
@@ -97,7 +99,7 @@ function createGameInput(parameters = {}) {
             : event.key);
         updatePressedDirectionButtons();
 
-        rules.setDirection(direction);
+        rules.pressDirection(KEY_NAMES[event.key] || KEY_NAMES[event.key.toLowerCase()]);
     });
 
     document.addEventListener("keyup", event => {
@@ -108,11 +110,18 @@ function createGameInput(parameters = {}) {
         if (state.pressedDirectionKeys.delete(key)) {
             updatePressedDirectionButtons();
         }
+
+        const name = KEY_NAMES[event.key] || KEY_NAMES[event.key.toLowerCase()];
+
+        if (name) {
+            rules.releaseDirection(name);
+        }
     });
 
     window.addEventListener("blur", () => {
         state.pressedDirectionKeys.clear();
         updatePressedDirectionButtons();
+        rules.releaseAllDirections();
     });
 
     document
@@ -120,24 +129,44 @@ function createGameInput(parameters = {}) {
         .forEach(button => {
             button.addEventListener("pointerdown", () => {
                 button.classList.add("is-pointer-pressed");
+                rules.pressDirection(button.dataset.dir);
             });
 
-            button.addEventListener("click", () => {
-                rules.setDirection(DIRECTIONS[button.dataset.dir]);
+            button.addEventListener("pointerup", () => {
+                button.classList.remove("is-pointer-pressed");
+                rules.releaseDirection(button.dataset.dir);
+            });
+
+            button.addEventListener("pointerleave", () => {
+                if (button.classList.contains("is-pointer-pressed")) {
+                    button.classList.remove("is-pointer-pressed");
+                    rules.releaseDirection(button.dataset.dir);
+                }
+            });
+
+            // Keyboard activation of the button: a short press.
+            button.addEventListener("click", event => {
+                if (event.detail !== 0) {
+                    return;
+                }
+
+                rules.pressDirection(button.dataset.dir);
+                window.setTimeout(
+                    () => rules.releaseDirection(button.dataset.dir),
+                    120
+                );
             });
         });
 
-    document.addEventListener("pointerup", () => {
+    function releasePointerButtons() {
         document.querySelectorAll(".is-pointer-pressed").forEach(button => {
             button.classList.remove("is-pointer-pressed");
+            rules.releaseDirection(button.dataset.dir);
         });
-    });
+    }
 
-    document.addEventListener("pointercancel", () => {
-        document.querySelectorAll(".is-pointer-pressed").forEach(button => {
-            button.classList.remove("is-pointer-pressed");
-        });
-    });
+    document.addEventListener("pointerup", releasePointerButtons);
+    document.addEventListener("pointercancel", releasePointerButtons);
 
     document
         .getElementById("restart")
