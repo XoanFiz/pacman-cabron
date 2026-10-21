@@ -1784,8 +1784,11 @@ function createGameStrategy(parameters = {}) {
     // Optional bridge to the strategy Web Worker. The main thread injects
     // `worker` (see game-ai-controller); inside workers it stays null and
     // the search runs locally on the simulation context.
+    // The anchor makes the worker re-predict from the live state. The
+    // lookup happens first so sending it never discards an entry that the
+    // current decision is about to use.
     function requestWorkerAction(mode, searchContext, indices, readyPlayer) {
-        worker?.requestAction({
+        worker?.anchor?.({
             mode,
             map,
             searchContext,
@@ -1795,17 +1798,23 @@ function createGameStrategy(parameters = {}) {
     }
 
     function getWorkerAction(mode, stateKey) {
-        if (!worker?.getAction) {
-            return null;
-        }
+        return worker?.getAction?.(mode, stateKey) || null;
+    }
 
-        const result = worker.getAction(mode);
-
-        return result &&
-            result.mapId === map.id &&
-            result.stateKey === stateKey
-            ? result
-            : null;
+    // Used by the game rules after a decision so the worker re-predicts
+    // from the state the game actually reached, not from the alternatives
+    // the buffer offered.
+    function anchorSearchContext(
+        searchContext,
+        readyGhostIndices = [],
+        readyPlayer = false
+    ) {
+        requestWorkerAction(
+            "ghost",
+            searchContext,
+            readyGhostIndices,
+            readyPlayer
+        );
     }
 
     // The walk is bounded; when the bound is hit the search keeps the
@@ -1832,24 +1841,26 @@ function createGameStrategy(parameters = {}) {
         maxExtendDepth: config.SEARCH_MAX_EXTEND_DEPTH
     });
 
+    function setSearchRootFromState(state) {
+        return rbfmSearch.setRoot(
+            state,
+            evaluateSearchState(state),
+            state.time
+        );
+    }
+
     function getOrSetSearchRoot(
         searchContext,
         readyGhostIndices = [],
         readyPlayer = false
     ) {
-        const state = createCurrentGameSearchState(
-            searchContext,
-            readyGhostIndices,
-            readyPlayer
+        return setSearchRootFromState(
+            createCurrentGameSearchState(
+                searchContext,
+                readyGhostIndices,
+                readyPlayer
+            )
         );
-
-        const root = rbfmSearch.setRoot(
-            state,
-            evaluateSearchState(state),
-            state.time
-        );
-
-        return root;
     }
 
     function ensureExpanded(node) {
@@ -1875,6 +1886,253 @@ function createGameStrategy(parameters = {}) {
         );
     }
 
+    // ============================================================
+    // POLICY BUFFER
+    // ============================================================
+    //
+    // The worker walks the event tree of the next second and stores the
+    // direction every AI-controlled character would choose at each
+    // decision state. Only the human-controlled character branches, so
+    // any legal line the player takes is already covered.
+
+    function getReadySearchGhostIndices(state) {
+        const indices = [];
+
+        for (let index = 0; index < state.readyGhosts.length; index++) {
+            if (state.readyGhosts[index]) {
+                indices.push(index);
+            }
+        }
+
+        return indices;
+    }
+
+    function getHumanGhostDirections(state, ghostIndex) {
+        const directions = new Map();
+
+        for (const profile of getSearchGhostActionProfiles(state)) {
+            for (const [index, direction] of profile) {
+                if (index === ghostIndex) {
+                    directions.set(
+                        `${direction.x},${direction.y}`,
+                        { ...direction }
+                    );
+                }
+            }
+        }
+
+        return [...directions.values()];
+    }
+
+    // Advances a state without any ready actor to the next decision event.
+    function advanceSearchToNextEvent(state) {
+        const next = {
+            ...state,
+            pellets: new Set(state.pellets),
+            player: cloneSearchCharacter(state.player),
+            ghosts: state.ghosts.map(cloneSearchCharacter),
+            readyPlayer: state.readyPlayer,
+            readyGhosts: [...state.readyGhosts]
+        };
+
+        const { timeToNextEvent, collisionedGhostIndex } =
+            getSearchNextEvent(next);
+
+        if (!Number.isFinite(timeToNextEvent)) {
+            return finalizeSearchState(next);
+        }
+
+        advanceSearchCharactersToEvent(next, timeToNextEvent);
+        resolveSearchEvent(state, next, collisionedGhostIndex);
+
+        return finalizeSearchState(next);
+    }
+
+    function createPolicyBufferJob(searchContext, options = {}) {
+        const origin = createCurrentGameSearchState(
+            searchContext,
+            options.readyGhostIndices || [],
+            Boolean(options.readyPlayer)
+        );
+
+        const originTime = origin.time;
+        let root = origin;
+        let guard = 0;
+
+        // An anchor sent after a decision is not a decision state itself:
+        // walk it to the next one so the job always starts at an event.
+        while (
+            !root.terminal &&
+            !root.readyPlayer &&
+            !root.readyGhosts.some(Boolean) &&
+            guard++ < 64
+        ) {
+            root = advanceSearchToNextEvent(root);
+        }
+
+        return {
+            root,
+            originTime,
+            horizonSeconds: Number.isFinite(options.horizonSeconds)
+                ? options.horizonSeconds
+                : 1,
+            maxEntries: Number.isInteger(options.maxEntries)
+                ? options.maxEntries
+                : 64,
+            humanGhostIndex: root.controlledGhostIndex,
+            entries: new Map(),
+            queue: [root],
+            visited: new Set([buildStateKey(root)]),
+            complete: false
+        };
+    }
+
+    function enqueuePolicyState(job, state) {
+        if (state.terminal) {
+            return;
+        }
+
+        const key = buildStateKey(state);
+
+        if (job.visited.has(key)) {
+            return;
+        }
+
+        job.visited.add(key);
+        job.queue.push(state);
+    }
+
+    function stepGhostDecision(job, state, key, readyGhostIndices) {
+        const humanIndex = readyGhostIndices.includes(job.humanGhostIndex) &&
+            !state.ghosts[job.humanGhostIndex].eaten
+            ? job.humanGhostIndex
+            : -1;
+
+        const automatedIndices = readyGhostIndices.filter(
+            index => index !== humanIndex
+        );
+
+        // The live query marks only the automated ghosts as ready, so
+        // the entry is keyed by that same state, not by the full one.
+        const queryState = automatedIndices.length > 0
+            ? createCurrentGameSearchState(
+                state,
+                automatedIndices,
+                state.readyPlayer
+            )
+            : null;
+
+        const directions = queryState
+            ? chooseGhostDirections(
+                queryState,
+                automatedIndices,
+                state.readyPlayer
+            )
+            : null;
+
+        if (directions) {
+            const queryKey = buildStateKey(queryState);
+
+            job.entries.set(queryKey, {
+                key: queryKey,
+                ghostDirections: [...directions.entries()]
+            });
+        }
+
+        if (humanIndex < 0) {
+            enqueuePolicyState(
+                job,
+                advanceSearchState(state, directions || new Map(), null)
+            );
+
+            return;
+        }
+
+        for (const direction of getHumanGhostDirections(state, humanIndex)) {
+            const jointDirections = new Map(directions || []);
+            jointDirections.set(humanIndex, direction);
+
+            enqueuePolicyState(
+                job,
+                advanceSearchState(state, jointDirections, null)
+            );
+        }
+    }
+
+    function stepPlayerDecision(job, state, key, readyGhostIndices) {
+        if (job.humanGhostIndex < 0) {
+            for (const direction of getSearchPlayerActionProfiles(state)) {
+                enqueuePolicyState(
+                    job,
+                    advanceSearchState(state, [], direction)
+                );
+            }
+
+            return;
+        }
+
+        const direction = choosePacmanDirection(
+            state,
+            readyGhostIndices
+        );
+
+        job.entries.set(key, {
+            key,
+            playerDirection: { ...direction }
+        });
+
+        enqueuePolicyState(
+            job,
+            advanceSearchState(state, [], direction)
+        );
+    }
+
+    // Steps the buffer job without blocking the worker for long: each call
+    // processes at most maxStates decision states.
+    function stepPolicyBufferJob(job, maxStates = 1) {
+        for (let step = 0; step < maxStates; step++) {
+            if (job.complete) {
+                break;
+            }
+
+            if (job.queue.length === 0) {
+                job.complete = true;
+                break;
+            }
+
+            if (job.entries.size >= job.maxEntries) {
+                job.complete = true;
+                break;
+            }
+
+            const state = job.queue.shift();
+
+            if (state.time - job.originTime > job.horizonSeconds) {
+                continue;
+            }
+
+            if (state.terminal) {
+                continue;
+            }
+
+            const readyGhostIndices = getReadySearchGhostIndices(state);
+
+            if (readyGhostIndices.length === 0 && !state.readyPlayer) {
+                continue;
+            }
+
+            const key = buildStateKey(state);
+
+            if (state.firstActor === "ghosts") {
+                stepGhostDecision(job, state, key, readyGhostIndices);
+            } else if (state.firstActor === "player") {
+                stepPlayerDecision(job, state, key, readyGhostIndices);
+            }
+        }
+
+        return job;
+    }
+
     function getFallbackGhostDirections(searchContext, indices) {
         return new Map(indices.map(index => [
             index,
@@ -1887,11 +2145,16 @@ function createGameStrategy(parameters = {}) {
         readyGhostIndices,
         readyPlayer = false
     ) {
-        const root = getOrSetSearchRoot(
+        const state = createCurrentGameSearchState(
             searchContext,
             readyGhostIndices,
             readyPlayer
         );
+        const buffered = getWorkerAction(
+            "ghost",
+            buildStateKey(state)
+        );
+
         requestWorkerAction(
             "ghost",
             searchContext,
@@ -1899,15 +2162,14 @@ function createGameStrategy(parameters = {}) {
             readyPlayer
         );
 
-        const workerAction = getWorkerAction("ghost", root.key);
-
-        if (workerAction?.ghostDirections) {
-            return new Map(workerAction.ghostDirections.map(([index, direction]) => [
+        if (buffered?.ghostDirections) {
+            return new Map(buffered.ghostDirections.map(([index, direction]) => [
                 index,
                 { ...direction }
             ]));
         }
 
+        const root = setSearchRootFromState(state);
         const rootAction = getBestAction(root);
 
         if (!rootAction) {
@@ -1935,11 +2197,16 @@ function createGameStrategy(parameters = {}) {
         searchContext,
         readyGhostIndices = []
     ) {
-        const root = getOrSetSearchRoot(
+        const state = createCurrentGameSearchState(
             searchContext,
             readyGhostIndices,
             true
         );
+        const buffered = getWorkerAction(
+            "player",
+            buildStateKey(state)
+        );
+
         requestWorkerAction(
             "player",
             searchContext,
@@ -1947,12 +2214,11 @@ function createGameStrategy(parameters = {}) {
             true
         );
 
-        const workerAction = getWorkerAction("player", root.key);
-
-        if (workerAction?.playerDirection) {
-            return { ...workerAction.playerDirection };
+        if (buffered?.playerDirection) {
+            return { ...buffered.playerDirection };
         }
 
+        const root = setSearchRootFromState(state);
         const rootEdge = rbfmSearch.getBestChild(root);
         let action = rootEdge?.action;
 
@@ -1960,8 +2226,20 @@ function createGameStrategy(parameters = {}) {
             action = getBestAction(rootEdge.child);
         }
 
-        return action?.playerDirection
-            ? { ...action.playerDirection }
+        if (action?.playerDirection) {
+            return { ...action.playerDirection };
+        }
+
+        // Never leave Pac-Man standing when the state still has a move:
+        // the search fallback used to return direction { x: 0, y: 0 }.
+        const fallback = getSearchDirections(
+            state,
+            state.player,
+            false
+        )[0];
+
+        return fallback && (fallback.x !== 0 || fallback.y !== 0)
+            ? { ...fallback }
             : { ...searchContext.player.direction };
     }
     function exportValueTable() {
@@ -1994,6 +2272,9 @@ function createGameStrategy(parameters = {}) {
         advanceSearch,
         chooseGhostDirections,
         choosePacmanDirection,
+        createPolicyBufferJob,
+        stepPolicyBufferJob,
+        anchorSearchContext,
         getNodeType,
         setCalibration,
         exportGraph,

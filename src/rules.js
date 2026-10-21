@@ -592,9 +592,10 @@ function createGameRules(parameters = {}) {
     function decidePlayer(readyGhostIndices) {
         const gs = gameState();
         const player = gs.player;
+        const automated = state.selectedCharacter !== "pacman";
         let direction = null;
 
-        if (state.selectedCharacter === "pacman") {
+        if (!automated) {
             const desired = findPressedDirection(player.x, player.y);
 
             if (desired && map.canMove(player.x, player.y, desired)) {
@@ -606,8 +607,18 @@ function createGameRules(parameters = {}) {
                 readyGhostIndices
             );
 
-            if (chosen && map.canMove(player.x, player.y, chosen)) {
+            if (
+                chosen &&
+                (chosen.x !== 0 || chosen.y !== 0) &&
+                map.canMove(player.x, player.y, chosen)
+            ) {
                 direction = chosen;
+            }
+
+            // An automated Pac-Man must never stand still while the cell
+            // still has a legal exit.
+            if (!direction) {
+                direction = map.getPossibleDirections(player)[0] || null;
             }
         }
 
@@ -635,6 +646,7 @@ function createGameRules(parameters = {}) {
 
     function decideGhosts(readyGhostIndices) {
         const gs = gameState();
+        const playerReady = gs.player.ready === true;
         const controlledIndex = getControlledGhostIndex();
         const automatedIndices = readyGhostIndices.filter(
             index => index !== controlledIndex
@@ -643,7 +655,8 @@ function createGameRules(parameters = {}) {
         const directions = automatedIndices.length > 0
             ? intelligence.chooseGhostDirections(
                 intelligence.getCurrentSearchContext(),
-                automatedIndices
+                automatedIndices,
+                playerReady
             )
             : new Map();
 
@@ -699,6 +712,14 @@ function createGameRules(parameters = {}) {
         }
 
         updatePositions();
+
+        if (
+            getReadyGhostIndices().length === 0 &&
+            !gs.player.ready &&
+            typeof intelligence.anchorSearch === "function"
+        ) {
+            intelligence.anchorSearch();
+        }
 
         return resolved;
     }

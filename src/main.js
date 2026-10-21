@@ -1,6 +1,6 @@
 (() => {
     const scripts = [
-        "locales.js", "config.js", "strategy-version.js", "bindings.js", "model.js", "state.js", "map-storage.js", "map-geometry.js", "randomized-best-first-minimax.js", "calibration/protocol.js", "map.js",
+        "locales.js", "config.js", "strategy-version.js", "strategy-protocol.js", "bindings.js", "model.js", "state.js", "map-storage.js", "map-geometry.js", "randomized-best-first-minimax.js", "calibration/protocol.js", "map.js",
         "strategy.js", "ai-controller.js", "rules.js", "renderer.js",
         "ui.js", "editor.js", "input.js", "runtime.js"
     ];
@@ -26,38 +26,92 @@
         }
 
         const worker = new Worker("./src/strategy-worker.js");
-        const latestWorkerActions = {
-            ghost: null,
-            player: null
+        const buffer = new Map();
+        const metrics = {
+            hits: 0,
+            misses: 0,
+            buffers: 0,
+            entries: 0,
+            complete: false,
+            revision: 0
         };
-        let requestId = 0;
+        let revision = 0;
+        let receivedRevision = 0;
+        let activeMapId = null;
 
         worker.onmessage = event => {
             const message = event.data;
 
-            if (message.type === "result") {
-                latestWorkerActions[message.playerDirection
-                    ? "player"
-                    : "ghost"] = message;
-            } else if (message.type === "error") {
+            if (message?.type === STRATEGY_BUFFER_MESSAGE.error) {
                 console.warn("Strategy worker failed.", message.error);
+                return;
             }
+
+            if (message?.type !== STRATEGY_BUFFER_MESSAGE.buffer) {
+                return;
+            }
+
+            if (message.mapId !== activeMapId || message.revision !== revision) {
+                return;
+            }
+
+            if (message.revision !== receivedRevision) {
+                receivedRevision = message.revision;
+                buffer.clear();
+            }
+
+            for (const entry of message.entries || []) {
+                buffer.set(entry.key, entry);
+            }
+
+            metrics.buffers++;
+            metrics.entries = buffer.size;
+            metrics.complete = Boolean(message.complete);
+            metrics.revision = revision;
         };
 
         return {
-            requestAction({ mode, map, searchContext, readyGhostIndices, readyPlayer }) {
+            anchor({ map, searchContext, readyGhostIndices, readyPlayer }) {
+                if (map.id !== activeMapId) {
+                    activeMapId = map.id;
+                    buffer.clear();
+                    revision = 0;
+                }
+
+                revision++;
+
                 worker.postMessage({
-                    type: "request",
-                    requestId: ++requestId,
-                    mode,
+                    type: STRATEGY_BUFFER_MESSAGE.anchor,
+                    revision,
                     map,
                     searchContext,
                     readyGhostIndices,
                     readyPlayer
                 });
             },
-            getAction(mode) {
-                return latestWorkerActions[mode];
+            getAction(mode, stateKey) {
+                const entry = buffer.get(stateKey);
+
+                if (entry) {
+                    metrics.hits++;
+                } else {
+                    metrics.misses++;
+                }
+
+                const lookups = metrics.hits + metrics.misses;
+
+                if (lookups % 120 === 0) {
+                    console.info(
+                        `[strategy buffer] hits ${metrics.hits}` +
+                        ` misses ${metrics.misses}` +
+                        ` entries ${metrics.entries}`
+                    );
+                }
+
+                return entry || null;
+            },
+            getMetrics() {
+                return { ...metrics };
             }
         };
     }

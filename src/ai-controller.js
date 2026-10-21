@@ -84,6 +84,29 @@ function createGameAiController(parameters = {}) {
     // SEARCH CONTEXT
     // ============================================================
 
+    // Sends the state the game actually reached to the worker so the next
+    // buffer starts from it.
+    function anchorSearch() {
+        const gameState = state.currentGameState;
+        const readyGhostIndices = [];
+
+        gameState.ghosts.forEach((ghost, index) => {
+            if (ghost.needsDirection) {
+                readyGhostIndices.push(index);
+            }
+        });
+
+        ensureStrategy().anchorSearchContext(
+            getCurrentSearchContext(),
+            readyGhostIndices,
+            Boolean(gameState.player.ready)
+        );
+    }
+
+    function getStrategyBufferMetrics() {
+        return workerBridge?.getMetrics?.() || null;
+    }
+
     function getCurrentSearchContext() {
         const gameState = state.currentGameState;
         const mapDefinition = map.getCurrentMapDefinition();
@@ -212,6 +235,8 @@ function createGameAiController(parameters = {}) {
 
     return {
         getCurrentSearchContext,
+        anchorSearch,
+        getStrategyBufferMetrics,
         chooseGhostDirections,
         choosePacmanDirection,
         advanceSearch,
