@@ -9,7 +9,9 @@ Fix characters traversing walls
 Move many things from map.js to rules.js.
 Prune the strategic search tree: RBFM nodes are never removed, so it grows for the whole game (memory and CPU per frame). The extend walk also starts at the root each time, so its cost is the tree height; a frontier-based expansion would avoid both.
 Strategy worker
-    It runs the same search as the main thread, so its result is only reused when the state key matches. Decide whether it becomes the only search owner or is removed.
+    The worker produces the one-second decision buffer; the main thread still runs its own search when the buffer misses. Remove that fallback and make the worker own graph persistence: currently the main thread writes the graph on pagehide and on map change, so the worker's deeper tree is lost on reload.
+Strategy buffer
+    Add the headless event-loop and buffer hit-rate checks to develop/tests.
 Improve strategy. Ghosts are not guarding successfully, oscillation or lack of determination when keeping a position doesn't make them sharp enough. Eaten ghosts are too reluctant to return home. Normal ghosts are too reluctant to close Pac-man domain further when it is cornered. Pac-man is too reluctant to explore in depth and jump out of local optimums. 
 Make front screen more coherent
 Make walls map better: still too difficult because it is too narrow.
