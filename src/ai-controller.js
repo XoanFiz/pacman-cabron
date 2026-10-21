@@ -73,7 +73,7 @@ function createGameAiController(parameters = {}) {
             strategy.importGraph(pendingGraph);
             pendingGraph = null;
             pendingGraphMapId = null;
-        } else {
+        } else if (!workerOwnsStrategyData()) {
             void importPersistedStrategyGraph(strategy, strategyMapId);
         }
 
@@ -170,7 +170,20 @@ function createGameAiController(parameters = {}) {
         ensureStrategy().setCalibration(calibration);
     }
 
+    // With a strategy worker the graph belongs to it: reading and importing
+    // the record here only duplicates a large tree on the main thread and
+    // blocks startup.
+    function workerOwnsStrategyData() {
+        return workerBridge?.ownsStrategyData === true;
+    }
+
     async function loadPersistedStrategyGraph() {
+        if (workerOwnsStrategyData()) {
+            pendingGraph = null;
+            pendingGraphMapId = null;
+            return;
+        }
+
         try {
             pendingGraph = await map.loadStrategyGraph(
                 map.getCurrentMapDefinition().id
@@ -182,6 +195,10 @@ function createGameAiController(parameters = {}) {
     }
 
     async function importPersistedStrategyGraph(target, mapId) {
+        if (workerOwnsStrategyData()) {
+            return;
+        }
+
         try {
             const graph = await map.loadStrategyGraph(mapId);
 

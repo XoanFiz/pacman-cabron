@@ -28,10 +28,19 @@ function createGameRuntime(parameters = {}) {
     }
 
     async function start() {
+        const startedAt = Date.now();
+        const mark = label => {
+            console.log(
+                `[startup] ${label}: ${Date.now() - startedAt}ms`
+            );
+        };
+
         await map.loadPersistedMaps();
+        mark("maps");
 
         if (typeof intelligence.loadPersistedStrategyGraph === "function") {
             await intelligence.loadPersistedStrategyGraph();
+            mark("strategy graph");
         }
 
         // Calibration is a property of each map definition. At startup
@@ -51,6 +60,7 @@ function createGameRuntime(parameters = {}) {
         );
 
         map.ensureMapCalibrated(map.getCurrentMapDefinition());
+        mark("calibration queued");
 
         // Only the active map is calibrated here; every other map is
         // calibrated when it becomes active.
@@ -58,6 +68,7 @@ function createGameRuntime(parameters = {}) {
         map.updateMapSelector();
         rules.resetGame();
         map.updateCharacterChoices();
+        mark("playable");
 
         requestAnimationFrame(gameLoop);
     }

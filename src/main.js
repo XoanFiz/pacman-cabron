@@ -84,6 +84,8 @@
         };
 
         return {
+            // The worker owns the persisted strategy graph and value table.
+            ownsStrategyData: true,
             anchor({ map, searchContext, readyGhostIndices, readyPlayer }) {
                 if (map.id !== activeMapId) {
                     activeMapId = map.id;
