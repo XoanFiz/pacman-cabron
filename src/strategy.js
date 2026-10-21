@@ -1072,30 +1072,11 @@ function createGameStrategy(parameters = {}) {
     // Applies the actual control constraints of a player-directed ghost:
     // queued direction first, current direction second, and a legal
     // fallback only when neither can be continued.
+    // The human-controlled ghost is moved by the player: its next
+    // direction is not known before it reaches a cell centre, so the
+    // search treats it like any other ghost.
     function getSearchGhostDirections(state, index) {
-        const ghost = state.ghosts[index];
-
-        if (
-            index === state.controlledGhostIndex &&
-            !ghost.eaten
-        ) {
-            if (
-                ghost.nextDirection &&
-                canMoveInSearchState(state, ghost, ghost.nextDirection)
-            ) {
-                return [{ ...ghost.nextDirection }];
-            }
-
-            if (canMoveInSearchState(state, ghost, ghost.direction)) {
-                return [{ ...ghost.direction }];
-            }
-
-            return [
-                getSearchDirections(state, ghost, true)[0]
-            ];
-        }
-
-        return getSearchDirections(state, ghost, true);
+        return getSearchDirections(state, state.ghosts[index], true);
     }
 
     // Reverses a ghost's movement without teleporting it to a cell center.

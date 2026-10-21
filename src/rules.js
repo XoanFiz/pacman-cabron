@@ -43,6 +43,8 @@ function createGameRules(parameters = {}) {
     function resetLevel() {
         const gs = gameState();
 
+        state.inputDirection = { x: 0, y: 0 };
+
         map.currentMap = map.cloneMapDefinition(
             map.getCurrentMapDefinition()
         );
@@ -126,8 +128,12 @@ function createGameRules(parameters = {}) {
                     );
             }
 
-            if (map.canMove(player.x, player.y, player.nextDirection)) {
-                setPlayerDirection(player.nextDirection);
+            const desiredDirection = state.selectedCharacter === "pacman"
+                ? state.inputDirection
+                : player.nextDirection;
+
+            if (map.canMove(player.x, player.y, desiredDirection)) {
+                setPlayerDirection(desiredDirection);
             }
 
             if (!map.canMove(player.x, player.y, player.direction)) {
@@ -154,10 +160,14 @@ function createGameRules(parameters = {}) {
     }
 
     function tryChangeDirection() {
-        const player = gameState().player;
+        const gs = gameState();
+        const player = gs.player;
+        const desiredDirection = state.selectedCharacter === "pacman"
+            ? state.inputDirection
+            : player.nextDirection;
 
-        if (map.canMove(player.x, player.y, player.nextDirection)) {
-            setPlayerDirection(player.nextDirection);
+        if (map.canMove(player.x, player.y, desiredDirection)) {
+            setPlayerDirection(desiredDirection);
         }
     }
 
@@ -293,7 +303,7 @@ function createGameRules(parameters = {}) {
             }
 
             if (getControlledGhost() === ghost) {
-                const desiredDirection = ghost.nextDirection;
+                const desiredDirection = state.inputDirection;
 
                 if (
                     desiredDirection &&
@@ -476,6 +486,7 @@ function createGameRules(parameters = {}) {
         player.progress = 0;
         player.direction = { x: 0, y: 0 };
         player.nextDirection = { x: 0, y: 0 };
+        state.inputDirection = { x: 0, y: 0 };
 
         const ghostStarts = mapDefinition.ghostStarts;
 
@@ -503,13 +514,10 @@ function createGameRules(parameters = {}) {
             return;
         }
 
-        const controlledGhost = getControlledGhost();
+        // Latch the input; it is read when the character reaches a centre.
+        state.inputDirection = { ...direction };
 
-        if (controlledGhost) {
-            controlledGhost.nextDirection = { ...direction };
-        } else {
-            gs.player.nextDirection = { ...direction };
-        }
+        const controlledGhost = getControlledGhost();
 
         if (!gs.running && gs.deathTimer <= 0 && gs.lives > 0) {
             gs.running = true;
