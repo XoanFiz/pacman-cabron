@@ -119,6 +119,14 @@
         });
 
         runtime.start();
+
+        window.addEventListener("pagehide", () => {
+            intelligence.persistStrategyGraph();
+        });
+
+        window.setInterval(() => {
+            intelligence.persistStrategyGraph();
+        }, 60000);
         window.PACMAN_GAME = { config, state, map, intelligence, rules, ui, renderer, editor, runtime };
     }
 

@@ -397,6 +397,7 @@ function createRbfmCalibrationRunner({
     referenceHorizonSeconds = 10,
     referenceMaxStates = Infinity,
     minimumStandardDeviation = 0,
+    priorStandardDeviation = 0,
     getReferenceValue = null,
     seed = null,
     getStateKey,
@@ -457,6 +458,15 @@ function createRbfmCalibrationRunner({
         );
     }
 
+    if (
+        !Number.isFinite(priorStandardDeviation) ||
+        priorStandardDeviation < 0
+    ) {
+        throw new RangeError(
+            "priorStandardDeviation must be a finite non-negative number."
+        );
+    }
+
     const calculateReferenceValue = createReferenceValue({
         getStateKey,
         getNodeType,
@@ -495,10 +505,12 @@ function createRbfmCalibrationRunner({
 
             node.distribution = {
                 mean: node.value + correction,
-                standardDeviation: Math.max(
-                    minimumStandardDeviation,
-                    Math.sqrt(Math.max(0, variance))
-                )
+                standardDeviation: tables.g.has(key)
+                    ? Math.max(
+                        minimumStandardDeviation,
+                        Math.sqrt(Math.max(0, variance))
+                    )
+                    : priorStandardDeviation
             };
         }
     }

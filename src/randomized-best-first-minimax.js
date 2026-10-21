@@ -232,6 +232,27 @@ function createRandomizedBestFirstMinimax({
         return edge;
     }
 
+    // Imported nodes do not carry iterators (they are not cloneable); they
+    // are recreated on demand so an incomplete expansion can be replayed.
+    function ensureSuccessorIterator(node) {
+        if (!node.successorIterator) {
+            const iterator = createSuccessorIterator(node.state);
+
+            if (
+                iterator === null ||
+                typeof iterator.next !== "function"
+            ) {
+                throw new TypeError(
+                    "createSuccessorIterator must return an iterator."
+                );
+            }
+
+            node.successorIterator = iterator;
+        }
+
+        return node.successorIterator;
+    }
+
     function expandNode(node, currentTime) {
         if (node.expansionComplete) {
             return 0;
@@ -245,10 +266,12 @@ function createRandomizedBestFirstMinimax({
 
         ensureSuccessorOrder(node);
 
+        const iterator = ensureSuccessorIterator(node);
+
         let addedSuccessors = 0;
 
         while (true) {
-            const result = node.successorIterator.next();
+            const result = iterator.next();
 
             if (result.done) {
                 node.expansionComplete = true;
@@ -511,6 +534,107 @@ function createRandomizedBestFirstMinimax({
         search.root = root;
 
         return root;
+    };
+
+    // Serializable snapshot of the explored graph. Iterators are dropped:
+    // completely expanded nodes keep their edges, while incomplete nodes are
+    // stored without edges and re-expanded from scratch on load.
+    search.exportGraph = function () {
+        const serializedNodes = [];
+
+        for (const node of nodes.values()) {
+            serializedNodes.push({
+                key: node.key,
+                state: node.state,
+                type: node.type,
+                value: node.value,
+                searchCount: node.searchCount,
+                expansionComplete: node.expansionComplete,
+                arrivalTimes: node.arrivalTimes.slice(),
+                distribution: node.distribution
+                    ? { ...node.distribution }
+                    : null,
+                successors: node.expansionComplete
+                    ? node.successors.map(edge => ({
+                        childKey: edge.child.key,
+                        action: edge.action,
+                        duration: edge.duration
+                    }))
+                    : []
+            });
+        }
+
+        return {
+            version: 1,
+            rootKey: search.root ? search.root.key : null,
+            nodes: serializedNodes
+        };
+    };
+
+    search.importGraph = function (graph) {
+        if (
+            !graph ||
+            graph.version !== 1 ||
+            !Array.isArray(graph.nodes)
+        ) {
+            return false;
+        }
+
+        nodes.clear();
+        search.root = null;
+
+        const byKey = new Map();
+
+        for (const entry of graph.nodes) {
+            if (!entry || typeof entry.key !== "string") {
+                continue;
+            }
+
+            const node = {
+                key: entry.key,
+                state: entry.state,
+                type: entry.type,
+                value: entry.value,
+                arrivalTimes: Array.isArray(entry.arrivalTimes)
+                    ? entry.arrivalTimes.slice()
+                    : [],
+                successors: [],
+                successorIterator: null,
+                expansionComplete: Boolean(entry.expansionComplete),
+                searchCount: Number(entry.searchCount) || 0,
+                distribution: entry.distribution || null
+            };
+
+            nodes.set(node.key, node);
+            byKey.set(node.key, node);
+        }
+
+        for (const entry of graph.nodes) {
+            const node = byKey.get(entry?.key);
+
+            if (!node || !node.expansionComplete) {
+                continue;
+            }
+
+            for (const edge of entry.successors || []) {
+                const child = byKey.get(edge.childKey);
+
+                if (!child) {
+                    continue;
+                }
+
+                node.successors.push({
+                    parent: node,
+                    child,
+                    action: edge.action,
+                    duration: edge.duration
+                });
+            }
+        }
+
+        search.root = byKey.get(graph.rootKey) || null;
+
+        return true;
     };
 
     return search;

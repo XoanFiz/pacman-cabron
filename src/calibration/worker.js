@@ -128,6 +128,7 @@ function runCalibration(request) {
         referenceHorizonSeconds: options.referenceHorizonSeconds,
         referenceMaxStates: options.referenceMaxStates,
         minimumStandardDeviation: config.CALIBRATION_MIN_STD,
+        priorStandardDeviation: config.BASE_STD,
         seed: resume,
         ...createCalibrationAdapters(strategy)
     });

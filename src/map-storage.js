@@ -1,9 +1,10 @@
 function createGameMapStorage({
     databaseName = "pacman-cabron",
-    databaseVersion = 1
+    databaseVersion = 2
 } = {}) {
     const MAP_STORE = "maps";
     const METADATA_STORE = "metadata";
+    const STRATEGY_STORE = "strategy-graphs";
 
     function isAvailable() {
         return typeof window !== "undefined" && "indexedDB" in window;
@@ -33,6 +34,10 @@ function createGameMapStorage({
 
                 if (!database.objectStoreNames.contains(METADATA_STORE)) {
                     database.createObjectStore(METADATA_STORE, { keyPath: "key" });
+                }
+
+                if (!database.objectStoreNames.contains(STRATEGY_STORE)) {
+                    database.createObjectStore(STRATEGY_STORE, { keyPath: "mapId" });
                 }
             };
 
@@ -113,9 +118,73 @@ function createGameMapStorage({
         }
     }
 
+    async function loadStrategyGraph(mapId) {
+        const database = await openDatabase();
+
+        if (!database) {
+            return null;
+        }
+
+        try {
+            const transaction = database.transaction(
+                STRATEGY_STORE,
+                "readonly"
+            );
+            const request = transaction
+                .objectStore(STRATEGY_STORE)
+                .get(mapId);
+
+            return await requestAsPromise(request);
+        } finally {
+            database.close();
+        }
+    }
+
+    async function saveStrategyGraph(mapId, graph, metadata = {}) {
+        const database = await openDatabase();
+
+        if (!database) {
+            return false;
+        }
+
+        try {
+            await new Promise((resolve, reject) => {
+                const transaction = database.transaction(
+                    STRATEGY_STORE,
+                    "readwrite"
+                );
+
+                transaction.objectStore(STRATEGY_STORE).put({
+                    mapId,
+                    ...metadata,
+                    graph,
+                    savedAt: Date.now()
+                });
+
+                transaction.oncomplete = resolve;
+                transaction.onerror = () => reject(
+                    transaction.error || new Error(
+                        "Unable to save the strategy graph in IndexedDB."
+                    )
+                );
+                transaction.onabort = () => reject(
+                    transaction.error || new Error(
+                        "IndexedDB strategy graph transaction aborted."
+                    )
+                );
+            });
+
+            return true;
+        } finally {
+            database.close();
+        }
+    }
+
     return {
         isAvailable,
         load,
-        save
+        save,
+        loadStrategyGraph,
+        saveStrategyGraph
     };
 }

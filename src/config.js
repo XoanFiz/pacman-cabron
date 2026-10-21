@@ -22,6 +22,9 @@ function createGameConfig() {
         EPSILON: 1e-9,
         SEARCH_EPSILON: 1e-7,
         SEARCH_EXPANSIONS_PER_FRAME: 8,
+        // Prior standard deviation for nodes without observations: wide
+        // enough to explore, replaced by the calibrated deviation per bucket.
+        BASE_STD: 80,
         CALIBRATION_MIN_STD: 0.5
     });
 }

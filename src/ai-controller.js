@@ -27,6 +27,10 @@ function createGameAiController(parameters = {}) {
 
     let strategy = null;
     let strategyMapSignature = null;
+    let strategyMapId = null;
+
+    let pendingGraph = null;
+    let pendingGraphMapId = null;
 
     function computeMapSignature() {
         const definition = map.getCurrentMapDefinition();
@@ -47,9 +51,16 @@ function createGameAiController(parameters = {}) {
             return strategy;
         }
 
+        if (strategy) {
+            persistStrategyGraph();
+        }
+
+        const definition = map.getCurrentMapDefinition();
+
         strategyMapSignature = signature;
+        strategyMapId = definition.id;
         strategy = createGameStrategy({
-            map: map.getCurrentMapDefinition(),
+            map: definition,
             graph: map.graph ?? undefined,
             geometry,
             model,
@@ -57,6 +68,14 @@ function createGameAiController(parameters = {}) {
             rmfMinimax,
             worker: workerBridge
         });
+
+        if (pendingGraph && pendingGraphMapId === strategyMapId) {
+            strategy.importGraph(pendingGraph);
+            pendingGraph = null;
+            pendingGraphMapId = null;
+        } else {
+            void importPersistedStrategyGraph(strategy, strategyMapId);
+        }
 
         return strategy;
     }
@@ -128,6 +147,44 @@ function createGameAiController(parameters = {}) {
         ensureStrategy().setCalibration(calibration);
     }
 
+    async function loadPersistedStrategyGraph() {
+        try {
+            pendingGraph = await map.loadStrategyGraph(
+                map.getCurrentMapDefinition().id
+            );
+            pendingGraphMapId = map.getCurrentMapDefinition().id;
+        } catch (error) {
+            console.warn("Unable to load the strategy graph.", error);
+        }
+    }
+
+    async function importPersistedStrategyGraph(target, mapId) {
+        try {
+            const graph = await map.loadStrategyGraph(mapId);
+
+            if (graph && strategy === target && strategyMapId === mapId) {
+                target.importGraph(graph);
+            }
+        } catch (error) {
+            console.warn("Unable to load the strategy graph.", error);
+        }
+    }
+
+    function persistStrategyGraph() {
+        if (!strategy || !strategyMapId) {
+            return;
+        }
+
+        try {
+            void map.saveStrategyGraph(strategyMapId, strategy.exportGraph())
+                .catch(error => {
+                    console.warn("Unable to save the strategy graph.", error);
+                });
+        } catch (error) {
+            console.warn("Unable to save the strategy graph.", error);
+        }
+    }
+
     function calculateDomain(...args) {
         return ensureStrategy().calculateDomain(...args);
     }
@@ -148,6 +205,8 @@ function createGameAiController(parameters = {}) {
         calculateDomain,
         createCurrentGameSearchState,
         getNodetype,
-        setCalibration
+        setCalibration,
+        loadPersistedStrategyGraph,
+        persistStrategyGraph
     };
 }

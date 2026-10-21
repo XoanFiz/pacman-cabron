@@ -1108,6 +1108,38 @@ function createGameMap(parameters = {}) {
     // GRAPH
     // ============================================================
 
+    async function loadStrategyGraph(mapId) {
+        const record = await mapStorage.loadStrategyGraph(mapId);
+
+        if (!record?.graph) {
+            return null;
+        }
+
+        const definition = map.maps.find(item => item.id === mapId) ||
+            getCurrentMapDefinition();
+
+        // A graph is only reusable for the same map definition and the same
+        // search convention that produced it.
+        if (
+            record.mapSignature !== getMapSignature(definition) ||
+            record.calibrationVersion !== CALIBRATION_VERSION
+        ) {
+            return null;
+        }
+
+        return record.graph;
+    }
+
+    function saveStrategyGraph(mapId, graph) {
+        const definition = map.maps.find(item => item.id === mapId) ||
+            getCurrentMapDefinition();
+
+        return mapStorage.saveStrategyGraph(mapId, graph, {
+            mapSignature: getMapSignature(definition),
+            calibrationVersion: CALIBRATION_VERSION
+        });
+    }
+
     function buildGraph(definition = map.currentMap) {
         return geometry.buildGraph(
             definition,
@@ -1156,6 +1188,8 @@ function createGameMap(parameters = {}) {
         ensureMapCalibrated,
         calibrateAllMaps,
         findReferenceCalibration,
+        loadStrategyGraph,
+        saveStrategyGraph,
         buildGraph,
         canMove
     };

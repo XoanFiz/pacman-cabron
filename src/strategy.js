@@ -1674,22 +1674,9 @@ function createGameStrategy(parameters = {}) {
     // tables are better than deterministic guesses. Buckets without data
     // fall back to the average observed deviation, and every deviation is
     // floored so the search never becomes fully deterministic.
-    function getCalibrationFallbackDeviation(calibration) {
-        const variances = Object.values(calibration?.g || {})
-            .map(Number)
-            .filter(value => Number.isFinite(value) && value >= 0);
-
-        if (variances.length === 0) {
-            return config.CALIBRATION_MIN_STD;
-        }
-
-        return Math.max(
-            config.CALIBRATION_MIN_STD,
-            Math.sqrt(
-                variances.reduce((sum, value) => sum + value, 0) /
-                variances.length
-            )
-        );
+    function getCalibrationFallbackDeviation() {
+        // Buckets without observations use the base deviation, not zero.
+        return config.BASE_STD;
     }
 
     function getCalibrationDistribution(node, fallbackDeviation) {
@@ -1704,7 +1691,7 @@ function createGameStrategy(parameters = {}) {
             // collapsing to a deterministic walk.
             return {
                 mean: node.value,
-                standardDeviation: config.CALIBRATION_MIN_STD
+                standardDeviation: config.BASE_STD
             };
         }
 
@@ -1724,9 +1711,7 @@ function createGameStrategy(parameters = {}) {
     }
 
     function refreshRbfmDistributions() {
-        const fallbackDeviation = getCalibrationFallbackDeviation(
-            map?.calibration
-        );
+        const fallbackDeviation = getCalibrationFallbackDeviation();
 
         for (const node of rbfmSearch.nodes.values()) {
             node.distribution = getCalibrationDistribution(
@@ -1940,6 +1925,20 @@ function createGameStrategy(parameters = {}) {
             ? { ...action.playerDirection }
             : { ...searchContext.player.direction };
     }
+    function exportGraph() {
+        return rbfmSearch.exportGraph();
+    }
+
+    function importGraph(graph) {
+        const imported = rbfmSearch.importGraph(graph);
+
+        if (imported) {
+            refreshRbfmDistributions();
+        }
+
+        return imported;
+    }
+
     return {
         calculateDomain,
         cloneSearchCharacter,
@@ -1954,6 +1953,8 @@ function createGameStrategy(parameters = {}) {
         chooseGhostDirections,
         choosePacmanDirection,
         getNodeType,
-        setCalibration
+        setCalibration,
+        exportGraph,
+        importGraph
     }
 }
