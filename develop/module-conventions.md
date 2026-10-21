@@ -81,3 +81,20 @@ Rules:
 5. If it crosses a thread, add the messages to `calibration/protocol.js` and use its constants on both sides.
 6. Add it to `main.js` only if the page needs it; a worker-only module
    belongs in the worker's `importScripts`.
+
+## 5. Persisted strategy data
+
+Two independent versions guard what is stored in IndexedDB:
+
+- `CALIBRATION_VERSION` (`calibration/protocol.js`) versions the
+  calibration payload: sample shape, options and the meaning of `f`/`g`.
+  Bump it when that payload or its interpretation changes; maps with
+  another version are recalibrated.
+- `STRATEGY_VERSION` (`strategy-version.js`) versions the search
+  convention: state keys, available decisions and node/value meaning.
+  Bump it when a persisted graph or value table would no longer be valid;
+  records from another version are discarded.
+
+Write both versions into the records you persist in IndexedDB and check
+them before using a record. Never reuse a graph or a value table written
+by another search convention, even if the map and the calibration match.

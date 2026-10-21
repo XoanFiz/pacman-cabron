@@ -1,6 +1,6 @@
 (() => {
     const scripts = [
-        "locales.js", "config.js", "bindings.js", "model.js", "state.js", "map-storage.js", "map-geometry.js", "randomized-best-first-minimax.js", "calibration/protocol.js", "map.js",
+        "locales.js", "config.js", "strategy-version.js", "bindings.js", "model.js", "state.js", "map-storage.js", "map-geometry.js", "randomized-best-first-minimax.js", "calibration/protocol.js", "map.js",
         "strategy.js", "ai-controller.js", "rules.js", "renderer.js",
         "ui.js", "editor.js", "input.js", "runtime.js"
     ];

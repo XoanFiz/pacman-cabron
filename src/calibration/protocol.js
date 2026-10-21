@@ -62,9 +62,10 @@ const CALIBRATION_FINISH_REASON = Object.freeze({
     drift: "drift"
 });
 
-// Bumped whenever the calibration payload or the search convention that
-// produced it changes; entries from another version are recalibrated.
-const CALIBRATION_VERSION = 2;
+// Bumped whenever the calibration payload changes; entries from another
+// version are recalibrated. The search convention has its own version in
+// strategy-version.js, so changing it does not force a recalibration.
+const CALIBRATION_VERSION = 3;
 
 // Used by the main thread to build the request and by the worker as the
 // fallback when a field is missing.

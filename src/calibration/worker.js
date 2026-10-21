@@ -3,6 +3,7 @@
 importScripts(
     "protocol.js",
     "../config.js",
+    "../strategy-version.js",
     "../map-geometry.js",
     "../model.js",
     "../strategy.js",
@@ -128,7 +129,7 @@ async function runCalibration(request) {
 
             if (
                 record.mapSignature === signature &&
-                record.calibrationVersion === CALIBRATION_VERSION
+                record.strategyVersion === STRATEGY_VERSION
             ) {
                 valueTable = record.values;
             }

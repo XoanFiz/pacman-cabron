@@ -1174,7 +1174,7 @@ function createGameMap(parameters = {}) {
         // search convention that produced it.
         if (
             record.mapSignature !== getMapSignature(definition) ||
-            record.calibrationVersion !== CALIBRATION_VERSION
+            record.strategyVersion !== STRATEGY_VERSION
         ) {
             return null;
         }
@@ -1188,7 +1188,7 @@ function createGameMap(parameters = {}) {
 
         return mapStorage.saveStrategyGraph(mapId, graph, {
             mapSignature: getMapSignature(definition),
-            calibrationVersion: CALIBRATION_VERSION
+            strategyVersion: STRATEGY_VERSION
         });
     }
 
@@ -1198,7 +1198,7 @@ function createGameMap(parameters = {}) {
 
         return mapStorage.saveStrategyValues(mapId, values, {
             mapSignature: getMapSignature(definition),
-            calibrationVersion: CALIBRATION_VERSION
+            strategyVersion: STRATEGY_VERSION
         });
     }
 
