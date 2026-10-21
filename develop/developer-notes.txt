@@ -2,12 +2,11 @@ TODO
 Calibration follow-ups
     Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
     Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
-    Add a schema/migration step for the IndexedDB stores (currently database version 2) and a way to remove custom maps.
+    Add a schema/migration step for the IndexedDB stores (currently database version 3) and a way to remove custom maps.
     Tune the calibration reference (2 s horizon, 200 states) against step time and calibration quality.
 Allow a way to remove ghosts. Recover the color for the new ghosts if done. 
 Fix characters traversing walls
 Move many things from map.js to rules.js.
-Make the control simulate the classic Pac-Man control: if it is not being pressed, when in the center of a tile, it attempts to continue in the same direction.Make the control simulate the classic Pac-Man control: if it is not being pressed, when in the center of a tile, it attempts to continue in the same direction.
 Prune the strategic search tree: RBFM nodes are never removed, so it grows for the whole game (memory and CPU per frame). The extend walk also starts at the root each time, so its cost is the tree height; a frontier-based expansion would avoid both.
 Strategy worker
     It runs the same search as the main thread, so its result is only reused when the state key matches. Decide whether it becomes the only search owner or is removed.
