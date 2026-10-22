@@ -991,6 +991,15 @@ function createGameRules(parameters = {}) {
 
         state.pressedDirections.push(name);
 
+        // The controlled ghost turns its eyes as soon as the key is
+        // pressed; the movement itself still waits for a cell centre.
+        const controlled = getControlledGhost();
+        const pressedDirection = map.DIRECTIONS[name];
+
+        if (controlled && pressedDirection) {
+            controlled.facingDirection = { ...pressedDirection };
+        }
+
         if (!gs.running && gs.deathTimer <= 0 && gs.lives > 0) {
             gs.running = true;
 
