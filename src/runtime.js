@@ -96,11 +96,6 @@ function createGameRuntime(parameters = {}) {
         await map.loadPersistedMaps();
         mark("maps");
 
-        if (typeof intelligence.loadPersistedStrategyGraph === "function") {
-            await intelligence.loadPersistedStrategyGraph();
-            mark("strategy graph");
-        }
-
         // Calibration is a property of each map definition. At startup
         // every map without a completed calibration is scheduled to be
         // calibrated in the background. The active map must be playable

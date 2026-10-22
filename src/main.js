@@ -1,6 +1,6 @@
 (() => {
     const scripts = [
-        "locales.js", "config.js", "strategy-version.js", "strategy-protocol.js", "bindings.js", "model.js", "state.js", "map-storage.js", "map-geometry.js", "randomized-best-first-minimax.js", "calibration/protocol.js", "map.js",
+        "locales.js", "config.js", "strategy-protocol.js", "bindings.js", "model.js", "state.js", "map-storage.js", "map-geometry.js", "randomized-best-first-minimax.js", "calibration/protocol.js", "map.js",
         "strategy.js", "ai-controller.js", "rules.js", "renderer.js",
         "ui.js", "editor.js", "input.js", "runtime.js"
     ];
@@ -38,26 +38,13 @@
         let revision = 0;
         let receivedRevision = 0;
         let activeMapId = null;
-        let persistId = 0;
         let missDiagnostics = 0;
-        const persistRequests = new Map();
 
         worker.onmessage = event => {
             const message = event.data;
 
             if (message?.type === STRATEGY_BUFFER_MESSAGE.error) {
                 console.warn("Strategy worker failed.", message.error);
-                return;
-            }
-
-            if (message?.type === STRATEGY_BUFFER_MESSAGE.persisted) {
-                const resolve = persistRequests.get(message.requestId);
-
-                if (resolve) {
-                    persistRequests.delete(message.requestId);
-                    resolve(Boolean(message.saved));
-                }
-
                 return;
             }
 
@@ -89,8 +76,6 @@
         };
 
         return {
-            // The worker owns the persisted strategy graph and value table.
-            ownsStrategyData: true,
             anchor({ map, searchContext, readyGhostIndices, readyPlayer }) {
                 if (map.id !== activeMapId) {
                     activeMapId = map.id;
@@ -107,29 +92,6 @@
                     searchContext,
                     readyGhostIndices,
                     readyPlayer
-                });
-            },
-            persist() {
-                void this.persistData();
-            },
-            persistData(mapId = null) {
-                return new Promise(resolve => {
-                    const requestId = ++persistId;
-                    const timeout = setTimeout(() => {
-                        persistRequests.delete(requestId);
-                        resolve(false);
-                    }, 5000);
-
-                    persistRequests.set(requestId, saved => {
-                        clearTimeout(timeout);
-                        resolve(saved);
-                    });
-
-                    worker.postMessage({
-                        type: STRATEGY_BUFFER_MESSAGE.persist,
-                        requestId,
-                        mapId
-                    });
                 });
             },
             getAction(mode, stateKey) {
@@ -273,15 +235,10 @@
             resetGame: rules.resetGame,
             getCurrentSearchContext: intelligence.getCurrentSearchContext,
             createCurrentGameSearchState: intelligence.createCurrentGameSearchState,
-            setCalibration: intelligence.setCalibration,
-            persistStrategyValues: intelligence.persistStrategyValues
+            setCalibration: intelligence.setCalibration
         });
 
         runtime.start();
-
-        window.addEventListener("pagehide", () => {
-            intelligence.persistStrategyGraph();
-        });
 
 
         window.PACMAN_GAME = { config, state, map, intelligence, rules, ui, renderer, editor, runtime };

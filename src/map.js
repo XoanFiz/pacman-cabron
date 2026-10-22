@@ -18,16 +18,14 @@ function createGameMap(parameters = {}) {
         resetGame: () => undefined,
         getCurrentSearchContext: () => null,
         createCurrentGameSearchState: () => null,
-        setCalibration: () => undefined,
-        persistStrategyValues: () => Promise.resolve(false)
+        setCalibration: () => undefined
     };
 
-    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState, setCalibration, persistStrategyValues }) {
+    function bindRuntime({ resetGame, getCurrentSearchContext, createCurrentGameSearchState, setCalibration }) {
         if (resetGame) runtime.resetGame = resetGame;
         if (getCurrentSearchContext) runtime.getCurrentSearchContext = getCurrentSearchContext;
         if (createCurrentGameSearchState) runtime.createCurrentGameSearchState = createCurrentGameSearchState;
         if (setCalibration) runtime.setCalibration = setCalibration;
-        if (persistStrategyValues) runtime.persistStrategyValues = persistStrategyValues;
     }
 
     // ============================================================
@@ -810,20 +808,6 @@ function createGameMap(parameters = {}) {
                 g: { ...(definition.calibration.g || {}) }
             }
             : null;
-        // The calibration worker reads the value table from IndexedDB, so
-        // it has to be committed before the worker starts. The strategy
-        // worker owns the table; the no-worker fallback saves the local one.
-        if (typeof runtime.persistStrategyValues === "function") {
-            try {
-                await runtime.persistStrategyValues(definition.id);
-            } catch (error) {
-                console.warn(
-                    `[calibration] ${definition.id}: unable to store the value table.`,
-                    error
-                );
-            }
-        }
-
         return new Promise(resolve => {
             const worker = new Worker("./src/calibration/worker.js");
             let lastHeartbeatAt = Date.now();
@@ -1160,52 +1144,6 @@ function createGameMap(parameters = {}) {
         void calibrateMap(savedMap);
     }
 
-    // ============================================================
-    // GRAPH
-    // ============================================================
-
-    async function loadStrategyGraph(mapId) {
-        const record = await mapStorage.loadStrategyGraph(mapId);
-
-        if (!record?.graph) {
-            return null;
-        }
-
-        const definition = map.maps.find(item => item.id === mapId) ||
-            getCurrentMapDefinition();
-
-        // A graph is only reusable for the same map definition and the same
-        // search convention that produced it.
-        if (
-            record.mapSignature !== getMapSignature(definition) ||
-            record.strategyVersion !== STRATEGY_VERSION
-        ) {
-            return null;
-        }
-
-        return record.graph;
-    }
-
-    function saveStrategyGraph(mapId, graph) {
-        const definition = map.maps.find(item => item.id === mapId) ||
-            getCurrentMapDefinition();
-
-        return mapStorage.saveStrategyGraph(mapId, graph, {
-            mapSignature: getMapSignature(definition),
-            strategyVersion: STRATEGY_VERSION
-        });
-    }
-
-    function saveStrategyValues(mapId, values) {
-        const definition = map.maps.find(item => item.id === mapId) ||
-            getCurrentMapDefinition();
-
-        return mapStorage.saveStrategyValues(mapId, values, {
-            mapSignature: getMapSignature(definition),
-            strategyVersion: STRATEGY_VERSION
-        });
-    }
-
     function buildGraph(definition = map.currentMap) {
         return geometry.buildGraph(
             definition,
@@ -1254,9 +1192,6 @@ function createGameMap(parameters = {}) {
         ensureMapCalibrated,
         calibrateAllMaps,
         findReferenceCalibration,
-        loadStrategyGraph,
-        saveStrategyGraph,
-        saveStrategyValues,
         buildGraph,
         canMove
     };

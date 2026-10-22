@@ -1901,13 +1901,11 @@ function createGameStrategy(parameters = {}) {
     }
 
     const rbfmSearch = rmfMinimax({
-        getStateKey: buildStateKey,
         getNodeType: getNodeType,
         createSuccessorIterator: createGameRbfmSuccessors,
         onWalkLimit: warnWalkLimit,
         getDistribution: getCalibrationDistribution,
-        maxExtendDepth: config.SEARCH_MAX_EXTEND_DEPTH,
-        maxNodes: config.SEARCH_MAX_NODES
+        maxExtendDepth: config.SEARCH_MAX_EXTEND_DEPTH
     });
 
     function setSearchRootFromState(state) {
@@ -2368,37 +2366,8 @@ function createGameStrategy(parameters = {}) {
             ? { ...fallback }
             : { ...searchContext.player.direction };
     }
-    function exportValueTable() {
-        return rbfmSearch.exportValueTable();
-    }
-
-    function exportGraph() {
-        return rbfmSearch.exportGraph();
-    }
-
-    function importGraph(graph) {
-        const imported = rbfmSearch.importGraph(graph);
-
-        // A graph saved before the cap existed can be much larger than it.
-        if (
-            imported &&
-            rbfmSearch.getNodeCount() > config.SEARCH_MAX_NODES &&
-            typeof rbfmSearch.pruneNodes === "function"
-        ) {
-            rbfmSearch.pruneNodes();
-        }
-
-        return imported;
-    }
-
-    function pruneGraph() {
-        rbfmSearch.pruneNodes?.();
-    }
-
     return {
         calculateDomain,
-        getNodeCount: () => rbfmSearch.getNodeCount(),
-        pruneGraph,
         cloneSearchCharacter,
         createCurrentGameSearchState,
         buildStateKey,
@@ -2415,9 +2384,6 @@ function createGameStrategy(parameters = {}) {
         anchorSearchContext,
         advanceSearchFrom,
         getNodeType,
-        setCalibration,
-        exportGraph,
-        importGraph,
-        exportValueTable
+        setCalibration
     }
 }

@@ -3,12 +3,10 @@
 importScripts(
     "protocol.js",
     "../config.js",
-    "../strategy-version.js",
     "../map-geometry.js",
     "../model.js",
     "../strategy.js",
     "../randomized-best-first-minimax.js",
-    "../map-storage.js",
     "runner.js"
 );
 
@@ -33,7 +31,6 @@ importScripts(
 const config = createGameConfig();
 const geometry = createGameMapGeometry();
 const model = createGameModel();
-const mapStorage = createGameMapStorage();
 
 function restoreMap(definition) {
     return {
@@ -114,40 +111,6 @@ async function runCalibration(request) {
     const resume = normalizeCalibrationResume(request.resume);
     const assumed = request.assumed || null;
 
-    let valueTable = null;
-
-    try {
-        const record = await mapStorage.loadStrategyValues(request.map.id);
-
-        if (record?.values) {
-            const signature = JSON.stringify({
-                tiles: currentMap.tiles,
-                edges: [...currentMap.edges].sort(),
-                playerStart: currentMap.playerStart,
-                ghostStarts: currentMap.ghostStarts
-            });
-
-            if (
-                record.mapSignature === signature &&
-                record.strategyVersion === STRATEGY_VERSION
-            ) {
-                valueTable = record.values;
-            }
-        }
-    } catch (error) {
-        console.warn(
-            "[calibration worker] unable to read the strategy values.",
-            error
-        );
-    }
-
-    const lookupStateValue = valueTable
-        ? (state, stateKey) => {
-            const value = valueTable[stateKey];
-
-            return Number.isFinite(value) ? value : null;
-        }
-        : null;
     const startedAt = Date.now();
     const resumeCount = Object.values(resume.samples)
         .reduce((sum, errors) => sum + errors.length, 0);
@@ -156,7 +119,6 @@ async function runCalibration(request) {
         `[calibration worker] ${request.map.id}: start ` +
         `(target ${options.targetSamples}, max ${options.maxSteps} steps, ` +
         `resume ${resumeCount} sample(s), ` +
-        `values ${valueTable ? Object.keys(valueTable).length : 0}, ` +
         `assumed ${assumed ? "yes" : "no"}).`
     );
 
@@ -171,7 +133,6 @@ async function runCalibration(request) {
         minimumStandardDeviation: config.CALIBRATION_MIN_STD,
         priorStandardDeviation: config.BASE_STD,
         assumedCalibration: assumed,
-        lookupStateValue,
         seed: resume,
         ...createCalibrationAdapters(strategy)
     });

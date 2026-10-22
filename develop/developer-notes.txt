@@ -2,14 +2,14 @@ TODO
 Calibration follow-ups
     Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
     Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
-    Add a schema/migration step for the IndexedDB stores (currently database version 3) and a way to remove custom maps.
+    Add a schema/migration step for the IndexedDB stores (currently database version 4) and a way to remove custom maps.
     Tune the calibration reference (2 s horizon, 200 states) against step time and calibration quality.
 Allow a way to remove ghosts. Recover the color for the new ghosts if done. 
 Fix characters traversing walls
 Move many things from map.js to rules.js.
-Prune the strategic search tree: RBFM nodes now have an LRU cap (SEARCH_MAX_NODES), but the extend walk still starts at the root each time, so its cost is the tree height; a frontier-based expansion would avoid that.
+The RBFM is now a per-decision tree without transposition or persistence, but the extend walk still starts at the root each time, so its cost is the tree height; a frontier-based expansion would avoid that.
 Strategy worker
-    The worker produces the one-second decision buffer and persists its own graph and value table, periodically and before changing maps. With a worker a buffer miss falls back to continuing or the first legal move; the local search remains only for environments without Worker. Remove it once the worker is always available.
+    The worker produces the one-second decision buffer. With a worker a buffer miss falls back to continuing or the first legal move; the local search remains only for environments without Worker. Remove it once the worker is always available.
 Strategy buffer
     Add the headless event-loop and buffer hit-rate checks to develop/tests.
 Improve strategy. Ghosts are not guarding successfully, oscillation or lack of determination when keeping a position doesn't make them sharp enough. Eaten ghosts are too reluctant to return home. Normal ghosts are too reluctant to close Pac-man domain further when it is cornered. Pac-man is too reluctant to explore in depth and jump out of local optimums. 

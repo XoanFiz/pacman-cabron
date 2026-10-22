@@ -3,11 +3,9 @@
 importScripts(
     "./calibration/protocol.js",
     "./strategy-protocol.js",
-    "./strategy-version.js",
     "./config.js",
     "./map-geometry.js",
     "./model.js",
-    "./map-storage.js",
     "./randomized-best-first-minimax.js",
     "./strategy.js"
 );
@@ -15,7 +13,6 @@ importScripts(
 const config = createGameConfig();
 const geometry = createGameMapGeometry();
 const model = createGameModel();
-const mapStorage = createGameMapStorage();
 
 // ============================================================
 // STRATEGY BUFFER WORKER
@@ -31,33 +28,14 @@ const mapStorage = createGameMapStorage();
 
 let strategy = null;
 let strategySignature = null;
-let strategyMapId = null;
-let strategyMapSignature = null;
-let graphReady = Promise.resolve();
-let pendingAnchor = null;
 let currentJob = null;
 let jobId = 0;
-let graphDirty = false;
-let lastAnchorAt = 0;
-let lastSaveAt = Date.now();
-let graphSaveDisabled = false;
 
 // The strategy is rebuilt when the map changes, including its id: two
 // maps can share a layout but have different persisted graphs.
 function computeStrategySignature(definition) {
     return JSON.stringify({
         id: definition.id,
-        tiles: definition.tiles,
-        edges: [...(definition.edges || [])].sort(),
-        playerStart: definition.playerStart,
-        ghostStarts: definition.ghostStarts
-    });
-}
-
-// The stored map signature never includes the id (map.js writes it that
-// way), so it is kept separate.
-function mapSignature(definition) {
-    return JSON.stringify({
         tiles: definition.tiles,
         edges: [...(definition.edges || [])].sort(),
         playerStart: definition.playerStart,
@@ -72,135 +50,6 @@ function restoreMap(definition) {
     };
 }
 
-async function loadPersistedGraph(definition) {
-    try {
-        const record = await mapStorage.loadStrategyGraph(definition.id);
-
-        if (
-            strategy &&
-            strategyMapId === definition.id &&
-            record?.graph &&
-            record.mapSignature === mapSignature(definition) &&
-            record.strategyVersion === STRATEGY_VERSION
-        ) {
-            strategy.importGraph(record.graph);
-        }
-    } catch (error) {
-        console.warn(
-            "[strategy worker] unable to load the strategy graph.",
-            error
-        );
-    }
-}
-
-// The worker is the owner of the explored graph and of its value table,
-// so it is also the one that writes both. The main thread only persists
-// as a no-worker fallback.
-function persistStrategyData(expectedMapId = null) {
-    if (!strategy || !strategyMapId || !strategyMapSignature) {
-        return Promise.resolve(false);
-    }
-
-    if (expectedMapId && expectedMapId !== strategyMapId) {
-        return Promise.resolve(false);
-    }
-
-    const startedAt = Date.now();
-    const metadata = {
-        mapSignature: strategyMapSignature,
-        strategyVersion: STRATEGY_VERSION
-    };
-
-    let values;
-
-    try {
-        strategy.pruneGraph?.();
-        values = strategy.exportValueTable();
-    } catch (error) {
-        console.warn(
-            "[strategy worker] unable to export the strategy values.",
-            error
-        );
-
-        return Promise.resolve(false);
-    }
-
-    graphDirty = false;
-    lastSaveAt = Date.now();
-
-    const saves = [
-        mapStorage.saveStrategyValues(
-            strategyMapId,
-            values,
-            metadata
-        ).catch(error => {
-            graphDirty = true;
-            console.warn(
-                "[strategy worker] unable to save the value table.",
-                error
-            );
-
-            return false;
-        })
-    ];
-
-    let nodeCount = strategy.getNodeCount?.() || 0;
-
-    if (!graphSaveDisabled) {
-        try {
-            const graph = strategy.exportGraph();
-
-            nodeCount = graph.nodes.length;
-            saves.push(
-                mapStorage.saveStrategyGraph(
-                    strategyMapId,
-                    graph,
-                    metadata
-                ).catch(error => {
-                    const tooLarge = /too large|structured clone/i.test(
-                        String(error)
-                    ) || error?.name === "UnknownError";
-
-                    if (tooLarge) {
-                        graphSaveDisabled = true;
-                        console.warn(
-                            "[strategy worker] graph too large to save; " +
-                            "keeping only the value table from now on.",
-                            error
-                        );
-                    } else {
-                        console.warn(
-                            "[strategy worker] unable to save the graph.",
-                            error
-                        );
-                    }
-
-                    return false;
-                })
-            );
-        } catch (error) {
-            graphSaveDisabled = true;
-            console.warn(
-                "[strategy worker] unable to export the graph.",
-                error
-            );
-        }
-    }
-
-    return Promise.all(saves).then(() => {
-        const graphStatus = graphSaveDisabled
-            ? "graph skipped"
-            : `${nodeCount} nodes`;
-
-        console.log(
-            `[strategy worker] saved ${graphStatus} ` +
-            `in ${Date.now() - startedAt}ms`
-        );
-
-        return true;
-    });
-}
-
 function ensureStrategy(definition) {
     const signature = computeStrategySignature(definition);
 
@@ -208,14 +57,7 @@ function ensureStrategy(definition) {
         return strategy;
     }
 
-    // The previous map's tree is saved before it is discarded.
-    if (strategy) {
-        void persistStrategyData();
-    }
-
     strategySignature = signature;
-    strategyMapId = definition.id;
-    strategyMapSignature = mapSignature(definition);
     strategy = createGameStrategy({
         map: definition,
         geometry,
@@ -223,27 +65,9 @@ function ensureStrategy(definition) {
         config,
         rmfMinimax: createRandomizedBestFirstMinimax
     });
-    graphDirty = false;
-    graphReady = loadPersistedGraph(definition);
 
     return strategy;
 }
-
-// Exporting a large graph is expensive, so the periodic save waits until
-// no anchor has arrived for a few seconds: the start screen, a pause or a
-// menu. A five minute ceiling still bounds what a crash can lose.
-setInterval(() => {
-    if (!graphDirty) {
-        return;
-    }
-
-    const idle = Date.now() - lastAnchorAt > 3000;
-    const overdue = Date.now() - lastSaveAt > 300000;
-
-    if (idle || overdue) {
-        void persistStrategyData();
-    }
-}, STRATEGY_GRAPH_SAVE_INTERVAL_MS);
 
 // Only the entries added since the previous message are sent; the main
 // thread clears its buffer when the revision changes and merges after.
@@ -292,7 +116,6 @@ function startJob(anchor) {
         job.anchor = anchor;
         job.posted = 0;
         job.deepening = false;
-        graphDirty = true;
         currentJob = job;
 
         postBuffer(job, job.complete);
@@ -356,8 +179,6 @@ function scheduleDeepening(job) {
             while (Date.now() - startedAt < 4) {
                 job.strategy.advanceSearch();
             }
-
-            graphDirty = true;
         } catch (error) {
             postError(
                 { map: { id: job.mapId }, revision: job.revision },
@@ -374,43 +195,14 @@ function scheduleDeepening(job) {
 self.onmessage = event => {
     const message = event.data;
 
-    if (message?.type === STRATEGY_BUFFER_MESSAGE.persist) {
-        void persistStrategyData(message.mapId || null).then(saved => {
-            if (message.requestId === undefined) {
-                return;
-            }
-
-            self.postMessage({
-                type: STRATEGY_BUFFER_MESSAGE.persisted,
-                requestId: message.requestId,
-                saved
-            });
-        });
-
-        return;
-    }
-
     if (message?.type !== STRATEGY_BUFFER_MESSAGE.anchor) {
         return;
     }
 
     try {
-        lastAnchorAt = Date.now();
-
         const definition = restoreMap(message.map);
         ensureStrategy(definition);
-
-        pendingAnchor = message;
-
-        const ready = graphReady;
-
-        void ready.then(() => {
-            if (pendingAnchor !== message) {
-                return;
-            }
-
-            startJob(message);
-        });
+        startJob(message);
     } catch (error) {
         postError(message, error);
     }

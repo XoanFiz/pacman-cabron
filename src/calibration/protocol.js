@@ -63,8 +63,7 @@ const CALIBRATION_FINISH_REASON = Object.freeze({
 });
 
 // Bumped whenever the calibration payload changes; entries from another
-// version are recalibrated. The search convention has its own version in
-// strategy-version.js, so changing it does not force a recalibration.
+// version are recalibrated.
 const CALIBRATION_VERSION = 3;
 
 // Used by the main thread to build the request and by the worker as the

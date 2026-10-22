@@ -11,19 +11,13 @@
  */
 
 function createRandomizedBestFirstMinimax({
-    getStateKey,
     getNodeType,
     createSuccessorIterator,
     onNodeVisit = null,
     onWalkLimit = null,
     getDistribution = null,
-    maxExtendDepth = 4096,
-    maxNodes = 20000
+    maxExtendDepth = 4096
 }) {
-    if (typeof getStateKey !== "function") {
-        throw new TypeError("getStateKey must be a function.");
-    }
-
     if (typeof getNodeType !== "function") {
         throw new TypeError("getNodeType must be a function.");
     }
@@ -131,69 +125,21 @@ function createRandomizedBestFirstMinimax({
         return mean + standardDeviation * standardNormal;
     }
 
-    const nodes = new Map();
-
     const search = {
-        nodes,
         root: null
     };
 
+    let createdNodeCount = 0;
+
     // ========================================================
-    // NODE CREATION AND REUSE
+    // NODE CREATION
     // ========================================================
+    //
+    // Every successor is a new node: there is no transposition table and
+    // no state-keyed reuse. A search is a tree and it is discarded when a
+    // new root replaces it.
 
-    let accessClock = 0;
-
-    function touchNode(node) {
-        node.lastUsed = ++accessClock;
-    }
-
-    // Keeps the graph bounded: when it grows past the cap, the least
-    // recently used nodes are dropped and the remaining successors are
-    // filtered so no edge points to an evicted child.
-    function pruneNodes() {
-        const target = Math.floor(maxNodes * 0.8);
-
-        if (nodes.size <= target) {
-            return;
-        }
-
-        const ordered = [...nodes.values()]
-            .sort((first, second) =>
-                (first.lastUsed || 0) - (second.lastUsed || 0)
-            );
-        const removed = new Set();
-        const removeCount = nodes.size - target;
-
-        for (let index = 0; index < removeCount; index++) {
-            removed.add(ordered[index].key);
-            nodes.delete(ordered[index].key);
-        }
-
-        for (const node of nodes.values()) {
-            if (node.successors.length > 0) {
-                node.successors = node.successors.filter(
-                    edge => !removed.has(edge.child.key)
-                );
-            }
-        }
-
-        if (search.root && !nodes.has(search.root.key)) {
-            search.root = null;
-        }
-    }
-
-    function getOrCreateNode(state, initialValue) {
-        const key = getStateKey(state);
-
-        if (nodes.has(key)) {
-            const existing = nodes.get(key);
-
-            touchNode(existing);
-
-            return existing;
-        }
-
+    function createNode(state, initialValue) {
         if (!Number.isFinite(initialValue)) {
             throw new TypeError(
                 "A new node requires a finite initial value."
@@ -219,8 +165,9 @@ function createRandomizedBestFirstMinimax({
             );
         }
 
-        const node = {
-            key,
+        createdNodeCount++;
+
+        return {
             state,
             type,
             value: initialValue,
@@ -233,20 +180,10 @@ function createRandomizedBestFirstMinimax({
 
             searchCount: 0
         };
-
-        touchNode(node);
-        nodes.set(key, node);
-
-        if (nodes.size > maxNodes) {
-            pruneNodes();
-        }
-
-        return node;
     }
 
     function recordSearchVisit(node) {
         node.searchCount++;
-        touchNode(node);
     }
 
     // ========================================================
@@ -296,7 +233,7 @@ function createRandomizedBestFirstMinimax({
             );
         }
 
-        const child = getOrCreateNode(
+        const child = createNode(
             transition.state,
             transition.value
         );
@@ -318,24 +255,7 @@ function createRandomizedBestFirstMinimax({
         return edge;
     }
 
-    // Imported nodes do not carry iterators (they are not cloneable); they
-    // are recreated on demand so an incomplete expansion can be replayed.
     function ensureSuccessorIterator(node) {
-        if (!node.successorIterator) {
-            const iterator = createSuccessorIterator(node.state);
-
-            if (
-                iterator === null ||
-                typeof iterator.next !== "function"
-            ) {
-                throw new TypeError(
-                    "createSuccessorIterator must return an iterator."
-                );
-            }
-
-            node.successorIterator = iterator;
-        }
-
         return node.successorIterator;
     }
 
@@ -594,7 +514,7 @@ function createRandomizedBestFirstMinimax({
                         reason,
                         pathLength: path.length,
                         maxExtendDepth,
-                        nodeCount: nodes.size,
+                        nodeCount: createdNodeCount,
                         mode: currentMode,
                         safeguards: { ...safeguardCounts }
                     });
@@ -680,9 +600,6 @@ function createRandomizedBestFirstMinimax({
     // PUBLIC INTERFACE
     // ========================================================
 
-    search.getNodeCount = () => nodes.size;
-    search.pruneNodes = pruneNodes;
-    search.getOrCreateNode = getOrCreateNode;
     search.expandNode = expandNode;
     search.updateNodeValue = updateNodeValue;
     search.getBestChild = getBestChild;
@@ -695,131 +612,13 @@ function createRandomizedBestFirstMinimax({
         initialValue,
         initialTime = 0
     ) {
-        const root = getOrCreateNode(state, initialValue);
+        const root = createNode(state, initialValue);
 
         recordArrival(root, initialTime);
 
         search.root = root;
 
         return root;
-    };
-
-    // Serializable snapshot of the explored graph. Iterators are dropped:
-    // completely expanded nodes keep their edges, while incomplete nodes are
-    // stored without edges and re-expanded from scratch on load.
-    search.exportGraph = function () {
-        const serializedNodes = [];
-
-        for (const node of nodes.values()) {
-            serializedNodes.push({
-                key: node.key,
-                state: node.state,
-                type: node.type,
-                value: node.value,
-                searchCount: node.searchCount,
-                expansionComplete: node.expansionComplete,
-                arrivalTimes: node.arrivalTimes.slice(),
-                distribution: node.distribution
-                    ? { ...node.distribution }
-                    : null,
-                successors: node.expansionComplete
-                    ? node.successors.map(edge => ({
-                        childKey: edge.child.key,
-                        action: edge.action,
-                        duration: edge.duration
-                    }))
-                    : []
-            });
-        }
-
-        return {
-            version: 1,
-            rootKey: search.root ? search.root.key : null,
-            nodes: serializedNodes
-        };
-    };
-
-    // Compact table for consumers that only need the explored values (for
-    // example the calibration reference): stateKey -> value, no states.
-    search.exportValueTable = function () {
-        const table = {};
-
-        for (const node of nodes.values()) {
-            if (
-                node.expansionComplete &&
-                Number.isFinite(node.value)
-            ) {
-                table[node.key] = node.value;
-            }
-        }
-
-        return table;
-    };
-
-    search.importGraph = function (graph) {
-        if (
-            !graph ||
-            graph.version !== 1 ||
-            !Array.isArray(graph.nodes)
-        ) {
-            return false;
-        }
-
-        nodes.clear();
-        search.root = null;
-
-        const byKey = new Map();
-
-        for (const entry of graph.nodes) {
-            if (!entry || typeof entry.key !== "string") {
-                continue;
-            }
-
-            const node = {
-                key: entry.key,
-                state: entry.state,
-                type: entry.type,
-                value: entry.value,
-                arrivalTimes: Array.isArray(entry.arrivalTimes)
-                    ? entry.arrivalTimes.slice()
-                    : [],
-                successors: [],
-                successorIterator: null,
-                expansionComplete: Boolean(entry.expansionComplete),
-                searchCount: Number(entry.searchCount) || 0,
-                distribution: entry.distribution || null
-            };
-
-            nodes.set(node.key, node);
-            byKey.set(node.key, node);
-        }
-
-        for (const entry of graph.nodes) {
-            const node = byKey.get(entry?.key);
-
-            if (!node || !node.expansionComplete) {
-                continue;
-            }
-
-            for (const edge of entry.successors || []) {
-                const child = byKey.get(edge.childKey);
-
-                if (!child) {
-                    continue;
-                }
-
-                node.successors.push({
-                    parent: node,
-                    child,
-                    action: edge.action,
-                    duration: edge.duration
-                });
-            }
-        }
-
-        search.root = byKey.get(graph.rootKey) || null;
-
-        return true;
     };
 
     return search;

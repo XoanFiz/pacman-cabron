@@ -24,10 +24,6 @@ function createGameConfig() {
         SEARCH_LIFE_PRIORITY: 1,
         SEARCH_TERMINAL_VALUE: 1e6,
         SEARCH_MAX_EXTEND_DEPTH: 4096,
-        // The RBFM graph is never pruned by itself. This cap evicts the
-        // least recently used nodes so a long session cannot grow to
-        // gigabytes of state.
-        SEARCH_MAX_NODES: 20000,
         EPSILON: 1e-9,
         SEARCH_EPSILON: 1e-7,
         SEARCH_EXPANSIONS_PER_FRAME: 8,

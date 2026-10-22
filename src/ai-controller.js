@@ -27,10 +27,6 @@ function createGameAiController(parameters = {}) {
 
     let strategy = null;
     let strategyMapSignature = null;
-    let strategyMapId = null;
-
-    let pendingGraph = null;
-    let pendingGraphMapId = null;
 
     function computeMapSignature() {
         const definition = map.getCurrentMapDefinition();
@@ -51,31 +47,17 @@ function createGameAiController(parameters = {}) {
             return strategy;
         }
 
-        if (strategy) {
-            persistStrategyGraph();
-        }
-
         const definition = map.getCurrentMapDefinition();
 
         strategyMapSignature = signature;
-        strategyMapId = definition.id;
         strategy = createGameStrategy({
             map: definition,
-            graph: map.graph ?? undefined,
             geometry,
             model,
             config,
             rmfMinimax,
             worker: workerBridge
         });
-
-        if (pendingGraph && pendingGraphMapId === strategyMapId) {
-            strategy.importGraph(pendingGraph);
-            pendingGraph = null;
-            pendingGraphMapId = null;
-        } else if (!workerOwnsStrategyData()) {
-            void importPersistedStrategyGraph(strategy, strategyMapId);
-        }
 
         return strategy;
     }
@@ -163,9 +145,9 @@ function createGameAiController(parameters = {}) {
     }
 
     function advanceSearch() {
-        // With a worker the main strategy is only a fallback; looking it up
+        // With a worker the search lives there; looking the strategy up
         // here would rebuild the map signature on every frame.
-        if (workerBridge?.ownsStrategyData) {
+        if (workerBridge) {
             return;
         }
 
@@ -174,95 +156,6 @@ function createGameAiController(parameters = {}) {
 
     function setCalibration(calibration) {
         ensureStrategy().setCalibration(calibration);
-    }
-
-    // With a strategy worker the graph belongs to it: reading and importing
-    // the record here only duplicates a large tree on the main thread and
-    // blocks startup.
-    function workerOwnsStrategyData() {
-        return workerBridge?.ownsStrategyData === true;
-    }
-
-    async function loadPersistedStrategyGraph() {
-        if (workerOwnsStrategyData()) {
-            pendingGraph = null;
-            pendingGraphMapId = null;
-            return;
-        }
-
-        try {
-            pendingGraph = await map.loadStrategyGraph(
-                map.getCurrentMapDefinition().id
-            );
-            pendingGraphMapId = map.getCurrentMapDefinition().id;
-        } catch (error) {
-            console.warn("Unable to load the strategy graph.", error);
-        }
-    }
-
-    async function importPersistedStrategyGraph(target, mapId) {
-        if (workerOwnsStrategyData()) {
-            return;
-        }
-
-        try {
-            const graph = await map.loadStrategyGraph(mapId);
-
-            if (graph && strategy === target && strategyMapId === mapId) {
-                target.importGraph(graph);
-            }
-        } catch (error) {
-            console.warn("Unable to load the strategy graph.", error);
-        }
-    }
-
-    // The worker owns the value table. Without a worker the local strategy
-    // still provides it for the calibration request.
-    function persistStrategyValues(mapId) {
-        if (workerBridge?.persistData) {
-            return workerBridge.persistData(mapId);
-        }
-
-        if (!strategy || !strategyMapId || strategyMapId !== mapId) {
-            return Promise.resolve(false);
-        }
-
-        try {
-            return Promise.resolve(
-                map.saveStrategyValues(
-                    strategyMapId,
-                    strategy.exportValueTable()
-                )
-            ).catch(error => {
-                console.warn("Unable to save the strategy values.", error);
-                return false;
-            });
-        } catch (error) {
-            console.warn("Unable to export the strategy values.", error);
-            return Promise.resolve(false);
-        }
-    }
-
-    function persistStrategyGraph() {
-        // The worker owns the explored graph and saves it periodically.
-        // The local save stays only as a fallback when there is no worker.
-        if (workerBridge?.persist) {
-            workerBridge.persist();
-            return;
-        }
-
-        if (!strategy || !strategyMapId) {
-            return;
-        }
-
-        try {
-            void map.saveStrategyGraph(strategyMapId, strategy.exportGraph())
-                .catch(error => {
-                    console.warn("Unable to save the strategy graph.", error);
-                });
-        } catch (error) {
-            console.warn("Unable to save the strategy graph.", error);
-        }
     }
 
     function calculateDomain(...args) {
@@ -287,9 +180,6 @@ function createGameAiController(parameters = {}) {
         calculateDomain,
         createCurrentGameSearchState,
         getNodetype,
-        setCalibration,
-        loadPersistedStrategyGraph,
-        persistStrategyGraph,
-        persistStrategyValues
+        setCalibration
     };
 }
