@@ -278,11 +278,45 @@ console.log("diagnose pacman: deathNode=" + deathFound +
             : "EXPLORATION (death node missing)")
 );
 
-({ charging, deathFound, chosenLineDeath });
+// Let the game follow a few turns instead of judging one decision.
+let playState = strategy.createCurrentGameSearchState(context(), [], true);
+let events = 0;
+let died = false;
+const trail = [];
+
+while (events++ < 60 && playState.lives === 3 && !playState.terminal) {
+    if (playState.firstActor === "player") {
+        const direction = strategy.choosePacmanDirection(playState, [], searchSteps);
+        trail.push("P" + direction.x + "," + direction.y);
+        playState = strategy.advanceSearchState(playState, new Map(), direction);
+    } else if (playState.firstActor === "ghosts") {
+        const indices = playState.readyGhosts
+            .map((ready, index) => ready ? index : -1)
+            .filter(index => index >= 0);
+        const directions = strategy.chooseGhostDirections(
+            playState,
+            indices,
+            playState.readyPlayer,
+            searchSteps
+        );
+        trail.push("G" + JSON.stringify([...directions]));
+        playState = strategy.advanceSearchState(playState, directions, null);
+    } else {
+        break;
+    }
+}
+
+died = playState.lives < 3;
+
+console.log("playout: died=" + died + " events=" + events +
+    " pacman=" + playState.player.x + "," + playState.player.y +
+    " trail=" + JSON.stringify(trail));
+
+({ charging, deathFound, chosenLineDeath, died });
 `, ctx);
 
-if (result.charging) {
-    console.error("FAIL: Pac-Man charged into the ghost");
+if (result.died) {
+    console.error("FAIL: Pac-Man died within the playout");
     process.exitCode = 1;
 } else {
     console.log("pacman avoid ok");
