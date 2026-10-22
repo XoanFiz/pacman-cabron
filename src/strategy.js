@@ -371,7 +371,7 @@ function createGameStrategy(parameters = {}) {
         let queue = new MinHeap();
 
         const isDuplicated = (assessedDomainFact) => {
-            const direction = assessedDomainFact.initialDirection;
+            const direction = assessedDomainFact.direction;
 
             const factKey = [
                 assessedDomainFact.owner,
@@ -433,22 +433,6 @@ function createGameStrategy(parameters = {}) {
                 return;
             }
 
-            // The character still occupies its origin cell.
-            queue.push({
-                x: character.x,
-                y: character.y,
-                time,
-                owner,
-                domainType,
-                originX: character.x,
-                originY: character.y,
-                speed,
-                initialProgress: 0,
-                initialDirection: { x: 0, y: 0 },
-                noSpread: true,
-                ...extra
-            });
-
             const nextX = wrap(
                 character.x + character.direction.x,
                 getMapColumnCountForMap()
@@ -458,7 +442,8 @@ function createGameStrategy(parameters = {}) {
                 getMapRowCountForMap()
             );
 
-            // The destination cell is reached after the rest of the segment.
+            // Only the destination is seeded. The origin is reached back
+            // from it, so the wave never assumes the origin is occupied.
             queue.push({
                 x: nextX,
                 y: nextY,
@@ -470,6 +455,7 @@ function createGameStrategy(parameters = {}) {
                 speed,
                 initialProgress: 0,
                 initialDirection: { x: 0, y: 0 },
+                direction: { ...character.direction },
                 ...extra
             });
         }
@@ -523,11 +509,29 @@ function createGameStrategy(parameters = {}) {
         }
 
         const calculateNextTimeAndCell = (assessedDomainStatus, domain, next) => {
-            const nextTime =
-                assessedDomainStatus.time +
-                (
-                    1 - assessedDomainStatus.initialProgress
-                ) / assessedDomainStatus.speed;
+            const speed = assessedDomainStatus.speed;
+            const progress = assessedDomainStatus.initialProgress;
+            const direction = assessedDomainStatus.direction;
+            const nextDirection = next.direction;
+
+            // Always check the direction the wave comes from. A character
+            // at a cell centre may continue or turn without extra time; the
+            // seed is already at the destination centre.
+            const sameDirection =
+                direction &&
+                nextDirection &&
+                direction.x === nextDirection.x &&
+                direction.y === nextDirection.y;
+
+            const stepTime = progress > 0
+                ? (
+                    sameDirection
+                        ? (1 - progress) / speed
+                        : (1 - progress) / speed + 1 / speed
+                )
+                : 1 / speed;
+
+            const nextTime = assessedDomainStatus.time + stepTime;
 
 
             const nextCell =
