@@ -1291,9 +1291,11 @@ function createGameStrategy(parameters = {}) {
             initialNormalPelletCount + initialPowerPelletCount;
         const ghostProduct = ghostsNormal * ghostsPellets * ghostsPower;
         const pacmanProduct = pacmanNormal * pacmanPellets * pacmanPower;
+        // Remaining and total lives are inverted: losing lives must help
+        // the ghosts, while eating pellets must help Pac-Man.
         const progress =
-            (1 + totalPellets * INITIAL_LIVES) /
-            (1 + remainingPellets * remainingLives);
+            (1 + totalPellets * remainingLives) /
+            (1 + remainingPellets * INITIAL_LIVES);
 
         return (
             (1 + ghostProduct) /
