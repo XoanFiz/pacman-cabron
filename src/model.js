@@ -3,6 +3,8 @@ function createGameModel() {
         return {
             x: start.x, y: start.y, px: start.x, py: start.y,
             direction: { ...start.direction },
+            facingDirection: start.direction.x || start.direction.y
+                ? { ...start.direction } : { x: 1, y: 0 },
             nextDirection: { x: 0, y: 0 }, progress: 0, speed,
             ready: true, stopped: false, stopTimer: 0
         };
@@ -12,6 +14,8 @@ function createGameModel() {
         return {
             x: start.x, y: start.y, px: start.x, py: start.y, color,
             direction: { ...start.direction },
+            facingDirection: start.direction.x || start.direction.y
+                ? { ...start.direction } : { x: 1, y: 0 },
             nextDirection: { ...start.direction },
             frightened: false, eaten: false, progress: 0, speed,
             needsDirection: false, decisionAtCentre: true

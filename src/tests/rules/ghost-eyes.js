@@ -108,6 +108,10 @@ if (ghost.direction.x !== 0 || ghost.direction.y !== -1) {
 
 rules.pressDirection("right");
 
+if (ghost.facingDirection.x !== 1 || ghost.facingDirection.y !== 0) {
+    throw new Error("the eyes did not turn on the key press");
+}
+
 if (ghost.direction.x !== 0 || ghost.direction.y !== -1) {
     throw new Error("the ghost must not turn before a cell centre");
 }

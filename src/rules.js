@@ -104,6 +104,7 @@ function createGameRules(parameters = {}) {
                     ? { ...possible[0] }
                     : { x: 0, y: 0 };
                 ghost.nextDirection = { ...ghost.direction };
+                ghost.facingDirection = { ...ghost.direction };
             }
         }
     }
@@ -115,6 +116,10 @@ function createGameRules(parameters = {}) {
     function setPlayerDirection(direction) {
         const player = gameState().player;
         player.direction = { ...direction };
+
+        if (direction.x !== 0 || direction.y !== 0) {
+            player.facingDirection = { ...direction };
+        }
 
     }
 
@@ -271,6 +276,7 @@ function createGameRules(parameters = {}) {
 
         if (reverses && ghost.progress > 0) {
             reverseGhostDirection(ghost);
+            ghost.facingDirection = { ...ghost.direction };
             return;
         }
 
@@ -289,6 +295,10 @@ function createGameRules(parameters = {}) {
         }
 
         ghost.direction = { ...direction };
+
+        if (direction.x !== 0 || direction.y !== 0) {
+            ghost.facingDirection = { ...direction };
+        }
 
     }
 
@@ -986,6 +996,15 @@ function createGameRules(parameters = {}) {
         }
 
         state.pressedDirections.push(name);
+
+        // The controlled ghost turns its eyes as soon as the key is
+        // pressed; the movement still waits for a cell centre.
+        const controlled = getControlledGhost();
+        const pressedDirection = map.DIRECTIONS[name];
+
+        if (controlled && pressedDirection) {
+            controlled.facingDirection = { ...pressedDirection };
+        }
 
         if (!gs.running && gs.deathTimer <= 0 && gs.lives > 0) {
             gs.running = true;

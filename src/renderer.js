@@ -170,12 +170,7 @@ function createGameRenderer(parameters = {}) {
         const cx = player.px * CELL + CELL / 2;
         const cy = player.py * CELL + CELL / 2;
 
-        const pressedName = state.pressedDirections[state.pressedDirections.length - 1];
-        const pressedDirection = pressedName ? map.DIRECTIONS[pressedName] : null;
-        const facingDirection =
-            (player.direction.x !== 0 || player.direction.y !== 0)
-                ? player.direction
-                : pressedDirection || { x: 1, y: 0 };
+        const facingDirection = player.facingDirection || player.direction;
         let angle = 0;
 
         if (facingDirection.x === -1) {
@@ -242,9 +237,7 @@ function createGameRenderer(parameters = {}) {
 
     function drawGhostEyes(ghost, cx, cy) {
         const ctx = state.ctx;
-        const facing = (ghost.direction.x !== 0 || ghost.direction.y !== 0)
-            ? ghost.direction
-            : { x: 1, y: 0 };
+        const facing = ghost.facingDirection || ghost.direction;
 
         ctx.fillStyle = "white";
         ctx.beginPath();

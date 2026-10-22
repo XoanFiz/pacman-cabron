@@ -268,6 +268,10 @@ function createGameEditor(parameters = {}) {
 
         entity.direction = { ...direction };
         entity.nextDirection = { ...direction };
+
+        if (type === "player") {
+            entity.facingDirection = { ...direction };
+        }
     }
 
     function moveEditorEntity(gesture, position) {
