@@ -68,13 +68,17 @@
                 return;
             }
 
-            if (message.revision !== receivedRevision) {
-                receivedRevision = message.revision;
-                buffer.clear();
-            }
+            // Entries from a previous revision are still valid decisions
+            // for their state keys, so they are kept while the new buffer
+            // is being computed. The size bound keeps that from growing.
+            receivedRevision = message.revision;
 
             for (const entry of message.entries || []) {
                 buffer.set(entry.key, entry);
+            }
+
+            while (buffer.size > 256) {
+                buffer.delete(buffer.keys().next().value);
             }
 
             metrics.buffers++;
@@ -132,11 +136,20 @@
 
                 if (entry) {
                     metrics.hits++;
-                } else {
-                    metrics.misses++;
+
+                    return entry;
                 }
 
-                return entry || null;
+                metrics.misses++;
+
+                console.warn(
+                    `[strategy buffer] miss ${mode}: ` +
+                    `entries ${buffer.size}, ` +
+                    `revision ${revision}/${receivedRevision}, ` +
+                    `complete ${metrics.complete}`
+                );
+
+                return null;
             },
             getMetrics() {
                 return { ...metrics };
