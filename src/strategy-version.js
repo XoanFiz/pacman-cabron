@@ -17,4 +17,4 @@
 // without strategyVersion is treated as too old and discarded.
 //
 // Loaded by the page (map.js) and by the calibration worker.
-const STRATEGY_VERSION = 2;
+const STRATEGY_VERSION = 3;

@@ -40,6 +40,7 @@ let jobId = 0;
 let graphDirty = false;
 let lastAnchorAt = 0;
 let lastSaveAt = Date.now();
+let graphSaveDisabled = false;
 
 // The strategy is rebuilt when the map changes, including its id: two
 // maps can share a layout but have different persisted graphs.
@@ -104,53 +105,100 @@ function persistStrategyData(expectedMapId = null) {
         return Promise.resolve(false);
     }
 
+    const startedAt = Date.now();
+    const metadata = {
+        mapSignature: strategyMapSignature,
+        strategyVersion: STRATEGY_VERSION
+    };
+
+    let values;
+
     try {
-        const startedAt = Date.now();
-        const graph = strategy.exportGraph();
-        const values = strategy.exportValueTable();
-        const metadata = {
-            mapSignature: strategyMapSignature,
-            strategyVersion: STRATEGY_VERSION
-        };
-
-        graphDirty = false;
-        lastSaveAt = Date.now();
-
-        return Promise.all([
-            mapStorage.saveStrategyGraph(
-                strategyMapId,
-                graph,
-                metadata
-            ),
-            mapStorage.saveStrategyValues(
-                strategyMapId,
-                values,
-                metadata
-            )
-        ]).then(() => {
-            console.log(
-                `[strategy worker] saved ${graph.nodes.length} nodes ` +
-                `in ${Date.now() - startedAt}ms`
-            );
-
-            return true;
-        }).catch(error => {
-            graphDirty = true;
-            console.warn(
-                "[strategy worker] unable to save the strategy data.",
-                error
-            );
-
-            return false;
-        });
+        strategy.pruneGraph?.();
+        values = strategy.exportValueTable();
     } catch (error) {
         console.warn(
-            "[strategy worker] unable to export the strategy data.",
+            "[strategy worker] unable to export the strategy values.",
             error
         );
 
         return Promise.resolve(false);
     }
+
+    graphDirty = false;
+    lastSaveAt = Date.now();
+
+    const saves = [
+        mapStorage.saveStrategyValues(
+            strategyMapId,
+            values,
+            metadata
+        ).catch(error => {
+            graphDirty = true;
+            console.warn(
+                "[strategy worker] unable to save the value table.",
+                error
+            );
+
+            return false;
+        })
+    ];
+
+    let nodeCount = strategy.getNodeCount?.() || 0;
+
+    if (!graphSaveDisabled) {
+        try {
+            const graph = strategy.exportGraph();
+
+            nodeCount = graph.nodes.length;
+            saves.push(
+                mapStorage.saveStrategyGraph(
+                    strategyMapId,
+                    graph,
+                    metadata
+                ).catch(error => {
+                    const tooLarge = /too large|structured clone/i.test(
+                        String(error)
+                    ) || error?.name === "UnknownError";
+
+                    if (tooLarge) {
+                        graphSaveDisabled = true;
+                        console.warn(
+                            "[strategy worker] graph too large to save; " +
+                            "keeping only the value table from now on.",
+                            error
+                        );
+                    } else {
+                        console.warn(
+                            "[strategy worker] unable to save the graph.",
+                            error
+                        );
+                    }
+
+                    return false;
+                })
+            );
+        } catch (error) {
+            graphSaveDisabled = true;
+            console.warn(
+                "[strategy worker] unable to export the graph.",
+                error
+            );
+        }
+    }
+
+    return Promise.all(saves).then(() => {
+        const graphStatus = graphSaveDisabled
+            ? "graph skipped"
+            : `${nodeCount} nodes`;
+
+        console.log(
+            `[strategy worker] saved ${graphStatus} ` +
+            `in ${Date.now() - startedAt}ms`
+        );
+
+        return true;
+    });
 }
 
 function ensureStrategy(definition) {

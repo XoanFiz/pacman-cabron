@@ -17,7 +17,8 @@ function createRandomizedBestFirstMinimax({
     onNodeVisit = null,
     onWalkLimit = null,
     getDistribution = null,
-    maxExtendDepth = 4096
+    maxExtendDepth = 4096,
+    maxNodes = 20000
 }) {
     if (typeof getStateKey !== "function") {
         throw new TypeError("getStateKey must be a function.");
@@ -141,11 +142,56 @@ function createRandomizedBestFirstMinimax({
     // NODE CREATION AND REUSE
     // ========================================================
 
+    let accessClock = 0;
+
+    function touchNode(node) {
+        node.lastUsed = ++accessClock;
+    }
+
+    // Keeps the graph bounded: when it grows past the cap, the least
+    // recently used nodes are dropped and the remaining successors are
+    // filtered so no edge points to an evicted child.
+    function pruneNodes() {
+        const target = Math.floor(maxNodes * 0.8);
+
+        if (nodes.size <= target) {
+            return;
+        }
+
+        const ordered = [...nodes.values()]
+            .sort((first, second) =>
+                (first.lastUsed || 0) - (second.lastUsed || 0)
+            );
+        const removed = new Set();
+        const removeCount = nodes.size - target;
+
+        for (let index = 0; index < removeCount; index++) {
+            removed.add(ordered[index].key);
+            nodes.delete(ordered[index].key);
+        }
+
+        for (const node of nodes.values()) {
+            if (node.successors.length > 0) {
+                node.successors = node.successors.filter(
+                    edge => !removed.has(edge.child.key)
+                );
+            }
+        }
+
+        if (search.root && !nodes.has(search.root.key)) {
+            search.root = null;
+        }
+    }
+
     function getOrCreateNode(state, initialValue) {
         const key = getStateKey(state);
 
         if (nodes.has(key)) {
-            return nodes.get(key);
+            const existing = nodes.get(key);
+
+            touchNode(existing);
+
+            return existing;
         }
 
         if (!Number.isFinite(initialValue)) {
@@ -188,13 +234,19 @@ function createRandomizedBestFirstMinimax({
             searchCount: 0
         };
 
+        touchNode(node);
         nodes.set(key, node);
+
+        if (nodes.size > maxNodes) {
+            pruneNodes();
+        }
 
         return node;
     }
 
     function recordSearchVisit(node) {
         node.searchCount++;
+        touchNode(node);
     }
 
     // ========================================================
@@ -628,6 +680,8 @@ function createRandomizedBestFirstMinimax({
     // PUBLIC INTERFACE
     // ========================================================
 
+    search.getNodeCount = () => nodes.size;
+    search.pruneNodes = pruneNodes;
     search.getOrCreateNode = getOrCreateNode;
     search.expandNode = expandNode;
     search.updateNodeValue = updateNodeValue;

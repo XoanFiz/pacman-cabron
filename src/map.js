@@ -845,7 +845,6 @@ function createGameMap(parameters = {}) {
                 `(target ${CALIBRATION_DEFAULT_OPTIONS.targetSamples} samples, ` +
                 `max ${CALIBRATION_DEFAULT_OPTIONS.maxSteps} steps, ` +
                 `resuming ${resumeCount} sample(s), ` +
-                `values ${values ? Object.keys(values).length : 0}, ` +
                 `assumed ${assumedCalibration ? "yes" : "no"}).`
             );
 

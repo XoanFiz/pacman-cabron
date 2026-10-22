@@ -7,7 +7,7 @@ Calibration follow-ups
 Allow a way to remove ghosts. Recover the color for the new ghosts if done. 
 Fix characters traversing walls
 Move many things from map.js to rules.js.
-Prune the strategic search tree: RBFM nodes are never removed, so it grows for the whole game (memory and CPU per frame). The extend walk also starts at the root each time, so its cost is the tree height; a frontier-based expansion would avoid both.
+Prune the strategic search tree: RBFM nodes now have an LRU cap (SEARCH_MAX_NODES), but the extend walk still starts at the root each time, so its cost is the tree height; a frontier-based expansion would avoid that.
 Strategy worker
     The worker produces the one-second decision buffer and persists its own graph and value table, periodically and before changing maps. With a worker a buffer miss falls back to continuing or the first legal move; the local search remains only for environments without Worker. Remove it once the worker is always available.
 Strategy buffer

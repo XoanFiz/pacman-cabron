@@ -36,13 +36,13 @@ function createGameRuntime(parameters = {}) {
             if (elapsed > 40) {
                 lastLongFrameAt = Date.now();
                 console.warn(`[frame] long frame ${elapsed.toFixed(1)}ms`);
-            } else if (gap > 50) {
+            } else if (
+                gap > 50 &&
+                document.hasFocus() &&
+                document.visibilityState === "visible"
+            ) {
                 lastLongFrameAt = Date.now();
-                console.warn(
-                    `[frame] gap ${gap.toFixed(1)}ms` +
-                    ` (focus ${document.hasFocus()}, ` +
-                    `${document.visibilityState})`
-                );
+                console.warn(`[frame] gap ${gap.toFixed(1)}ms`);
             }
         }
 
