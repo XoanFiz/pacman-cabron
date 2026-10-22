@@ -1,5 +1,5 @@
-function createGameConfig() {
-    // TODO: remove configuration here that is not for the game rules. 
+// Game rules and presentation of the game itself.
+function createGameRuleConfig() {
     return Object.freeze({
         CELL: 28,
         DOMAIN_ALPHA: 0.35,
@@ -15,6 +15,13 @@ function createGameConfig() {
         GHOST_SPEED: 2.25,
         FRIGHTENED_GHOST_SPEED: 1.5,
         EATEN_GHOST_SPEED: 4,
+        INITIAL_LIVES: 3
+    });
+}
+
+// Search, heuristic and calibration. None of this changes the game rules.
+function createStrategyConfig() {
+    return Object.freeze({
         WEIGHT_NORMAL: 1,
         WEIGHT_PELLET: 0.01,
         // Value of the pellets Pac-Man has already eaten, relative to the
@@ -29,12 +36,9 @@ function createGameConfig() {
         MAX_PELLET_SCORE_FRACTION: 0.25,
         TOTAL_PELLET_VALUE: 1000,
         TOTAL_NORMAL_VALUE: 1000,
-        INITIAL_LIVES: 3,
         // A caught Pac-Man resets the board, so a lost life must be worth
         // more than any territory state or the ghosts prefer to keep him
-        // locked in a tiny domain instead of eating him. The territory score
-        // peaks at TOTAL_NORMAL_VALUE * 2 plus the pellet cap (2250), so
-        // this stays above that bound.
+        // locked in a tiny domain instead of eating him.
         SEARCH_LIFE_PRIORITY: 5000,
         SEARCH_TERMINAL_VALUE: 1e6,
         SEARCH_MAX_EXTEND_DEPTH: 4096,
@@ -43,9 +47,26 @@ function createGameConfig() {
         EPSILON: 1e-9,
         SEARCH_EPSILON: 1e-7,
         SEARCH_EXPANSIONS_PER_FRAME: 8,
+        // Prior mean offset for nodes without observations.
+        BASE_MEAN: 0,
         // Prior standard deviation for nodes without observations: wide
         // enough to explore, replaced by the calibrated deviation per bucket.
         BASE_STD: 80,
+        // Floor for the calibrated standard deviation.
         CALIBRATION_MIN_STD: 0.5
+    });
+}
+
+function createGameConfig() {
+    const rules = createGameRuleConfig();
+    const strategy = createStrategyConfig();
+
+    // The flat merge keeps every module that receives a single config
+    // working; new code can use config.rules or config.strategy.
+    return Object.freeze({
+        ...rules,
+        ...strategy,
+        rules,
+        strategy
     });
 }

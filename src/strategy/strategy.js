@@ -2032,7 +2032,7 @@ function createGameStrategy(parameters = {}) {
             // No calibration at all: keep the prior deviation instead of
             // collapsing to a deterministic walk.
             return {
-                mean: node.value,
+                mean: node.value + config.BASE_MEAN,
                 standardDeviation: config.BASE_STD
             };
         }
@@ -2042,7 +2042,9 @@ function createGameStrategy(parameters = {}) {
         const variance = Number(calibration.g?.[key]);
 
         return {
-            mean: node.value + (Number.isFinite(correction) ? correction : 0),
+            mean: node.value +
+                config.BASE_MEAN +
+                (Number.isFinite(correction) ? correction : 0),
             standardDeviation: Number.isFinite(variance)
                 ? Math.max(
                     config.CALIBRATION_MIN_STD,
