@@ -21,6 +21,8 @@ function createGameConfig() {
         // pellets still on the board. Eating must outweigh keeping a pellet
         // inside his own domain.
         PELLET_PROGRESS_WEIGHT: 2,
+        // Weight of the progress term in the strategic heuristic.
+        SEARCH_HEURISTIC_K: 1,
         // Power pellets are worth more than normal pellets in the pellet
         // domain of both sides.
         POWER_PELLET_WEIGHT: 5,

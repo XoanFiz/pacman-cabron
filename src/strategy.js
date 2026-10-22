@@ -1231,12 +1231,81 @@ function createGameStrategy(parameters = {}) {
         };
     }
 
-    // Evaluates a hypothetical state as the ghost advantage over Pac-Man:
-    // the ghost domain value minus Pac-Man's own score.
+    // Strategic heuristic:
+    //   ((1 + Dg * Pg * Wg) / (1 + Dp * Pp * Wp)
+    //       - k * (1 + totalPellets * totalLives)
+    //           / (1 + remainingPellets * remainingLives))
+    //   / remainingPellets
+    // D/P/W are the normal cells, pellets and power pellets inside each
+    // side's domain. Ghosts maximize it and Pac-Man minimizes it.
+    function evaluateHeuristic(state, domain) {
+        let ghostsNormal = 0;
+        let ghostsPellets = 0;
+        let ghostsPower = 0;
+        let pacmanNormal = 0;
+        let pacmanPellets = 0;
+        let pacmanPower = 0;
+
+        for (let y = 0; y < getMapRowCountForMap(); y++) {
+            for (let x = 0; x < getMapColumnCountForMap(); x++) {
+                const tile = map.tiles[y][x];
+
+                if (tile === "#") {
+                    continue;
+                }
+
+                const owner = domain[y][x].owner;
+
+                if (!owner) {
+                    continue;
+                }
+
+                const isPacman = owner === "pacman";
+                const isGhost = owner.startsWith("ghost");
+
+                if (!isPacman && !isGhost) {
+                    continue;
+                }
+
+                const hasPellet =
+                    (tile === "." || tile === "o") &&
+                    state.pellets.has(`${x},${y}`);
+
+                if (hasPellet && tile === "o") {
+                    if (isPacman) pacmanPower++;
+                    else ghostsPower++;
+                } else if (hasPellet) {
+                    if (isPacman) pacmanPellets++;
+                    else ghostsPellets++;
+                } else if (isPacman) {
+                    pacmanNormal++;
+                } else {
+                    ghostsNormal++;
+                }
+            }
+        }
+
+        const remainingPellets = state.pellets.size;
+        const remainingLives = state.lives;
+        const totalPellets =
+            initialNormalPelletCount + initialPowerPelletCount;
+        const ghostProduct = ghostsNormal * ghostsPellets * ghostsPower;
+        const pacmanProduct = pacmanNormal * pacmanPellets * pacmanPower;
+        const progress =
+            (1 + totalPellets * INITIAL_LIVES) /
+            (1 + remainingPellets * remainingLives);
+
+        return (
+            (1 + ghostProduct) /
+            (1 + pacmanProduct) -
+            config.SEARCH_HEURISTIC_K * progress
+        ) / Math.max(1, remainingPellets);
+    }
+
+    // Evaluates a hypothetical state with the strategic heuristic.
     function evaluateSearchState(state) {
         if (state.terminal) {
-            // Pac-Man is out: the best outcome for the ghosts and the worst
-            // for Pac-Man. Finite because the RBFM rejects Infinity.
+            // Pac-Man is out: the best outcome for the ghosts.
             return SEARCH_TERMINAL_VALUE;
         }
 
@@ -1249,16 +1318,7 @@ function createGameStrategy(parameters = {}) {
             true
         );
 
-        const domainValue = evaluateDomain(
-            state,
-            domain
-        ).total;
-        const pacmanValue = evaluatePacmanScore(
-            state,
-            domain
-        ).total;
-
-        return domainValue - pacmanValue;
+        return evaluateHeuristic(state, domain);
     }
 
     // Checks movement legality against the simulated map and the game's
