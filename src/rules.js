@@ -74,6 +74,19 @@ function createGameRules(parameters = {}) {
             )
         );
 
+        // A start direction pointing into a wall would move the ghost
+        // through it, so it is replaced by a legal one.
+        for (const ghost of gs.ghosts) {
+            if (!map.canMove(ghost.x, ghost.y, ghost.direction)) {
+                const possible = map.getPossibleDirections(ghost);
+
+                ghost.direction = possible.length > 0
+                    ? { ...possible[0] }
+                    : { x: 0, y: 0 };
+                ghost.nextDirection = { ...ghost.direction };
+            }
+        }
+
         gs.running = false;
         gs.deathTimer = 0;
 

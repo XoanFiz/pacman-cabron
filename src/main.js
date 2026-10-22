@@ -39,6 +39,7 @@
         let receivedRevision = 0;
         let activeMapId = null;
         let persistId = 0;
+        let missDiagnostics = 0;
         const persistRequests = new Map();
 
         worker.onmessage = event => {
@@ -148,6 +149,68 @@
                     `revision ${revision}/${receivedRevision}, ` +
                     `complete ${metrics.complete}`
                 );
+
+                if (missDiagnostics < 3) {
+                    missDiagnostics++;
+
+                    try {
+                        const live = JSON.parse(stateKey);
+                        let best = null;
+                        let bestScore = -1;
+
+                        for (const key of buffer.keys()) {
+                            try {
+                                const other = JSON.parse(key);
+                                let score = 0;
+
+                                if (JSON.stringify(live[0]) === JSON.stringify(other[0])) score += 8;
+                                if (live[1] === other[1]) score += 1;
+                                if (live[2] === other[2]) score += 1;
+                                if (live[3] === other[3]) score += 1;
+                                if (live[4] === other[4]) score += 2;
+                                if (JSON.stringify(live[5]) === JSON.stringify(other[5])) score += 4;
+                                if (live[6] === other[6]) score += 1;
+                                if (JSON.stringify(live[7]) === JSON.stringify(other[7])) score += 1;
+
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    best = other;
+                                }
+                            } catch (error) {
+                                continue;
+                            }
+                        }
+
+                        console.warn(
+                            "[buffer] live state",
+                            JSON.stringify({
+                                lives: live[1],
+                                controlled: live[3],
+                                player: live[4],
+                                ghosts: live[5],
+                                readyPlayer: live[6],
+                                readyGhosts: live[7]
+                            })
+                        );
+
+                        if (best) {
+                            console.warn(
+                                "[buffer] nearest state",
+                                JSON.stringify({
+                                    lives: best[1],
+                                    controlled: best[3],
+                                    player: best[4],
+                                    ghosts: best[5],
+                                    readyPlayer: best[6],
+                                    readyGhosts: best[7],
+                                    pelletsEqual: JSON.stringify(live[0]) === JSON.stringify(best[0])
+                                })
+                            );
+                        }
+                    } catch (error) {
+                        console.warn("Unable to describe the buffer miss.", error);
+                    }
+                }
 
                 return null;
             },
