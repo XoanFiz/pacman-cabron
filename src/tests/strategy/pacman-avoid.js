@@ -282,13 +282,26 @@ console.log("diagnose pacman: deathNode=" + deathFound +
 let playState = strategy.createCurrentGameSearchState(context(), [], true);
 let events = 0;
 let died = false;
+let firstCharging = null;
 const trail = [];
+
+function nearestGhost(state) {
+    return Math.min(...state.ghosts
+        .filter(ghost => !ghost.eaten)
+        .map(ghost => distance(state.player, ghost)));
+}
 
 while (events++ < 60 && playState.lives === 3 && !playState.terminal) {
     if (playState.firstActor === "player") {
+        const before = playState;
+        const nearestBefore = nearestGhost(before);
         const direction = strategy.choosePacmanDirection(playState, [], searchSteps);
         trail.push("P" + direction.x + "," + direction.y);
         playState = strategy.advanceSearchState(playState, new Map(), direction);
+
+        if (firstCharging === null && nearestGhost(playState) < nearestBefore) {
+            firstCharging = { state: before, direction, event: events };
+        }
     } else if (playState.firstActor === "ghosts") {
         const indices = playState.readyGhosts
             .map((ready, index) => ready ? index : -1)
@@ -311,6 +324,59 @@ died = playState.lives < 3;
 console.log("playout: died=" + died + " events=" + events +
     " pacman=" + playState.player.x + "," + playState.player.y +
     " trail=" + JSON.stringify(trail));
+
+let playoutDiagnosis = "OK";
+
+if (died) {
+    if (firstCharging === null) {
+        playoutDiagnosis = "NO CHARGING DECISION (the death comes from the oscillation)";
+    } else {
+        const diagSearch = createSearch();
+        const diagRoot = diagSearch.setRoot(
+            firstCharging.state,
+            strategy.evaluateSearchState(firstCharging.state),
+            firstCharging.state.time
+        );
+
+        for (let step = 0; step < 100; step++) {
+            diagSearch.rootDecision(firstCharging.state.time);
+        }
+
+        const diagBest = diagSearch.getBestChild(diagRoot);
+        let deathFound = false;
+        let chosenLineDeath = false;
+        const diagStack = [{ node: diagRoot, depth: 0, onChosenLine: true }];
+
+        while (diagStack.length > 0) {
+            const item = diagStack.pop();
+
+            if (item.depth > 0 && item.node.state.lives < 3) {
+                deathFound = true;
+                if (item.onChosenLine) chosenLineDeath = true;
+            }
+
+            for (const edge of item.node.successors) {
+                diagStack.push({
+                    node: edge.child,
+                    depth: item.depth + 1,
+                    onChosenLine: item.depth === 0
+                        ? edge === diagBest
+                        : item.onChosenLine
+                });
+            }
+        }
+
+        playoutDiagnosis = "charging decision at event " + firstCharging.event +
+            " " + JSON.stringify(firstCharging.direction) +
+            " deathNode=" + deathFound +
+            " chosenLineDeath=" + chosenLineDeath +
+            " -> " + (deathFound
+                ? "VALUATION (death explored, still chosen)"
+                : "EXPLORATION (death node missing)");
+    }
+}
+
+console.log("playout diagnose: " + playoutDiagnosis);
 
 ({ charging, deathFound, chosenLineDeath, died });
 `, ctx);
