@@ -39,6 +39,7 @@ function createGameRules(parameters = {}) {
         gs.gameWon = false;
 
         ui.updateUI();
+        intelligence.anchorSearch?.();
     }
 
     function resetLevel() {
@@ -694,6 +695,14 @@ function createGameRules(parameters = {}) {
             player.stopped = false;
             player.stopTimer = 0;
 
+            if (!automated) {
+                intelligence.recordHumanDecision?.(
+                    "player",
+                    -1,
+                    direction
+                );
+            }
+
             return true;
         }
 
@@ -705,6 +714,14 @@ function createGameRules(parameters = {}) {
             player.stopped = false;
             player.stopTimer = 0;
 
+            if (!automated) {
+                intelligence.recordHumanDecision?.(
+                    "player",
+                    -1,
+                    player.direction
+                );
+            }
+
             return true;
         }
 
@@ -715,6 +732,14 @@ function createGameRules(parameters = {}) {
         player.ready = false;
         player.stopped = true;
         player.stopTimer = STOP_DECISION_INTERVAL;
+
+        if (!automated) {
+            intelligence.recordHumanDecision?.(
+                "player",
+                -1,
+                { x: 0, y: 0 }
+            );
+        }
 
         return false;
     }
@@ -769,6 +794,11 @@ function createGameRules(parameters = {}) {
                 }
 
                 applyGhostDecision(ghost, chosen);
+                intelligence.recordHumanDecision?.(
+                    "ghost",
+                    index,
+                    chosen
+                );
             } else {
                 applyGhostDecision(ghost, directions.get(index));
             }

@@ -158,6 +158,10 @@ function createGameAiController(parameters = {}) {
         ensureStrategy().setCalibration(calibration);
     }
 
+    function recordHumanDecision(mode, index, direction) {
+        workerBridge?.recordHuman?.(mode, index, direction);
+    }
+
     function calculateDomain(...args) {
         return ensureStrategy().calculateDomain(...args);
     }
@@ -180,6 +184,7 @@ function createGameAiController(parameters = {}) {
         calculateDomain,
         createCurrentGameSearchState,
         getNodetype,
-        setCalibration
+        setCalibration,
+        recordHumanDecision
     };
 }

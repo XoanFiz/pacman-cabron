@@ -26,19 +26,29 @@
         }
 
         const worker = new Worker("./src/strategy-worker.js");
-        const buffer = new Map();
         const metrics = {
             hits: 0,
             misses: 0,
-            buffers: 0,
-            entries: 0,
+            plans: 0,
+            records: 0,
+            nodes: 0,
             complete: false,
             revision: 0
         };
         let revision = 0;
-        let receivedRevision = 0;
         let activeMapId = null;
-        let missDiagnostics = 0;
+        let plan = [];
+        let cursor = null;
+        let planRevision = -1;
+
+        function invalidatePlan() {
+            plan = [];
+            cursor = null;
+        }
+
+        function currentNode() {
+            return cursor === null ? null : plan[cursor] || null;
+        }
 
         worker.onmessage = event => {
             const message = event.data;
@@ -48,7 +58,7 @@
                 return;
             }
 
-            if (message?.type !== STRATEGY_BUFFER_MESSAGE.buffer) {
+            if (message?.type !== STRATEGY_BUFFER_MESSAGE.plan) {
                 return;
             }
 
@@ -56,21 +66,26 @@
                 return;
             }
 
-            // Entries from a previous revision are still valid decisions
-            // for their state keys, so they are kept while the new buffer
-            // is being computed. The size bound keeps that from growing.
-            receivedRevision = message.revision;
+            if (message.revision !== planRevision) {
+                // The first message of a new anchor may still be empty;
+                // keep the previous plan until the new root exists.
+                if (!message.plan || !message.plan[0]) {
+                    return;
+                }
 
-            for (const entry of message.entries || []) {
-                buffer.set(entry.key, entry);
+                planRevision = message.revision;
+                plan = message.plan;
+                cursor = 0;
+            } else {
+                plan = message.plan || [];
+
+                if (cursor === null && plan[0]) {
+                    cursor = 0;
+                }
             }
 
-            while (buffer.size > 256) {
-                buffer.delete(buffer.keys().next().value);
-            }
-
-            metrics.buffers++;
-            metrics.entries = buffer.size;
+            metrics.plans++;
+            metrics.nodes = plan.filter(Boolean).length;
             metrics.complete = Boolean(message.complete);
             metrics.revision = revision;
         };
@@ -79,7 +94,8 @@
             anchor({ map, searchContext, readyGhostIndices, readyPlayer }) {
                 if (map.id !== activeMapId) {
                     activeMapId = map.id;
-                    buffer.clear();
+                    invalidatePlan();
+                    planRevision = -1;
                     revision = 0;
                 }
 
@@ -94,87 +110,47 @@
                     readyPlayer
                 });
             },
-            getAction(mode, stateKey) {
-                const entry = buffer.get(stateKey);
+            getPlanAction(mode) {
+                const node = currentNode();
 
-                if (entry) {
-                    metrics.hits++;
+                if (!node || node.actor !== mode || !node.action) {
+                    metrics.misses++;
 
-                    return entry;
+                    return null;
                 }
 
-                metrics.misses++;
+                // A node with human choices keeps the cursor until the
+                // player's decision is recorded.
+                if (!node.choices) {
+                    cursor = node.child ?? null;
+                }
 
-                console.warn(
-                    `[strategy buffer] miss ${mode}: ` +
-                    `entries ${buffer.size}, ` +
-                    `revision ${revision}/${receivedRevision}, ` +
-                    `complete ${metrics.complete}`
+                metrics.hits++;
+
+                return node.action;
+            },
+            recordHuman(mode, index, direction) {
+                const node = currentNode();
+
+                if (!node || node.actor !== mode || !node.choices) {
+                    invalidatePlan();
+
+                    return;
+                }
+
+                const choice = node.choices.find(option =>
+                    option.direction.x === direction.x &&
+                    option.direction.y === direction.y
                 );
 
-                if (missDiagnostics < 3) {
-                    missDiagnostics++;
+                if (!choice) {
+                    invalidatePlan();
 
-                    try {
-                        const live = JSON.parse(stateKey);
-                        let best = null;
-                        let bestScore = -1;
-
-                        for (const key of buffer.keys()) {
-                            try {
-                                const other = JSON.parse(key);
-                                let score = 0;
-
-                                if (JSON.stringify(live[0]) === JSON.stringify(other[0])) score += 8;
-                                if (live[1] === other[1]) score += 1;
-                                if (live[2] === other[2]) score += 1;
-                                if (live[3] === other[3]) score += 1;
-                                if (live[4] === other[4]) score += 2;
-                                if (JSON.stringify(live[5]) === JSON.stringify(other[5])) score += 4;
-                                if (live[6] === other[6]) score += 1;
-                                if (JSON.stringify(live[7]) === JSON.stringify(other[7])) score += 1;
-
-                                if (score > bestScore) {
-                                    bestScore = score;
-                                    best = other;
-                                }
-                            } catch (error) {
-                                continue;
-                            }
-                        }
-
-                        console.warn(
-                            "[buffer] live state",
-                            JSON.stringify({
-                                lives: live[1],
-                                controlled: live[3],
-                                player: live[4],
-                                ghosts: live[5],
-                                readyPlayer: live[6],
-                                readyGhosts: live[7]
-                            })
-                        );
-
-                        if (best) {
-                            console.warn(
-                                "[buffer] nearest state",
-                                JSON.stringify({
-                                    lives: best[1],
-                                    controlled: best[3],
-                                    player: best[4],
-                                    ghosts: best[5],
-                                    readyPlayer: best[6],
-                                    readyGhosts: best[7],
-                                    pelletsEqual: JSON.stringify(live[0]) === JSON.stringify(best[0])
-                                })
-                            );
-                        }
-                    } catch (error) {
-                        console.warn("Unable to describe the buffer miss.", error);
-                    }
+                    return;
                 }
 
-                return null;
+                cursor = choice.child ?? null;
+                metrics.records++;
             },
             getMetrics() {
                 return { ...metrics };

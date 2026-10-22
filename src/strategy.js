@@ -1837,10 +1837,6 @@ function createGameStrategy(parameters = {}) {
         });
     }
 
-    function getWorkerAction(mode, stateKey) {
-        return worker?.getAction?.(mode, stateKey) || null;
-    }
-
     // Used by the worker to keep deepening the live line between anchors:
     // it installs the root at the state the game is in and advanceSearch()
     // then extends from it.
@@ -2026,8 +2022,6 @@ function createGameStrategy(parameters = {}) {
         let root = origin;
         let guard = 0;
 
-        // An anchor sent after a decision is not a decision state itself:
-        // walk it to the next one so the job always starts at an event.
         while (
             !root.terminal &&
             !root.readyPlayer &&
@@ -2043,44 +2037,70 @@ function createGameStrategy(parameters = {}) {
             horizonSeconds: Number.isFinite(options.horizonSeconds)
                 ? options.horizonSeconds
                 : 1,
-            maxEntries: Number.isInteger(options.maxEntries)
-                ? options.maxEntries
+            maxNodes: Number.isInteger(options.maxNodes)
+                ? options.maxNodes
                 : 64,
             humanGhostIndex: root.controlledGhostIndex,
-            entries: new Map(),
-            queue: [root],
+            plan: [],
+            nodeCount: 0,
+            queue: [{
+                id: 0,
+                state: root,
+                parent: -1,
+                choice: null
+            }],
+            nextId: 1,
             visited: new Set([buildStateKey(root)]),
             complete: false
         };
     }
 
-    function enqueuePolicyState(job, state) {
+    function enqueuePlanState(job, state, parent, choice) {
         if (state.terminal) {
-            return;
+            return null;
         }
 
         const key = buildStateKey(state);
 
         if (job.visited.has(key)) {
-            return;
+            return null;
         }
 
         job.visited.add(key);
-        job.queue.push(state);
+
+        const id = job.nextId++;
+
+        job.queue.push({ id, state, parent, choice });
+
+        return id;
     }
 
-    function stepGhostDecision(job, state, key, readyGhostIndices) {
+    function createPlanNode(job, item, actor) {
+        const node = {
+            id: item.id,
+            parent: item.parent,
+            choice: item.choice,
+            actor,
+            action: null,
+            choices: null,
+            child: null
+        };
+
+        job.plan[node.id] = node;
+        job.nodeCount++;
+
+        return node;
+    }
+
+    function stepGhostDecision(job, state, item) {
+        const readyGhostIndices = getReadySearchGhostIndices(state);
         const humanIndex = readyGhostIndices.includes(job.humanGhostIndex) &&
             !state.ghosts[job.humanGhostIndex].eaten
             ? job.humanGhostIndex
             : -1;
-
         const automatedIndices = readyGhostIndices.filter(
             index => index !== humanIndex
         );
-
-        // The live query marks only the automated ghosts as ready, so
-        // the entry is keyed by that same state, not by the full one.
         const queryState = automatedIndices.length > 0
             ? createCurrentGameSearchState(
                 state,
@@ -2088,7 +2108,6 @@ function createGameStrategy(parameters = {}) {
                 state.readyPlayer
             )
             : null;
-
         const directions = queryState
             ? chooseGhostDirections(
                 queryState,
@@ -2096,43 +2115,78 @@ function createGameStrategy(parameters = {}) {
                 state.readyPlayer
             )
             : null;
+        const node = createPlanNode(job, item, "ghost");
 
         if (directions) {
-            const queryKey = buildStateKey(queryState);
-
-            job.entries.set(queryKey, {
-                key: queryKey,
-                ghostDirections: [...directions.entries()]
-            });
+            node.action = {
+                ghostDirections: [...directions.entries()].map(
+                    ([index, direction]) => [index, { ...direction }]
+                )
+            };
         }
 
         if (humanIndex < 0) {
-            enqueuePolicyState(
+            node.child = enqueuePlanState(
                 job,
-                advanceSearchState(state, directions || new Map(), null)
+                advanceSearchState(state, directions || new Map(), null),
+                node.id,
+                null
             );
 
             return;
         }
 
+        node.choices = [];
+
         for (const direction of getHumanGhostDirections(state, humanIndex)) {
             const jointDirections = new Map(directions || []);
-            jointDirections.set(humanIndex, direction);
+            jointDirections.set(humanIndex, { ...direction });
 
-            enqueuePolicyState(
+            const child = enqueuePlanState(
                 job,
-                advanceSearchState(state, jointDirections, null)
+                advanceSearchState(state, jointDirections, null),
+                node.id,
+                {
+                    mode: "ghost",
+                    index: humanIndex,
+                    direction: { ...direction }
+                }
             );
+
+            if (child !== null) {
+                node.choices.push({
+                    direction: { ...direction },
+                    child
+                });
+            }
         }
     }
 
-    function stepPlayerDecision(job, state, key, readyGhostIndices) {
+    function stepPlayerDecision(job, state, item) {
+        const readyGhostIndices = getReadySearchGhostIndices(state);
+        const node = createPlanNode(job, item, "player");
+
         if (job.humanGhostIndex < 0) {
+            node.choices = [];
+
             for (const direction of getSearchPlayerActionProfiles(state)) {
-                enqueuePolicyState(
+                const child = enqueuePlanState(
                     job,
-                    advanceSearchState(state, [], direction)
+                    advanceSearchState(state, [], direction),
+                    node.id,
+                    {
+                        mode: "player",
+                        index: -1,
+                        direction: { ...direction }
+                    }
                 );
+
+                if (child !== null) {
+                    node.choices.push({
+                        direction: { ...direction },
+                        child
+                    });
+                }
             }
 
             return;
@@ -2143,19 +2197,15 @@ function createGameStrategy(parameters = {}) {
             readyGhostIndices
         );
 
-        job.entries.set(key, {
-            key,
-            playerDirection: { ...direction }
-        });
-
-        enqueuePolicyState(
+        node.action = { playerDirection: { ...direction } };
+        node.child = enqueuePlanState(
             job,
-            advanceSearchState(state, [], direction)
+            advanceSearchState(state, [], direction),
+            node.id,
+            null
         );
     }
 
-    // Steps the buffer job without blocking the worker for long: each call
-    // processes at most maxStates decision states.
     function stepPolicyBufferJob(job, maxStates = 1) {
         for (let step = 0; step < maxStates; step++) {
             if (job.complete) {
@@ -2167,12 +2217,13 @@ function createGameStrategy(parameters = {}) {
                 break;
             }
 
-            if (job.entries.size >= job.maxEntries) {
+            if (job.nodeCount >= job.maxNodes) {
                 job.complete = true;
                 break;
             }
 
-            const state = job.queue.shift();
+            const item = job.queue.shift();
+            const state = item.state;
 
             if (state.time - job.originTime > job.horizonSeconds) {
                 continue;
@@ -2188,12 +2239,10 @@ function createGameStrategy(parameters = {}) {
                 continue;
             }
 
-            const key = buildStateKey(state);
-
             if (state.firstActor === "ghosts") {
-                stepGhostDecision(job, state, key, readyGhostIndices);
+                stepGhostDecision(job, state, item);
             } else if (state.firstActor === "player") {
-                stepPlayerDecision(job, state, key, readyGhostIndices);
+                stepPlayerDecision(job, state, item);
             }
         }
 
@@ -2260,29 +2309,20 @@ function createGameStrategy(parameters = {}) {
         readyGhostIndices,
         readyPlayer = false
     ) {
+        const planned = worker?.getPlanAction?.("ghost");
+
+        if (planned?.ghostDirections) {
+            return new Map(planned.ghostDirections.map(([index, direction]) => [
+                index,
+                { ...direction }
+            ]));
+        }
+
         const state = createCurrentGameSearchState(
             searchContext,
             readyGhostIndices,
             readyPlayer
         );
-        const buffered = getWorkerAction(
-            "ghost",
-            buildStateKey(state)
-        );
-
-        requestWorkerAction(
-            "ghost",
-            searchContext,
-            readyGhostIndices,
-            readyPlayer
-        );
-
-        if (buffered?.ghostDirections) {
-            return new Map(buffered.ghostDirections.map(([index, direction]) => [
-                index,
-                { ...direction }
-            ]));
-        }
 
         // The worker owns the search: never run it on the main thread.
         if (worker) {
@@ -2317,26 +2357,17 @@ function createGameStrategy(parameters = {}) {
         searchContext,
         readyGhostIndices = []
     ) {
+        const planned = worker?.getPlanAction?.("player");
+
+        if (planned?.playerDirection) {
+            return { ...planned.playerDirection };
+        }
+
         const state = createCurrentGameSearchState(
             searchContext,
             readyGhostIndices,
             true
         );
-        const buffered = getWorkerAction(
-            "player",
-            buildStateKey(state)
-        );
-
-        requestWorkerAction(
-            "player",
-            searchContext,
-            readyGhostIndices,
-            true
-        );
-
-        if (buffered?.playerDirection) {
-            return { ...buffered.playerDirection };
-        }
 
         if (worker) {
             return getCheapPlayerDirection(state);

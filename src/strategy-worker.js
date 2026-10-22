@@ -18,10 +18,10 @@ const model = createGameModel();
 // STRATEGY BUFFER WORKER
 // ============================================================
 //
-// Owns a search strategy and answers anchors with the decisions it would
-// take during the next second. The main thread never waits for it: it
-// consumes the entries by state key and falls back to its own search when
-// one is missing.
+// Owns a search strategy and answers anchors with the decision plan it
+// would take during the next second. The main thread never waits for it:
+// it follows the plan cursor and falls back to a cheap decision when the
+// plan has no node for the current event.
 //
 // Jobs are stepped in small slices so a new anchor can replace the running
 // prediction without waiting for it to finish.
@@ -69,22 +69,17 @@ function ensureStrategy(definition) {
     return strategy;
 }
 
-// Only the entries added since the previous message are sent; the main
-// thread clears its buffer when the revision changes and merges after.
-function postBuffer(job, complete) {
-    const entries = [...job.entries.values()];
-    const fresh = entries.slice(job.posted);
-
-    job.posted = entries.length;
-
+// The plan is small: the main thread gets the whole tree so it can follow
+// the branch that matches the player's decisions.
+function postPlan(job, complete) {
     self.postMessage({
-        type: STRATEGY_BUFFER_MESSAGE.buffer,
+        type: STRATEGY_BUFFER_MESSAGE.plan,
         mapId: job.mapId,
         revision: job.revision,
-        entries: fresh,
+        plan: job.plan.map(node => node || null),
         complete,
         stats: {
-            entries: entries.length,
+            nodes: job.nodeCount,
             queued: job.queue.length
         }
     });
@@ -105,8 +100,8 @@ function startJob(anchor) {
         const job = strategy.createPolicyBufferJob(anchor.searchContext, {
             readyGhostIndices: anchor.readyGhostIndices || [],
             readyPlayer: Boolean(anchor.readyPlayer),
-            horizonSeconds: STRATEGY_BUFFER_HORIZON_SECONDS,
-            maxEntries: STRATEGY_BUFFER_MAX_ENTRIES
+            horizonSeconds: STRATEGY_PLAN_HORIZON_SECONDS,
+            maxNodes: STRATEGY_PLAN_MAX_NODES
         });
 
         job.id = ++jobId;
@@ -114,11 +109,10 @@ function startJob(anchor) {
         job.revision = anchor.revision;
         job.strategy = strategy;
         job.anchor = anchor;
-        job.posted = 0;
         job.deepening = false;
         currentJob = job;
 
-        postBuffer(job, job.complete);
+        postPlan(job, job.complete);
         scheduleStep(job.id);
     } catch (error) {
         postError(anchor, error);
@@ -140,7 +134,7 @@ function scheduleStep(id) {
                 job.strategy.stepPolicyBufferJob(job, 1);
             }
 
-            postBuffer(job, job.complete);
+            postPlan(job, job.complete);
         } catch (error) {
             postError({ map: { id: job.mapId }, revision: job.revision }, error);
             job.complete = true;

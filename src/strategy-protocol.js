@@ -8,10 +8,10 @@
 //     --anchor-->  worker (strategy-worker.js)
 //     <--buffer--  worker
 //
-// The main thread never waits for the worker: it looks a decision up by
-// state key and falls back to a cheap decision when the buffer misses.
-// The worker predicts the decisions of the next second and sends the
-// entries whenever the buffer changes.
+// The main thread never waits for the worker: it follows a cursor over
+// the plan and falls back to a cheap decision when the plan has no node.
+// The worker predicts the decisions of the next second and sends the plan
+// whenever it changes.
 //
 // anchor (main -> worker):
 //   {
@@ -22,31 +22,33 @@
 //     readyPlayer
 //   }
 //
-// buffer (worker -> main):
+// plan (worker -> main):
 //   {
 //     type, mapId, revision, complete,
-//     entries: [
+//     plan: [
 //       {
-//         key,                 // buildStateKey of the decision state
-//         ghostDirections?: [[index, { x, y }]],
-//         playerDirection?: { x, y }
+//         id, parent, choice,        // choice: the human action that led here
+//         actor: "ghost" | "player",
+//         action: null | { ghostDirections?: [[index, { x, y }]],
+//                          playerDirection?: { x, y } },
+//         choices: null | [{ direction: { x, y }, child: id }],
+//         child: null | id
 //       }
 //     ]
 //   }
 //
-// Only the human-controlled character branches: the buffer explores every
-// legal decision the player can take, so a hit does not depend on the
-// player following the search's preferred line.
+// The plan is a tree of decisions: the AI decision is taken once, and only
+// the human-controlled character branches, so the main thread follows the
+// branch that matches the player's actual choices.
 
 const STRATEGY_BUFFER_MESSAGE = Object.freeze({
     anchor: "anchor",
-    buffer: "buffer",
+    plan: "plan",
     error: "error"
 });
 
 // How far ahead, in game seconds, the worker predicts decisions.
-const STRATEGY_BUFFER_HORIZON_SECONDS = 1;
+const STRATEGY_PLAN_HORIZON_SECONDS = 1;
 
-// Hard cap on stored decision states. Entries are consumed by key, so the
-// cap only bounds memory and clone time.
-const STRATEGY_BUFFER_MAX_ENTRIES = 64;
+// Hard cap on plan nodes; the cap only bounds the plan size and clone time.
+const STRATEGY_PLAN_MAX_NODES = 64;
