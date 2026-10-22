@@ -16,7 +16,8 @@ function createGameRules(parameters = {}) {
         FRIGHTENED_GHOST_SPEED,
         EATEN_GHOST_SPEED,
         GHOST_COLLISION_DISTANCE,
-        SEARCH_EPSILON
+        SEARCH_EPSILON,
+        STOP_DECISION_INTERVAL
     } = config;
 
     const {
@@ -395,6 +396,15 @@ function createGameRules(parameters = {}) {
             gs.player.ready = true;
         }
 
+        if (gs.player.stopped && !gs.player.ready) {
+            gs.player.stopTimer -= elapsedTime;
+
+            if (gs.player.stopTimer <= 0) {
+                gs.player.ready = true;
+                gs.player.stopTimer = STOP_DECISION_INTERVAL;
+            }
+        }
+
         for (const ghost of gs.ghosts) {
             const arrived = moveCharacterToEvent(
                 ghost,
@@ -514,6 +524,16 @@ function createGameRules(parameters = {}) {
 
         if (!gs.player.ready) {
             considerArrival(gs.player, PACMAN_SPEED);
+        }
+
+        // A stopped Pac-Man only gets a new chance to start at a discrete
+        // interval, independent of how fast the ghosts move.
+        if (
+            gs.player.stopped &&
+            !gs.player.ready &&
+            Number.isFinite(gs.player.stopTimer)
+        ) {
+            considerEvent(Math.max(0, gs.player.stopTimer));
         }
 
         const playerVelocityX = gs.player.direction.x * PACMAN_SPEED;
@@ -672,6 +692,7 @@ function createGameRules(parameters = {}) {
             setPlayerDirection(direction);
             player.ready = false;
             player.stopped = false;
+            player.stopTimer = 0;
 
             return true;
         }
@@ -682,6 +703,7 @@ function createGameRules(parameters = {}) {
         ) {
             player.ready = false;
             player.stopped = false;
+            player.stopTimer = 0;
 
             return true;
         }
@@ -692,6 +714,7 @@ function createGameRules(parameters = {}) {
         setPlayerDirection({ x: 0, y: 0 });
         player.ready = false;
         player.stopped = true;
+        player.stopTimer = STOP_DECISION_INTERVAL;
 
         return false;
     }
@@ -889,6 +912,7 @@ function createGameRules(parameters = {}) {
         player.nextDirection = { x: 0, y: 0 };
         player.ready = true;
         player.stopped = false;
+        player.stopTimer = 0;
 
         const ghostStarts = mapDefinition.ghostStarts;
 
@@ -938,24 +962,6 @@ function createGameRules(parameters = {}) {
             ui.updatePauseButton();
         }
 
-        // A stopped Pac-Man starts as soon as a legal key is pressed, the
-        // same way the per-frame loop used to retry the direction.
-        if (gs.running && gs.player.stopped) {
-            const desired = findPressedDirection(gs.player.x, gs.player.y);
-
-            if (
-                desired &&
-                map.canMove(gs.player.x, gs.player.y, desired)
-            ) {
-                setPlayerDirection(desired);
-                gs.player.stopped = false;
-                gs.player.ready = false;
-
-                // The worker was predicting a stopped player; re-anchor it
-                // from the moving state.
-                intelligence.anchorSearch?.();
-            }
-        }
     }
 
     function releaseDirection(name) {

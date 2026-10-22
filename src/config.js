@@ -9,6 +9,9 @@ function createGameConfig() {
         FRIGHTENED_BLINK_FREQUENCY: 12,
         GHOST_COLLISION_DISTANCE: 0.55,
         PACMAN_SPEED: 3.5,
+        // While Pac-Man is stopped, its start is only accepted at this
+        // discrete cadence, not at the instant the key is pressed.
+        STOP_DECISION_INTERVAL: 0.3,
         GHOST_SPEED: 2.25,
         FRIGHTENED_GHOST_SPEED: 1.5,
         EATEN_GHOST_SPEED: 4,

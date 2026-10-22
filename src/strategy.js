@@ -1365,6 +1365,14 @@ function createGameStrategy(parameters = {}) {
 
         considerArrival(state.player, PACMAN_SPEED);
 
+        if (
+            state.player.stopped &&
+            !state.readyPlayer &&
+            Number.isFinite(state.player.stopTimer)
+        ) {
+            considerEvent(Math.max(0, state.player.stopTimer));
+        }
+
         const playerVelocityX =
             state.player.direction.x * PACMAN_SPEED;
 
@@ -1493,6 +1501,15 @@ function createGameStrategy(parameters = {}) {
 
             next.player.direction = { ...playerDirection };
             next.readyPlayer = false;
+
+            if (playerDirection.x === 0 && playerDirection.y === 0) {
+                next.player.stopped = true;
+                next.player.stopTimer =
+                    config.STOP_DECISION_INTERVAL;
+            } else {
+                next.player.stopped = false;
+                next.player.stopTimer = 0;
+            }
         } else {
             throw new Error("No valid actor is available to decide.");
         }
@@ -1508,6 +1525,16 @@ function createGameStrategy(parameters = {}) {
             PACMAN_SPEED,
             elapsedTime
         );
+
+        if (state.player.stopped && !state.readyPlayer) {
+            state.player.stopTimer -= elapsedTime;
+
+            if (state.player.stopTimer <= 0) {
+                state.readyPlayer = true;
+                state.player.stopTimer =
+                    config.STOP_DECISION_INTERVAL;
+            }
+        }
 
         for (
             let ghostIndex = 0; ghostIndex < state.ghosts.length; ghostIndex++) {
@@ -1672,11 +1699,24 @@ function createGameStrategy(parameters = {}) {
             return [];
         }
 
-        return getSearchDirections(
+        const directions = getSearchDirections(
             state,
             state.player,
             false
         );
+
+        // A stopped player may wait for the next decision slot instead of
+        // starting now, so waiting is an explicit action.
+        if (
+            state.player.stopped &&
+            !directions.some(direction =>
+                direction.x === 0 && direction.y === 0
+            )
+        ) {
+            directions.push({ x: 0, y: 0 });
+        }
+
+        return directions;
     }
 
 
