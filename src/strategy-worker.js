@@ -39,7 +39,7 @@ let currentJob = null;
 let jobId = 0;
 let graphDirty = false;
 let lastAnchorAt = 0;
-let lastSaveAt = 0;
+let lastSaveAt = Date.now();
 
 // The strategy is rebuilt when the map changes, including its id: two
 // maps can share a layout but have different persisted graphs.

@@ -136,16 +136,6 @@
                     metrics.misses++;
                 }
 
-                const lookups = metrics.hits + metrics.misses;
-
-                if (lookups % 120 === 0) {
-                    console.info(
-                        `[strategy buffer] hits ${metrics.hits}` +
-                        ` misses ${metrics.misses}` +
-                        ` entries ${metrics.entries}`
-                    );
-                }
-
                 return entry || null;
             },
             getMetrics() {
