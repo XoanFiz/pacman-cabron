@@ -11,7 +11,7 @@ function createGameConfig() {
         PACMAN_SPEED: 3.5,
         // While Pac-Man is stopped, its start is only accepted at this
         // discrete cadence, not at the instant the key is pressed.
-        STOP_DECISION_INTERVAL: 0.3,
+        STOP_DECISION_INTERVAL: 0.05,
         GHOST_SPEED: 2.25,
         FRIGHTENED_GHOST_SPEED: 1.5,
         EATEN_GHOST_SPEED: 4,
@@ -21,7 +21,12 @@ function createGameConfig() {
         TOTAL_PELLET_VALUE: 1000,
         TOTAL_NORMAL_VALUE: 1000,
         INITIAL_LIVES: 3,
-        SEARCH_LIFE_PRIORITY: 1,
+        // A caught Pac-Man resets the board, so a lost life must be worth
+        // more than any territory state or the ghosts prefer to keep him
+        // locked in a tiny domain instead of eating him. The territory score
+        // peaks at TOTAL_NORMAL_VALUE * 2 plus the pellet cap (2250), so
+        // this stays above that bound.
+        SEARCH_LIFE_PRIORITY: 5000,
         SEARCH_TERMINAL_VALUE: 1e6,
         SEARCH_MAX_EXTEND_DEPTH: 4096,
         // Lookahead extensions spent on the next decision of the plan.
