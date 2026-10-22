@@ -616,11 +616,12 @@ function createGameRules(parameters = {}) {
         return indices;
     }
 
-    // The player controls the selected ghost only while it is not eaten.
+    // The player keeps controlling the selected ghost while it is eaten so
+    // it can be driven back to the house.
     function getControlledGhostIndex() {
         const ghost = getControlledGhost();
 
-        if (!ghost || ghost.eaten) {
+        if (!ghost) {
             return -1;
         }
 
