@@ -12,15 +12,15 @@
 // - Without a plan the old rule applies: leaving the best child starts
 //   "improve", so the walk keeps taking the first child.
 //
-// Usage: node src/tests/rbfm-plan-walk.js
+// Usage: node src/tests/strategy/rbfm-plan-walk.js
 
 const fs = require("fs");
 const path = require("path");
 
-const main = path.resolve(__dirname, "../..");
+const main = path.resolve(__dirname, "../../..");
 const source = fs
     .readFileSync(
-        path.join(main, "src", "randomized-best-first-minimax.js"),
+        path.join(main, "src", "strategy", "randomized-best-first-minimax.js"),
         "utf8"
     )
     .replace(/\r\n/g, "\n");

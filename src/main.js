@@ -1,7 +1,7 @@
 (() => {
     const scripts = [
-        "locales.js", "config.js", "strategy-protocol.js", "bindings.js", "model.js", "state.js", "map-storage.js", "map-geometry.js", "randomized-best-first-minimax.js", "calibration/protocol.js", "map.js",
-        "strategy.js", "ai-controller.js", "rules.js", "renderer.js",
+        "locales.js", "config.js", "strategy/protocol.js", "bindings.js", "model.js", "state.js", "map-storage.js", "map-geometry.js", "strategy/randomized-best-first-minimax.js", "calibration/protocol.js", "map.js",
+        "strategy/strategy.js", "ai-controller.js", "rules.js", "renderer.js",
         "ui.js", "editor.js", "input.js", "runtime.js"
     ];
 
@@ -25,7 +25,7 @@
             return null;
         }
 
-        const worker = new Worker("./src/strategy-worker.js");
+        const worker = new Worker("./src/strategy/worker.js");
         const metrics = {
             hits: 0,
             misses: 0,

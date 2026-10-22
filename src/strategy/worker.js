@@ -1,11 +1,11 @@
 /* global importScripts, self */
 
 importScripts(
-    "./calibration/protocol.js",
-    "./strategy-protocol.js",
-    "./config.js",
-    "./map-geometry.js",
-    "./model.js",
+    "../calibration/protocol.js",
+    "./protocol.js",
+    "../config.js",
+    "../map-geometry.js",
+    "../model.js",
     "./randomized-best-first-minimax.js",
     "./strategy.js"
 );

@@ -5,8 +5,8 @@ importScripts(
     "../config.js",
     "../map-geometry.js",
     "../model.js",
-    "../strategy.js",
-    "../randomized-best-first-minimax.js",
+    "../strategy/strategy.js",
+    "../strategy/randomized-best-first-minimax.js",
     "runner.js"
 );
 

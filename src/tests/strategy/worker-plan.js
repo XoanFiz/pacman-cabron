@@ -5,13 +5,13 @@
 // horizon, keeps its links consistent, and never grows past the internal
 // plan the worker built.
 //
-// Usage: node src/tests/worker-plan.js
+// Usage: node src/tests/strategy/worker-plan.js
 
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const main = path.resolve(__dirname, "../..");
+const main = path.resolve(__dirname, "../../..");
 const rd = p => fs.readFileSync(path.join(main, "src", p), "utf8")
     .replace(/\r\n/g, "\n");
 
@@ -33,7 +33,7 @@ const ctx = vm.createContext({
 ctx.__run = name => vm.runInContext(rd(name), ctx, { filename: name });
 ctx.importScripts = (...files) => {
     for (const file of files) {
-        ctx.__run(file.replace(/^\.\//, ""));
+        ctx.__run(path.posix.normalize(path.posix.join("strategy", file)));
     }
 };
 
@@ -42,8 +42,8 @@ for (const f of [
     "config.js",
     "map-geometry.js",
     "model.js",
-    "randomized-best-first-minimax.js",
-    "strategy.js",
+    "strategy/randomized-best-first-minimax.js",
+    "strategy/strategy.js",
     "rules.js"
 ]) {
     ctx.__run(f);
@@ -126,7 +126,7 @@ const gameContext = (() => {
 gameContext;
 `, ctx);
 
-ctx.__run("strategy-worker.js");
+ctx.__run("strategy/worker.js");
 
 ctx.self.onmessage({ data: anchor });
 
