@@ -17,6 +17,13 @@ function createGameConfig() {
         EATEN_GHOST_SPEED: 4,
         WEIGHT_NORMAL: 1,
         WEIGHT_PELLET: 0.01,
+        // Value of the pellets Pac-Man has already eaten, relative to the
+        // pellets still on the board. Eating must outweigh keeping a pellet
+        // inside his own domain.
+        PELLET_PROGRESS_WEIGHT: 2,
+        // Power pellets are worth more than normal pellets in the pellet
+        // domain of both sides.
+        POWER_PELLET_WEIGHT: 5,
         MAX_PELLET_SCORE_FRACTION: 0.25,
         TOTAL_PELLET_VALUE: 1000,
         TOTAL_NORMAL_VALUE: 1000,

@@ -83,6 +83,27 @@ function createGameStrategy(parameters = {}) {
         cloneCharacterState
     } = model;
 
+    // Static counts of the map, used by Pac-Man's own score.
+    let openCellCount = 0;
+    let initialNormalPelletCount = 0;
+    let initialPowerPelletCount = 0;
+
+    for (let y = 0; y < getMapRowCountForMap(); y++) {
+        for (let x = 0; x < getMapColumnCountForMap(); x++) {
+            if (map.tiles[y][x] === "#") {
+                continue;
+            }
+
+            openCellCount++;
+
+            if (map.tiles[y][x] === ".") {
+                initialNormalPelletCount++;
+            } else if (map.tiles[y][x] === "o") {
+                initialPowerPelletCount++;
+            }
+        }
+    }
+
     const {
         PACMAN_SPEED,
         GHOST_SPEED,
@@ -917,6 +938,9 @@ function createGameStrategy(parameters = {}) {
 
                 pelletScore +=
                     pelletValue *
+                    (cell === "o"
+                        ? config.POWER_PELLET_WEIGHT
+                        : 1) *
                     distanceWeight;
             }
         }
@@ -1107,29 +1131,115 @@ function createGameStrategy(parameters = {}) {
             : "player";
     }
 
-    // Evaluates a hypothetical state using the domain objective and
-    // penalizes lost lives. Temporarily installs the simulated state into
-    // the existing evaluator, then restores the live game state even
-    // if evaluation fails.
-    function evaluateSearchState(state) {
-        const lifePenalty =
-            (INITIAL_LIVES - state.lives) *
-            SEARCH_LIFE_PRIORITY;
+    // Pac-Man's own score: his territory, the pellets inside his domain
+    // (power pellets count more), the lives he still has and the pellets he
+    // has already eaten. The ghosts maximize their advantage and Pac-Man
+    // minimizes it, so this score is subtracted from the domain value.
+    function evaluatePacmanScore(state, domain) {
+        let territory = 0;
+        let pelletDomain = 0;
+        let remainingNormal = 0;
+        let remainingPower = 0;
+        const powerWeight = config.POWER_PELLET_WEIGHT;
+        const pelletValue = state.pellets.size > 0
+            ? TOTAL_PELLET_VALUE / state.pellets.size
+            : 0;
 
+        for (let y = 0; y < getMapRowCountForMap(); y++) {
+            for (let x = 0; x < getMapColumnCountForMap(); x++) {
+                const tile = map.tiles[y][x];
+
+                if (tile === "#") {
+                    continue;
+                }
+
+                const cell = domain[y][x];
+
+                if (cell.owner === "pacman") {
+                    territory++;
+                }
+
+                if (tile !== "." && tile !== "o") {
+                    continue;
+                }
+
+                if (!state.pellets.has(`${x},${y}`)) {
+                    continue;
+                }
+
+                if (tile === "o") {
+                    remainingPower++;
+                } else {
+                    remainingNormal++;
+                }
+
+                if (cell.owner === "pacman") {
+                    const travelTime = Math.max(
+                        0,
+                        cell.arrival - state.time
+                    );
+
+                    pelletDomain +=
+                        pelletValue *
+                        (tile === "o" ? powerWeight : 1) /
+                        (1 + travelTime);
+                }
+            }
+        }
+
+        const initialWeighted =
+            initialNormalPelletCount +
+            powerWeight * initialPowerPelletCount;
+        const remainingWeighted =
+            remainingNormal +
+            powerWeight * remainingPower;
+        const eatenProgress = initialWeighted > 0
+            ? Math.max(0, initialWeighted - remainingWeighted) /
+            initialWeighted
+            : 0;
+
+        return {
+            total:
+                WEIGHT_NORMAL *
+                TOTAL_NORMAL_VALUE *
+                territory /
+                Math.max(1, openCellCount) +
+                WEIGHT_PELLET * pelletDomain +
+                config.PELLET_PROGRESS_WEIGHT *
+                TOTAL_PELLET_VALUE *
+                eatenProgress +
+                state.lives * SEARCH_LIFE_PRIORITY
+        };
+    }
+
+    // Evaluates a hypothetical state as the ghost advantage over Pac-Man:
+    // the ghost domain value minus Pac-Man's own score.
+    function evaluateSearchState(state) {
         if (state.terminal) {
             // Pac-Man is out: the best outcome for the ghosts and the worst
             // for Pac-Man. Finite because the RBFM rejects Infinity.
-            return lifePenalty + SEARCH_TERMINAL_VALUE;
+            return SEARCH_TERMINAL_VALUE;
         }
 
-        const domain = calculateDomain(state.player, state.ghosts, state.respawnState.houses, state.pellets, state.time, true);
+        const domain = calculateDomain(
+            state.player,
+            state.ghosts,
+            state.respawnState.houses,
+            state.pellets,
+            state.time,
+            true
+        );
 
         const domainValue = evaluateDomain(
             state,
             domain
         ).total;
+        const pacmanValue = evaluatePacmanScore(
+            state,
+            domain
+        ).total;
 
-        return lifePenalty + domainValue;
+        return domainValue - pacmanValue;
     }
 
     // Checks movement legality against the simulated map and the game's
