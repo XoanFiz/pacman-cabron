@@ -38,14 +38,54 @@ function createGameRuntime(parameters = {}) {
                 console.warn(`[frame] long frame ${elapsed.toFixed(1)}ms`);
             } else if (gap > 50) {
                 lastLongFrameAt = Date.now();
-                console.warn(`[frame] gap ${gap.toFixed(1)}ms`);
+                console.warn(
+                    `[frame] gap ${gap.toFixed(1)}ms` +
+                    ` (focus ${document.hasFocus()}, ` +
+                    `${document.visibilityState})`
+                );
             }
         }
 
         requestAnimationFrame(gameLoop);
     }
 
+    // Diagnostic only: a long task entry tells which script blocked the
+    // main thread. GC pauses and browser work usually show no attribution,
+    // which is also useful information.
+    function observeLongTasks() {
+        if (typeof PerformanceObserver !== "function") {
+            return;
+        }
+
+        try {
+            const observer = new PerformanceObserver(list => {
+                for (const entry of list.getEntries()) {
+                    if (entry.duration < 80) {
+                        continue;
+                    }
+
+                    const attribution = entry.attribution?.[0];
+                    const source = attribution
+                        ? `${attribution.containerType || "?"}:` +
+                          `${attribution.containerSrc || attribution.name || "?"}`
+                        : "no attribution";
+
+                    console.warn(
+                        `[longtask] ${entry.duration.toFixed(1)}ms ` +
+                        `(${entry.name}, ${source})`
+                    );
+                }
+            });
+
+            observer.observe({ type: "longtask", buffered: true });
+        } catch (error) {
+            console.warn("Long task observer unavailable.", error);
+        }
+    }
+
     async function start() {
+        observeLongTasks();
+
         const startedAt = Date.now();
         const mark = label => {
             console.log(
