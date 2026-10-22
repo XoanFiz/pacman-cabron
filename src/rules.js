@@ -599,12 +599,8 @@ function createGameRules(parameters = {}) {
         gs.running = false;
         gs.deathTimer = 1.0;
 
-        for (const ghost of gs.ghosts) {
-            ghost.frightened = false;
-            ghost.frightenedTimer = undefined;
-            ghost.eaten = false;
-            ghost.speed = GHOST_SPEED;
-        }
+        // The ghosts keep their frightened/eaten state during the death
+        // pause; resetPositions restores them when the round restarts.
 
         state.setStatus(
             gs.lives > 0 ? "lifeLost" : "gameOver"
