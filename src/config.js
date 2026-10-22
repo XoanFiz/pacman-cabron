@@ -1,12 +1,18 @@
-// Game rules and presentation of the game itself.
-function createGameRuleConfig() {
+// Presentation of the game: sizes, colours and animation timings.
+function createPresentationConfig() {
     return Object.freeze({
         CELL: 28,
         DOMAIN_ALPHA: 0.35,
         BASE_GHOST_COLORS: ["#e05252", "#e99b35", "#d66ad9"],
-        FRIGHTENED_DURATION: 7,
         FRIGHTENED_BLINK_TIME: 2,
-        FRIGHTENED_BLINK_FREQUENCY: 12,
+        FRIGHTENED_BLINK_FREQUENCY: 12
+    });
+}
+
+// Game rules: movement, timers, lives and collisions.
+function createGameRuleConfig() {
+    return Object.freeze({
+        FRIGHTENED_DURATION: 7,
         GHOST_COLLISION_DISTANCE: 0.55,
         PACMAN_SPEED: 3.5,
         // While Pac-Man is stopped, its start is only accepted at this
@@ -58,14 +64,18 @@ function createStrategyConfig() {
 }
 
 function createGameConfig() {
+    const presentation = createPresentationConfig();
     const rules = createGameRuleConfig();
     const strategy = createStrategyConfig();
 
     // The flat merge keeps every module that receives a single config
-    // working; new code can use config.rules or config.strategy.
+    // working; new code can use config.presentation, config.rules or
+    // config.strategy.
     return Object.freeze({
+        ...presentation,
         ...rules,
         ...strategy,
+        presentation,
         rules,
         strategy
     });
