@@ -238,6 +238,113 @@ for (const item of results) {
     );
 }
 
+// Failure classification: the reversing state is Pac-Man reaching the exit
+// ((12,16) and the main map). If it is missing from the search tree the
+// failure is exploration; if it is there but the chosen action does not
+// follow it, the failure is valuation.
+function diagnose(item, extensions) {
+    const scenario = scenarios.find(entry => entry.name === item.name);
+    const start = makeContext(scenario);
+    const state = strategy.createCurrentGameSearchState(
+        start,
+        scenario.ghostReady ? [0] : [],
+        scenario.playerReady
+    );
+    const search = createRandomizedBestFirstMinimax({
+        getNodeType: nodeState =>
+            nodeState.firstActor === "player" ? "min" : "max",
+        createSuccessorIterator: nodeState => {
+            const profiles = strategy.getSearchActionProfiles(nodeState);
+            let index = 0;
+            return {
+                next: () => {
+                    if (index >= profiles.length) {
+                        return { done: true, value: undefined };
+                    }
+                    const profile = profiles[index++];
+                    const nextState = strategy.advanceSearchState(
+                        nodeState,
+                        profile.ghostDirections,
+                        profile.playerDirection
+                    );
+                    return {
+                        done: false,
+                        value: {
+                            state: nextState,
+                            value: strategy.evaluateSearchState(nextState),
+                            duration: nextState.time - nodeState.time,
+                            action: {
+                                ghostDirections: profile.ghostDirections,
+                                playerDirection: profile.playerDirection
+                            }
+                        }
+                    };
+                }
+            };
+        },
+        getDistribution: node => ({
+            mean: node.value,
+            standardDeviation: config.BASE_STD
+        }),
+        maxExtendDepth: config.SEARCH_MAX_EXTEND_DEPTH
+    });
+    const root = search.setRoot(
+        state,
+        strategy.evaluateSearchState(state),
+        state.time
+    );
+
+    for (let step = 0; step < extensions; step++) {
+        search.rootDecision(state.time);
+    }
+
+    const best = search.getBestChild(root);
+    let escapeFound = false;
+    let escapeDepth = Infinity;
+    let chosenLineEscape = false;
+    const stack = [{ node: root, depth: 0, onChosenLine: true }];
+
+    while (stack.length > 0) {
+        const pathItem = stack.pop();
+        const node = pathItem.node;
+        const isEscape = pathItem.depth > 0 &&
+            node.state.player.y === 16 &&
+            node.state.player.x <= 11;
+
+        if (isEscape) {
+            escapeFound = true;
+            escapeDepth = Math.min(escapeDepth, pathItem.depth);
+            if (pathItem.onChosenLine) chosenLineEscape = true;
+        }
+
+        for (const edge of node.successors) {
+            stack.push({
+                node: edge.child,
+                depth: pathItem.depth + 1,
+                onChosenLine: pathItem.depth === 0
+                    ? edge === best
+                    : pathItem.onChosenLine
+            });
+        }
+    }
+
+    return { escapeFound, escapeDepth, chosenLineEscape };
+}
+
+for (const item of results.filter(entry => entry.escaped).slice(0, 2)) {
+    const diagnosis = diagnose(item, 400);
+
+    console.log(
+        "diagnose " + item.name +
+        ": escapeNode=" + diagnosis.escapeFound +
+        " depth=" + diagnosis.escapeDepth +
+        " chosenLineEscape=" + diagnosis.chosenLineEscape +
+        " -> " + (diagnosis.escapeFound
+            ? "VALUATION (node exists)"
+            : "EXPLORATION (node missing)")
+    );
+}
+
 ({
     scenarios: results.length,
     escapes,

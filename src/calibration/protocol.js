@@ -62,9 +62,10 @@ const CALIBRATION_FINISH_REASON = Object.freeze({
     drift: "drift"
 });
 
-// Bumped whenever the calibration payload changes; entries from another
-// version are recalibrated.
-const CALIBRATION_VERSION = 3;
+// Bumped whenever the calibration payload or the evaluated heuristic
+// changes; entries from another version are recalibrated automatically at
+// startup or map selection.
+const CALIBRATION_VERSION = 4;
 
 // Used by the main thread to build the request and by the worker as the
 // fallback when a field is missing.
