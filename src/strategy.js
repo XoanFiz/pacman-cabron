@@ -1906,14 +1906,17 @@ function createGameStrategy(parameters = {}) {
     }
 
     // Advances the shared RBFM exploration without blocking the game loop
-    // with a second search implementation.
-    function advanceSearch() {
+    // with a second search implementation. `planEndTime` is the game time
+    // where the plan ends: the walk stays random inside it and starts the
+    // improve/worsen alternation when it leaves it.
+    function advanceSearch(planEndTime = null) {
         if (!rbfmSearch.root) {
             return;
         }
 
         rbfmSearch.rootDecision(
-            rbfmSearch.root.state.time
+            rbfmSearch.root.state.time,
+            planEndTime
         );
     }
 
@@ -1999,15 +2002,32 @@ function createGameStrategy(parameters = {}) {
             root = advanceSearchToNextEvent(root);
         }
 
+        const horizonSeconds = Number.isFinite(options.horizonSeconds)
+            ? options.horizonSeconds
+            : 1;
+        const maxNodes = Number.isInteger(options.maxNodes)
+            ? options.maxNodes
+            : 64;
+
         return {
             root,
             originTime,
-            horizonSeconds: Number.isFinite(options.horizonSeconds)
-                ? options.horizonSeconds
-                : 1,
-            maxNodes: Number.isInteger(options.maxNodes)
-                ? options.maxNodes
-                : 64,
+            // The worker builds a longer plan than the slice it sends: the
+            // extra game time is the cushion the search walks randomly
+            // before it starts the improve/worsen alternation.
+            horizonSeconds,
+            maxNodes,
+            transmittedHorizonSeconds: Number.isFinite(
+                options.transmittedHorizonSeconds
+            )
+                ? options.transmittedHorizonSeconds
+                : horizonSeconds,
+            transmittedMaxNodes: Number.isInteger(
+                options.transmittedMaxNodes
+            )
+                ? options.transmittedMaxNodes
+                : maxNodes,
+            planEndTime: originTime + horizonSeconds,
             searchSteps: Number.isInteger(options.searchSteps)
                 ? options.searchSteps
                 : 0,
@@ -2054,13 +2074,71 @@ function createGameStrategy(parameters = {}) {
             actor,
             action: null,
             choices: null,
-            child: null
+            child: null,
+            time: item.state.time - job.originTime
         };
 
         job.plan[node.id] = node;
         job.nodeCount++;
 
         return node;
+    }
+
+    // Builds the plan slice that goes to the main thread: only the first
+    // part of the internal plan (the transmitted game-time horizon) and a
+    // bounded node count. Links to nodes outside the slice are cut so the
+    // cursor stops cleanly instead of jumping to a missing node.
+    function getTransmittedPlan(job) {
+        const horizon = job.transmittedHorizonSeconds;
+        const maxNodes = job.transmittedMaxNodes;
+
+        const transmitted = Array.from(
+            { length: job.plan.length },
+            (_, id) => {
+                const node = job.plan[id];
+
+                if (!node || id >= maxNodes || node.time > horizon + 1e-9) {
+                    return null;
+                }
+
+                return {
+                    id: node.id,
+                    parent: node.parent,
+                    choice: node.choice,
+                    actor: node.actor,
+                    action: node.action,
+                    choices: null,
+                    child: null,
+                    time: node.time
+                };
+            }
+        );
+
+        for (const node of transmitted) {
+            if (node === null) {
+                continue;
+            }
+
+            const source = job.plan[node.id];
+
+            if (
+                Number.isInteger(source.child) &&
+                transmitted[source.child]
+            ) {
+                node.child = source.child;
+            }
+
+            if (source.choices !== null) {
+                node.choices = source.choices.map(choice => ({
+                    direction: { ...choice.direction },
+                    child: transmitted[choice.child]
+                        ? choice.child
+                        : null
+                }));
+            }
+        }
+
+        return transmitted;
     }
 
     function stepGhostDecision(job, state, item) {
@@ -2088,7 +2166,8 @@ function createGameStrategy(parameters = {}) {
                 queryState,
                 automatedIndices,
                 state.readyPlayer,
-                searchSteps
+                searchSteps,
+                job.planEndTime
             )
             : null;
         const node = createPlanNode(job, item, "ghost");
@@ -2175,7 +2254,8 @@ function createGameStrategy(parameters = {}) {
         const direction = choosePacmanDirection(
             state,
             readyGhostIndices,
-            searchSteps
+            searchSteps,
+            job.planEndTime
         );
 
         node.action = { playerDirection: { ...direction } };
@@ -2289,7 +2369,8 @@ function createGameStrategy(parameters = {}) {
         searchContext,
         readyGhostIndices,
         readyPlayer = false,
-        searchSteps = 0
+        searchSteps = 0,
+        planEndTime = null
     ) {
         const planned = worker?.getPlanAction?.("ghost");
 
@@ -2314,7 +2395,7 @@ function createGameStrategy(parameters = {}) {
         const root = setSearchRootFromState(state);
 
         for (let step = 0; step < searchSteps; step++) {
-            advanceSearch();
+            advanceSearch(planEndTime);
         }
 
         const rootAction = getBestAction(root);
@@ -2343,7 +2424,8 @@ function createGameStrategy(parameters = {}) {
     function choosePacmanDirection(
         searchContext,
         readyGhostIndices = [],
-        searchSteps = 0
+        searchSteps = 0,
+        planEndTime = null
     ) {
         const planned = worker?.getPlanAction?.("player");
 
@@ -2364,7 +2446,7 @@ function createGameStrategy(parameters = {}) {
         const root = setSearchRootFromState(state);
 
         for (let step = 0; step < searchSteps; step++) {
-            advanceSearch();
+            advanceSearch(planEndTime);
         }
 
         const rootEdge = rbfmSearch.getBestChild(root);
@@ -2405,6 +2487,7 @@ function createGameStrategy(parameters = {}) {
         choosePacmanDirection,
         createPolicyBufferJob,
         stepPolicyBufferJob,
+        getTransmittedPlan,
         anchorSearchContext,
         getNodeType,
         setCalibration

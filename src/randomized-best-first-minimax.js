@@ -65,6 +65,9 @@ function createRandomizedBestFirstMinimax({
         depth: 0
     };
 
+    // Tolerance used to compare game times against the plan end.
+    const TIME_EPSILON = 1e-9;
+
     function chooseRandomChild(node, edges) {
         if (edges.length === 0) {
             return null;
@@ -391,19 +394,20 @@ function createRandomizedBestFirstMinimax({
             : null;
     }
 
-    function getRandomChild(node) {
-        ensureSuccessorOrder(node)
+    function getRandomChild(node, visited = null) {
+        ensureSuccessorOrder(node);
 
-        if (node.successors.length === 0) {
+        const edges = visited === null
+            ? node.successors
+            : node.successors.filter(edge => !visited.has(edge.child));
+
+        if (edges.length === 0) {
             return null;
         }
 
-        const edge = chooseRandomChild(
-            node,
-            node.successors
-        );
+        const edge = chooseRandomChild(node, edges);
 
-        if (!node.successors.includes(edge)) {
+        if (edge === null || !node.successors.includes(edge)) {
             throw new Error(
                 "chooseRandomChild must return an edge belonging to the node."
             );
@@ -453,10 +457,14 @@ function createRandomizedBestFirstMinimax({
         return candidates[Math.floor(Math.random() * candidates.length)];
     }
 
-    function extend(node, mode, currentTime) {
-        if (mode !== "improve" && mode !== "worsen") {
+    function extend(node, mode, currentTime, planEndTime = null) {
+        if (
+            mode !== null &&
+            mode !== "improve" &&
+            mode !== "worsen"
+        ) {
             throw new TypeError(
-                'Mode must be "improve" or "worsen".'
+                'Mode must be null, "improve" or "worsen".'
             );
         }
 
@@ -466,12 +474,18 @@ function createRandomizedBestFirstMinimax({
             );
         }
 
+        // Inside the plan the walk samples children without alternating:
+        // the alternation only starts when the walk leaves the plan.
+        const startsInsidePlan = Number.isFinite(planEndTime) &&
+            currentTime <= planEndTime + TIME_EPSILON;
+
         const path = [];
         const visited = new Set();
         let current = node;
-        let currentMode = mode;
+        let currentMode = startsInsidePlan ? null : (mode ?? "improve");
         let time = currentTime;
         let expandedNode = node;
+        let firstEdge = null;
 
         while (true) {
             if (!current.expansionComplete) {
@@ -496,11 +510,9 @@ function createRandomizedBestFirstMinimax({
                 break;
             }
 
-            const edge = chooseUnvisitedChild(
-                current,
-                currentMode,
-                visited
-            );
+            const edge = currentMode === null
+                ? getRandomChild(current, visited)
+                : chooseUnvisitedChild(current, currentMode, visited);
 
             // End of the walkable tree: every child was already visited or
             // the path reached the hard limit. Keep the static evaluation.
@@ -524,11 +536,27 @@ function createRandomizedBestFirstMinimax({
                 break;
             }
 
-            const sameType = edge.child.type === current.type;
+            let nextMode;
 
-            const nextMode = currentMode === "improve"
-                ? (sameType ? "improve" : "worsen")
-                : (sameType ? "worsen" : "improve");
+            if (currentMode === null) {
+                // Inside the plan: no alternation yet. The first child that
+                // takes the walk past the plan starts the alternation. If it
+                // is the best child the walk keeps balancing with "worsen";
+                // otherwise it improves from there.
+                nextMode = time + edge.duration > planEndTime + TIME_EPSILON
+                    ? (edge === getBestChild(current) ? "worsen" : "improve")
+                    : null;
+            } else {
+                const sameType = edge.child.type === current.type;
+
+                nextMode = currentMode === "improve"
+                    ? (sameType ? "improve" : "worsen")
+                    : (sameType ? "worsen" : "improve");
+            }
+
+            if (firstEdge === null) {
+                firstEdge = edge;
+            }
 
             visited.add(current);
             path.push({
@@ -552,11 +580,11 @@ function createRandomizedBestFirstMinimax({
             updateNodeValue(frame.node);
         }
 
-        return expandedNode;
+        return { expandedNode, firstEdge };
     }
 
 
-    function rootDecision(currentTime) {
+    function rootDecision(currentTime, planEndTime = null) {
         if (search.root === null) {
             throw new Error(
                 "Cannot run RBFM without a root node."
@@ -567,7 +595,12 @@ function createRandomizedBestFirstMinimax({
 
         if (!root.expansionComplete) {
             return {
-                expandedNode: extend(root, "improve", currentTime),
+                expandedNode: extend(
+                    root,
+                    "improve",
+                    currentTime,
+                    planEndTime
+                ).expandedNode,
                 selectedRootAction: undefined
             };
         }
@@ -576,6 +609,27 @@ function createRandomizedBestFirstMinimax({
             return {
                 expandedNode: null,
                 selectedRootAction: undefined
+            };
+        }
+
+        // While the root is inside the plan the whole walk stays random
+        // until it leaves the plan; then the alternation starts.
+        const insidePlan = Number.isFinite(planEndTime) &&
+            currentTime <= planEndTime + TIME_EPSILON;
+
+        if (insidePlan) {
+            const { expandedNode, firstEdge } = extend(
+                root,
+                null,
+                currentTime,
+                planEndTime
+            );
+
+            return {
+                expandedNode,
+                selectedRootAction: firstEdge
+                    ? firstEdge.action
+                    : undefined
             };
         }
 
@@ -591,7 +645,7 @@ function createRandomizedBestFirstMinimax({
                 randomEdge.child,
                 mode,
                 currentTime + randomEdge.duration
-            ),
+            ).expandedNode,
             selectedRootAction: randomEdge.action
         };
     }

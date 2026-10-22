@@ -69,14 +69,15 @@ function ensureStrategy(definition) {
     return strategy;
 }
 
-// The plan is small: the main thread gets the whole tree so it can follow
-// the branch that matches the player's decisions.
+// The plan is small: the main thread gets the whole tree it needs to follow
+// the branch that matches the player's decisions. The worker keeps a longer
+// plan internally so the search has a temporal cushion.
 function postPlan(job, complete) {
     self.postMessage({
         type: STRATEGY_BUFFER_MESSAGE.plan,
         mapId: job.mapId,
         revision: job.revision,
-        plan: job.plan.map(node => node || null),
+        plan: job.strategy.getTransmittedPlan(job),
         complete,
         stats: {
             nodes: job.nodeCount,
@@ -100,8 +101,10 @@ function startJob(anchor) {
         const job = strategy.createPolicyBufferJob(anchor.searchContext, {
             readyGhostIndices: anchor.readyGhostIndices || [],
             readyPlayer: Boolean(anchor.readyPlayer),
-            horizonSeconds: STRATEGY_PLAN_HORIZON_SECONDS,
-            maxNodes: STRATEGY_PLAN_MAX_NODES,
+            horizonSeconds: STRATEGY_PLAN_INTERNAL_HORIZON_SECONDS,
+            maxNodes: STRATEGY_PLAN_INTERNAL_MAX_NODES,
+            transmittedHorizonSeconds: STRATEGY_PLAN_HORIZON_SECONDS,
+            transmittedMaxNodes: STRATEGY_PLAN_MAX_NODES,
             searchSteps: config.PLAN_ROOT_SEARCH_STEPS
         });
 
