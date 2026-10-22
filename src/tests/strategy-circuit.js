@@ -1,9 +1,10 @@
-// Classic-map circuit: Pac-Man is inside the isolated right-hand loop whose
-// only exit is the cell (12,16). A ghost at the door (13,16) must hold the
-// exit instead of entering the loop; if it chases around the loop, Pac-Man
-// comes out behind it through (12,16).
+// Classic-map circuit, realistic situations: Pac-Man is inside the isolated
+// right loop whose only exit is (12,16), with the door at (13,16). The test
+// plays several positions, directions and readiness states and checks that
+// the ghost keeps the exit covered and that Pac-Man never escapes. A single
+// snapshot only showed a simultaneous decision; this covers the dynamics.
 //
-// Usage: node src/tests/strategy-circuit.js [searchSteps] [trials]
+// Usage: node src/tests/strategy-circuit.js [searchSteps] [events]
 
 const fs = require("fs");
 const path = require("path");
@@ -11,7 +12,7 @@ const vm = require("vm");
 
 const main = path.resolve(__dirname, "../..");
 const searchSteps = Number(process.argv[2] || 24);
-const trials = Number(process.argv[3] || 10);
+const maxEvents = Number(process.argv[3] || 300);
 const rd = p => fs.readFileSync(path.join(main, "src", p), "utf8")
     .replace(/\r\n/g, "\n");
 
@@ -23,7 +24,7 @@ const ctx = vm.createContext({
     Map,
     structuredClone,
     searchSteps,
-    trials
+    maxEvents
 });
 for (const f of [
     "config.js",
@@ -57,7 +58,10 @@ const TILES = [
     "####################"
 ].map(row => Array.from(row));
 
-const DIRECTIONS = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
+const DIRECTIONS = {
+    up: { x: 0, y: -1 }, down: { x: 0, y: 1 },
+    left: { x: -1, y: 0 }, right: { x: 1, y: 0 }
+};
 const rows = TILES.length;
 const cols = TILES[0].length;
 const wrap = (v, n) => ((v % n) + n) % n;
@@ -93,17 +97,41 @@ const strategy = createGameStrategy({
     rmfMinimax: createRandomizedBestFirstMinimax
 });
 
-function context() {
+// Keeping either (12,16) or (13,16) occupied keeps Pac-Man inside the loop.
+const GUARD_CELLS = ["12,16", "13,16"];
+
+const scenarios = [
+    { name: "p18,14 left / g13,16", pacman: { x: 18, y: 14, direction: DIRECTIONS.left }, ghost: { x: 13, y: 16, direction: DIRECTIONS.right }, ghostReady: true, playerReady: false },
+    { name: "p18,14 left / g14,16", pacman: { x: 18, y: 14, direction: DIRECTIONS.left }, ghost: { x: 14, y: 16, direction: DIRECTIONS.left }, ghostReady: true, playerReady: false },
+    { name: "p18,14 left / g12,16", pacman: { x: 18, y: 14, direction: DIRECTIONS.left }, ghost: { x: 12, y: 16, direction: DIRECTIONS.right }, ghostReady: true, playerReady: false },
+    { name: "p16,16 right / g13,16", pacman: { x: 16, y: 16, direction: DIRECTIONS.right }, ghost: { x: 13, y: 16, direction: DIRECTIONS.right }, ghostReady: true, playerReady: false },
+    { name: "p15,13 down / g13,16", pacman: { x: 15, y: 13, direction: DIRECTIONS.down }, ghost: { x: 13, y: 16, direction: DIRECTIONS.up }, ghostReady: true, playerReady: false },
+    { name: "p19,15 left / g13,16", pacman: { x: 19, y: 15, direction: DIRECTIONS.left }, ghost: { x: 13, y: 16, direction: DIRECTIONS.right }, ghostReady: true, playerReady: false },
+    { name: "p13,15 up / g13,16", pacman: { x: 13, y: 15, direction: DIRECTIONS.up }, ghost: { x: 13, y: 16, direction: DIRECTIONS.up }, ghostReady: true, playerReady: false },
+    { name: "p18,14 left / g13,16 (both ready)", pacman: { x: 18, y: 14, direction: DIRECTIONS.left }, ghost: { x: 13, y: 16, direction: DIRECTIONS.right }, ghostReady: true, playerReady: true },
+    { name: "p14,14 right / g13,16 (player ready)", pacman: { x: 14, y: 14, direction: DIRECTIONS.right }, ghost: { x: 13, y: 16, direction: DIRECTIONS.up }, ghostReady: true, playerReady: true }
+];
+
+function makeContext(scenario) {
     const ghosts = [
-        model.createGhostState({ x: 13, y: 16, direction: { x: 1, y: 0 } }, "#f00", config.GHOST_SPEED),
-        model.createGhostState({ x: 1, y: 1, direction: { x: 1, y: 0 } }, "#0f0", config.GHOST_SPEED),
-        model.createGhostState({ x: 10, y: 10, direction: { x: -1, y: 0 } }, "#00f", config.GHOST_SPEED)
+        model.createGhostState(scenario.ghost, "#f00", config.GHOST_SPEED),
+        model.createGhostState({ x: 1, y: 1, direction: DIRECTIONS.right }, "#0f0", config.GHOST_SPEED),
+        model.createGhostState({ x: 10, y: 10, direction: DIRECTIONS.left }, "#00f", config.GHOST_SPEED)
     ];
-    ghosts[0].needsDirection = true;
-    ghosts[0].decisionAtCentre = true;
+
+    if (scenario.ghostReady) {
+        ghosts[0].needsDirection = true;
+        ghosts[0].decisionAtCentre = true;
+    }
+
+    const player = model.createPlayerState(scenario.pacman, config.PACMAN_SPEED);
+
+    if (!scenario.playerReady) {
+        player.ready = false;
+    }
 
     return {
-        player: model.createPlayerState({ x: 18, y: 14, direction: { x: -1, y: 0 } }, config.PACMAN_SPEED),
+        player,
         ghosts,
         pellets: new Set(pellets),
         lives: 3,
@@ -119,43 +147,6 @@ function context() {
     };
 }
 
-function countPacmanCells(searchState) {
-    const domain = strategy.calculateDomain(
-        searchState.player,
-        searchState.ghosts,
-        searchState.respawnState.houses,
-        searchState.pellets,
-        searchState.time,
-        true
-    );
-    let owned = 0;
-    for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-            if (TILES[y][x] !== "#" && domain[y][x].owner === "pacman") {
-                owned++;
-            }
-        }
-    }
-    return owned;
-}
-
-const base = context();
-const baseState = strategy.createCurrentGameSearchState(base, [0], false);
-
-console.log("Pac-Man at (18,14) in the right loop; ghost at the door (13,16); exit (12,16)");
-
-for (const profile of strategy.getSearchGhostActionProfiles(baseState)) {
-    const direction = profile[0][1];
-    const next = strategy.advanceSearchState(
-        strategy.createCurrentGameSearchState(base, [0], false),
-        new Map(profile),
-        null
-    );
-    console.log("  ghost " + direction.x + "," + direction.y +
-        " domain=" + countPacmanCells(next) +
-        " value=" + strategy.evaluateSearchState(next).toFixed(1));
-}
-
 // Seeded RNG so the randomized search is reproducible.
 let seed = 123456789;
 Math.random = () => {
@@ -163,63 +154,107 @@ Math.random = () => {
     return seed / 4294967296;
 };
 
-const choices = [];
-let holds = 0;
+function run(scenario) {
+    const start = makeContext(scenario);
+    const ready = scenario.ghostReady ? [0] : [];
+    let state = strategy.createCurrentGameSearchState(start, ready, scenario.playerReady);
+    let events = 0;
+    let escaped = false;
+    let caught = false;
+    let covered = 0;
+    let decisions = 0;
+    const first = [];
 
-for (let trial = 0; trial < trials; trial++) {
-    const chosen = strategy.chooseGhostDirections(context(), [0], false, searchSteps).get(0);
-    choices.push(chosen.x + "," + chosen.y);
-    // Holding the exit from the door means stepping back into (12,16).
-    if (chosen.x === -1 && chosen.y === 0) holds++;
-}
+    while (events++ < maxEvents && state.lives === 3 && !state.terminal) {
+        if (state.firstActor === "ghosts") {
+            const indices = state.readyGhosts
+                .map((isReady, index) => isReady ? index : -1)
+                .filter(index => index >= 0);
+            const directions = strategy.chooseGhostDirections(
+                state, indices, state.readyPlayer, searchSteps
+            );
 
-console.log("decisions holding the exit: " + holds + "/" + trials +
-    " " + JSON.stringify([...new Set(choices)]));
+            if (indices.includes(0)) {
+                const direction = directions.get(0);
+                const next = {
+                    x: state.ghosts[0].x + direction.x,
+                    y: state.ghosts[0].y + direction.y
+                };
 
-// Play both sides until Pac-Man escapes through (12,16) or the run ends.
-let state = strategy.createCurrentGameSearchState(context(), [0], false);
-let events = 0;
-let escaped = false;
+                decisions++;
+                if (GUARD_CELLS.includes(next.x + "," + next.y)) covered++;
+                if (first.length < 3) first.push(direction.x + "," + direction.y);
+            }
 
-while (events++ < 300 && state.lives === 3 && !state.terminal) {
-    if (state.firstActor === "ghosts") {
-        const indices = state.readyGhosts
-            .map((ready, index) => ready ? index : -1)
-            .filter(index => index >= 0);
-        const directions = strategy.chooseGhostDirections(
-            state, indices, state.readyPlayer, searchSteps
-        );
-        state = strategy.advanceSearchState(state, directions, null);
-    } else if (state.firstActor === "player") {
-        const direction = strategy.choosePacmanDirection(state, [], searchSteps);
-        state = strategy.advanceSearchState(state, new Map(), direction);
-    } else {
-        break;
+            state = strategy.advanceSearchState(state, directions, null);
+        } else if (state.firstActor === "player") {
+            const direction = strategy.choosePacmanDirection(state, [], searchSteps);
+            state = strategy.advanceSearchState(state, new Map(), direction);
+        } else {
+            break;
+        }
+
+        if (state.lives < 3) {
+            caught = true;
+            break;
+        }
+
+        if (state.player.y === 16 && state.player.x <= 11) {
+            escaped = true;
+            break;
+        }
     }
 
-    // (12,16) is the exit; the main map is x < 12.
-    if (state.player.y === 16 && state.player.x <= 11) {
-        escaped = true;
-        break;
-    }
+    return {
+        name: scenario.name,
+        escaped,
+        caught,
+        events,
+        decisions,
+        covered,
+        first,
+        ghost0: state.ghosts[0].x + "," + state.ghosts[0].y,
+        pacman: state.player.x + "," + state.player.y
+    };
 }
 
-console.log("Pac-Man escaped: " + escaped + " after " + events + " events, t=" +
-    state.time.toFixed(2) + " ghost0=" + JSON.stringify({
-        x: state.ghosts[0].x,
-        y: state.ghosts[0].y
-    }));
+const results = scenarios.map(run);
+let escapes = 0;
+let totalDecisions = 0;
+let totalCovered = 0;
 
-({ holds, trials, escaped });
+for (const item of results) {
+    escapes += item.escaped ? 1 : 0;
+    totalDecisions += item.decisions;
+    totalCovered += item.covered;
+    console.log(
+        (item.escaped ? "ESCAPED " : item.caught ? "caught  " : "held    ") +
+        item.name +
+        " | events=" + item.events +
+        " ghost0=" + item.ghost0 +
+        " pacman=" + item.pacman +
+        " | cover " + item.covered + "/" + item.decisions +
+        " first=" + JSON.stringify(item.first)
+    );
+}
+
+({
+    scenarios: results.length,
+    escapes,
+    coverRate: Number((totalCovered / Math.max(1, totalDecisions)).toFixed(2))
+});
 `, ctx);
 
-if (result.holds < result.trials || result.escaped) {
+console.log("scenarios=" + result.scenarios +
+    " escapes=" + result.escapes +
+    " coverRate=" + result.coverRate);
+
+if (result.escapes > 0) {
     console.error(
-        "FAIL: the ghost did not hold the only exit of the right loop (" +
-        result.holds + "/" + result.trials + " holding decisions, escaped=" +
-        result.escaped + ")"
+        "FAIL: Pac-Man escaped the classic right loop in " +
+        result.escapes + "/" + result.scenarios + " realistic situations"
     );
     process.exitCode = 1;
 } else {
-    console.log("circuit test ok");
+    console.log("circuit battery ok");
 }
