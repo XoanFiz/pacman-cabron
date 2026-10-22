@@ -219,8 +219,27 @@ function createGameRules(parameters = {}) {
     // Applies a decision without teleporting the ghost. A reversal between
     // cells moves the ghost to the cell it was coming from and flips its
     // progress, which keeps its physical position unchanged.
+    function getLegalGhostFallback(ghost) {
+        const possible = map.getPossibleDirections(ghost);
+
+        return possible.length > 0
+            ? { ...possible[0] }
+            : { x: 0, y: 0 };
+    }
+
     function applyGhostDecision(ghost, direction) {
+        const betweenCells = isDecidingBetweenCells(ghost);
+
         if (!direction) {
+            // No decision: keep moving unless the ghost stands at a centre
+            // with the current direction blocked by a wall.
+            if (
+                !betweenCells &&
+                !map.canMove(ghost.x, ghost.y, ghost.direction)
+            ) {
+                ghost.direction = getLegalGhostFallback(ghost);
+            }
+
             return;
         }
 
@@ -236,7 +255,17 @@ function createGameRules(parameters = {}) {
             return;
         }
 
-        if (isDecidingBetweenCells(ghost) && !continues) {
+        if (betweenCells && !continues) {
+            return;
+        }
+
+        // A ghost must never be sent into a wall from a cell centre.
+        if (
+            !betweenCells &&
+            (direction.x !== 0 || direction.y !== 0) &&
+            !map.canMove(ghost.x, ghost.y, direction)
+        ) {
+            ghost.direction = getLegalGhostFallback(ghost);
             return;
         }
 
