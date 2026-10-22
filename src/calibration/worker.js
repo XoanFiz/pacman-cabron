@@ -130,8 +130,8 @@ async function runCalibration(request) {
         maxSamplesPerStep: options.maxSamplesPerStep,
         referenceHorizonSeconds: options.referenceHorizonSeconds,
         referenceMaxStates: options.referenceMaxStates,
-        minimumStandardDeviation: config.CALIBRATION_MIN_STD,
-        priorStandardDeviation: config.BASE_STD,
+        minimumStandardDeviation: config.strategy.CALIBRATION_MIN_STD,
+        priorStandardDeviation: config.strategy.BASE_STD,
         assumedCalibration: assumed,
         seed: resume,
         ...createCalibrationAdapters(strategy)

@@ -105,7 +105,7 @@ function startJob(anchor) {
             maxNodes: STRATEGY_PLAN_INTERNAL_MAX_NODES,
             transmittedHorizonSeconds: STRATEGY_PLAN_HORIZON_SECONDS,
             transmittedMaxNodes: STRATEGY_PLAN_MAX_NODES,
-            searchSteps: config.PLAN_ROOT_SEARCH_STEPS
+            searchSteps: config.strategy.PLAN_ROOT_SEARCH_STEPS
         });
 
         job.id = ++jobId;
