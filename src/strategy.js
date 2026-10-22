@@ -393,20 +393,95 @@ function createGameStrategy(parameters = {}) {
         };
 
 
-        function pushBlueDomainSeeds(queue, ghost, owner, time) {
+        // Seeds the domain from one character. A character between cells is
+        // committed to its destination cell: the first seed is that cell with
+        // the remaining travel time, and the origin cell is only marked as
+        // occupied. A character at a cell centre can still choose any
+        // direction, so it seeds the centre itself.
+        function pushCharacterDomainSeed(
+            character,
+            speed,
+            owner,
+            domainType = "normal",
+            extra = {}
+        ) {
+            const moving =
+                character.progress > 0 &&
+                (character.direction.x !== 0 ||
+                    character.direction.y !== 0) &&
+                canMoveForMap(
+                    character.x,
+                    character.y,
+                    character.direction
+                );
+
+            if (!moving) {
+                queue.push({
+                    x: character.x,
+                    y: character.y,
+                    time,
+                    owner,
+                    domainType,
+                    originX: character.x,
+                    originY: character.y,
+                    speed,
+                    initialProgress: 0,
+                    initialDirection: { x: 0, y: 0 },
+                    ...extra
+                });
+
+                return;
+            }
+
+            // The character still occupies its origin cell.
             queue.push({
-                x: ghost.x,
-                y: ghost.y,
+                x: character.x,
+                y: character.y,
                 time,
-                frightenedTimer: ghost.frightenedTimer,
                 owner,
-                domainType: "blue",
-                originX: ghost.x,
-                originY: ghost.y,
-                speed: EATEN_GHOST_SPEED,
-                initialProgress: ghost.progress,
-                initialDirection: ghost.direction
+                domainType,
+                originX: character.x,
+                originY: character.y,
+                speed,
+                initialProgress: 0,
+                initialDirection: { x: 0, y: 0 },
+                noSpread: true,
+                ...extra
             });
+
+            const nextX = wrap(
+                character.x + character.direction.x,
+                getMapColumnCountForMap()
+            );
+            const nextY = wrap(
+                character.y + character.direction.y,
+                getMapRowCountForMap()
+            );
+
+            // The destination cell is reached after the rest of the segment.
+            queue.push({
+                x: nextX,
+                y: nextY,
+                time: time + (1 - character.progress) / speed,
+                owner,
+                domainType,
+                originX: nextX,
+                originY: nextY,
+                speed,
+                initialProgress: 0,
+                initialDirection: { x: 0, y: 0 },
+                ...extra
+            });
+        }
+
+        function pushBlueDomainSeeds(queue, ghost, owner, time) {
+            pushCharacterDomainSeed(
+                ghost,
+                EATEN_GHOST_SPEED,
+                owner,
+                "blue",
+                { frightenedTimer: ghost.frightenedTimer }
+            );
         }
 
         const propagateFromGhostHouses = (ghostHouses, ghost, ghostIndex, time = 0) => {
@@ -534,18 +609,11 @@ function createGameStrategy(parameters = {}) {
         // --------------------------------------------------------
 
         if (includePacman) {
-            queue.push({
-                x: player.x,
-                y: player.y,
-                time: time,
-                owner: "pacman",
-                domainType: "normal",
-                originX: player.x,
-                originY: player.y,
-                speed: PACMAN_SPEED,
-                initialProgress: player.progress,
-                initialDirection: player.direction
-            });
+            pushCharacterDomainSeed(
+                player,
+                PACMAN_SPEED,
+                "pacman"
+            );
         }
 
 
@@ -571,18 +639,11 @@ function createGameStrategy(parameters = {}) {
 
                 else {
                     // Normal ghost
-                    queue.push({
-                        x: ghost.x,
-                        y: ghost.y,
-                        time,
-                        owner,
-                        domainType: "normal",
-                        originX: ghost.x,
-                        originY: ghost.y,
-                        speed: GHOST_SPEED,
-                        initialProgress: ghost.progress,
-                        initialDirection: ghost.direction
-                    });
+                    pushCharacterDomainSeed(
+                        ghost,
+                        GHOST_SPEED,
+                        owner
+                    );
                 }
             }
         }
@@ -621,6 +682,11 @@ function createGameStrategy(parameters = {}) {
                     }
                 }
 
+                // An origin marker only keeps the cell occupied.
+                if (assessedDomainFact.noSpread) {
+                    continue;
+                }
+
                 // Begin prepare for propagation
                 if (isDuplicated(assessedDomainFact)) {
                     continue;
@@ -656,6 +722,10 @@ function createGameStrategy(parameters = {}) {
                         blueDomainUnit.arrival = assessedDomainFact.time;
                         blueDomainUnit.frightenedTimer = assessedDomainFact.frightenedTimer;
                     }
+                }
+
+                if (assessedDomainFact.noSpread) {
+                    continue;
                 }
 
                 // Begin prepare for propagation
