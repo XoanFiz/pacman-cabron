@@ -671,6 +671,7 @@ function createGameRules(parameters = {}) {
         if (direction) {
             setPlayerDirection(direction);
             player.ready = false;
+            player.stopped = false;
 
             return true;
         }
@@ -680,12 +681,17 @@ function createGameRules(parameters = {}) {
             map.canMove(player.x, player.y, player.direction)
         ) {
             player.ready = false;
+            player.stopped = false;
 
             return true;
         }
 
+        // Blocked at a centre with no input: it is not a pending decision
+        // any more, so the buffer and the ghost queries see a stopped
+        // player instead of a ready one waiting forever.
         setPlayerDirection({ x: 0, y: 0 });
-        player.ready = true;
+        player.ready = false;
+        player.stopped = true;
 
         return false;
     }
@@ -882,6 +888,7 @@ function createGameRules(parameters = {}) {
         player.direction = { x: 0, y: 0 };
         player.nextDirection = { x: 0, y: 0 };
         player.ready = true;
+        player.stopped = false;
 
         const ghostStarts = mapDefinition.ghostStarts;
 
@@ -929,6 +936,25 @@ function createGameRules(parameters = {}) {
 
             state.statusElement.textContent = "";
             ui.updatePauseButton();
+        }
+
+        // A stopped Pac-Man starts as soon as a legal key is pressed, the
+        // same way the per-frame loop used to retry the direction.
+        if (gs.running && gs.player.stopped) {
+            const desired = findPressedDirection(gs.player.x, gs.player.y);
+
+            if (
+                desired &&
+                map.canMove(gs.player.x, gs.player.y, desired)
+            ) {
+                setPlayerDirection(desired);
+                gs.player.stopped = false;
+                gs.player.ready = false;
+
+                // The worker was predicting a stopped player; re-anchor it
+                // from the moving state.
+                intelligence.anchorSearch?.();
+            }
         }
     }
 

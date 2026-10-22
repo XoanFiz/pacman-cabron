@@ -6,7 +6,7 @@ function createGameModel() {
             facingDirection: start.direction.x || start.direction.y
                 ? { ...start.direction } : { x: 1, y: 0 },
             nextDirection: { x: 0, y: 0 }, progress: 0, speed,
-            ready: true
+            ready: true, stopped: false
         };
     }
 
