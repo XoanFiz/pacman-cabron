@@ -258,6 +258,96 @@ if (!caught) {
         " pacman=" + JSON.stringify({ x: state.player.x, y: state.player.y }));
 }
 
+// Failure classification: a catch is a state with fewer lives. Report
+// whether the search tree contains one and whether the chosen action
+// follows it.
+const trapSearch = createRandomizedBestFirstMinimax({
+    getNodeType: nodeState =>
+        nodeState.firstActor === "player" ? "min" : "max",
+    createSuccessorIterator: nodeState => {
+        const profiles = strategy.getSearchActionProfiles(nodeState);
+        let index = 0;
+        return {
+            next: () => {
+                if (index >= profiles.length) {
+                    return { done: true, value: undefined };
+                }
+                const profile = profiles[index++];
+                const nextState = strategy.advanceSearchState(
+                    nodeState,
+                    profile.ghostDirections,
+                    profile.playerDirection
+                );
+                return {
+                    done: false,
+                    value: {
+                        state: nextState,
+                        value: strategy.evaluateSearchState(nextState),
+                        duration: nextState.time - nodeState.time,
+                        action: {
+                            ghostDirections: profile.ghostDirections,
+                            playerDirection: profile.playerDirection
+                        }
+                    }
+                };
+            }
+        };
+    },
+    getDistribution: node => ({
+        mean: node.value,
+        standardDeviation: config.BASE_STD
+    }),
+    maxExtendDepth: config.SEARCH_MAX_EXTEND_DEPTH
+});
+const trapRoot = trapSearch.setRoot(
+    baseState,
+    strategy.evaluateSearchState(baseState),
+    baseState.time
+);
+
+for (let step = 0; step < 200; step++) {
+    trapSearch.rootDecision(baseState.time);
+}
+
+const trapBest = trapSearch.getBestChild(trapRoot);
+let catchFound = false;
+let catchDepth = Infinity;
+let chosenLineCatch = false;
+const trapStack = [{ node: trapRoot, depth: 0, onChosenLine: true }];
+
+while (trapStack.length > 0) {
+    const pathItem = trapStack.pop();
+    const node = pathItem.node;
+    const isCatch = pathItem.depth > 0 && node.state.lives < 3;
+
+    if (isCatch) {
+        catchFound = true;
+        catchDepth = Math.min(catchDepth, pathItem.depth);
+        if (pathItem.onChosenLine) chosenLineCatch = true;
+    }
+
+    for (const edge of node.successors) {
+        trapStack.push({
+            node: edge.child,
+            depth: pathItem.depth + 1,
+            onChosenLine: pathItem.depth === 0
+                ? edge === trapBest
+                : pathItem.onChosenLine
+        });
+    }
+}
+
+console.log(
+    "diagnose trap: catchNode=" + catchFound +
+    " depth=" + catchDepth +
+    " chosenLineCatch=" + chosenLineCatch +
+    " -> " + (!catchFound
+        ? "EXPLORATION (node missing)"
+        : chosenLineCatch
+            ? "OK (chosen line catches)"
+            : "VALUATION (explored, not chosen)")
+);
+
 ({ catches, trials, caught });
 `, ctx);
 
