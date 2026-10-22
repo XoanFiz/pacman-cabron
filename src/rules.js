@@ -16,9 +16,12 @@ function createGameRules(parameters = {}) {
         FRIGHTENED_GHOST_SPEED,
         EATEN_GHOST_SPEED,
         GHOST_COLLISION_DISTANCE,
-        SEARCH_EPSILON,
         STOP_DECISION_INTERVAL
-    } = config;
+    } = config.rules;
+
+    const {
+        SEARCH_EPSILON
+    } = config.strategy;
 
     const {
         createPlayerState,
