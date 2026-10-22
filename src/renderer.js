@@ -237,6 +237,7 @@ function createGameRenderer(parameters = {}) {
 
     function drawGhostEyes(ghost, cx, cy) {
         const ctx = state.ctx;
+        const facing = ghost.facingDirection || ghost.direction;
 
         ctx.fillStyle = "white";
         ctx.beginPath();
@@ -246,8 +247,8 @@ function createGameRenderer(parameters = {}) {
 
         ctx.fillStyle = "#263b78";
         ctx.beginPath();
-        ctx.arc(cx - 4 + ghost.direction.x, cy - 3 + ghost.direction.y, 1.5, 0, Math.PI * 2);
-        ctx.arc(cx + 4 + ghost.direction.x, cy - 3 + ghost.direction.y, 1.5, 0, Math.PI * 2);
+        ctx.arc(cx - 4 + facing.x, cy - 3 + facing.y, 1.5, 0, Math.PI * 2);
+        ctx.arc(cx + 4 + facing.x, cy - 3 + facing.y, 1.5, 0, Math.PI * 2);
         ctx.fill();
     }
 

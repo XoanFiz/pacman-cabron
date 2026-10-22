@@ -101,6 +101,7 @@ function createGameRules(parameters = {}) {
                     ? { ...possible[0] }
                     : { x: 0, y: 0 };
                 ghost.nextDirection = { ...ghost.direction };
+                ghost.facingDirection = { ...ghost.direction };
             }
         }
     }
@@ -271,6 +272,7 @@ function createGameRules(parameters = {}) {
 
         if (reverses && ghost.progress > 0) {
             reverseGhostDirection(ghost);
+            ghost.facingDirection = { ...ghost.direction };
             return;
         }
 
@@ -289,6 +291,10 @@ function createGameRules(parameters = {}) {
         }
 
         ghost.direction = { ...direction };
+
+        if (direction.x !== 0 || direction.y !== 0) {
+            ghost.facingDirection = { ...direction };
+        }
     }
 
     // ============================================================
