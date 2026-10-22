@@ -111,16 +111,19 @@ function createGameStrategy(parameters = {}) {
         EATEN_GHOST_SPEED,
         FRIGHTENED_DURATION,
         GHOST_COLLISION_DISTANCE,
+        INITIAL_LIVES
+    } = config.rules;
+
+    const {
         SEARCH_EPSILON,
         WEIGHT_NORMAL,
         WEIGHT_PELLET,
         MAX_PELLET_SCORE_FRACTION,
         TOTAL_PELLET_VALUE,
         TOTAL_NORMAL_VALUE,
-        INITIAL_LIVES,
         SEARCH_LIFE_PRIORITY,
         SEARCH_TERMINAL_VALUE
-    } = config;
+    } = config.strategy;
 
     // PRIORITY QUEUE
     // ============================================================
@@ -937,7 +940,7 @@ function createGameStrategy(parameters = {}) {
                 const isGhostOwner = ghostOwner.startsWith("ghost");
                 const pelletWeight =
                     cell === "o"
-                        ? config.POWER_PELLET_WEIGHT
+                        ? config.strategy.POWER_PELLET_WEIGHT
                         : 1;
 
                 if (ghostOwner === "pacman") {
@@ -1159,7 +1162,7 @@ function createGameStrategy(parameters = {}) {
         let pelletDomain = 0;
         let remainingNormal = 0;
         let remainingPower = 0;
-        const powerWeight = config.POWER_PELLET_WEIGHT;
+        const powerWeight = config.strategy.POWER_PELLET_WEIGHT;
         const pelletValue = state.pellets.size > 0
             ? TOTAL_PELLET_VALUE / state.pellets.size
             : 0;
@@ -1224,7 +1227,7 @@ function createGameStrategy(parameters = {}) {
                 territory /
                 Math.max(1, openCellCount) +
                 WEIGHT_PELLET * pelletDomain +
-                config.PELLET_PROGRESS_WEIGHT *
+                config.strategy.PELLET_PROGRESS_WEIGHT *
                 TOTAL_PELLET_VALUE *
                 eatenProgress +
                 state.lives * SEARCH_LIFE_PRIORITY
@@ -1300,7 +1303,7 @@ function createGameStrategy(parameters = {}) {
         return (
             (1 + ghostProduct) /
             (1 + pacmanProduct) -
-            config.SEARCH_HEURISTIC_K * progress
+            config.strategy.SEARCH_HEURISTIC_K * progress
         ) / Math.max(1, remainingPellets);
     }
 
@@ -1770,7 +1773,7 @@ function createGameStrategy(parameters = {}) {
             if (playerDirection.x === 0 && playerDirection.y === 0) {
                 next.player.stopped = true;
                 next.player.stopTimer =
-                    config.STOP_DECISION_INTERVAL;
+                    config.rules.STOP_DECISION_INTERVAL;
             } else {
                 next.player.stopped = false;
                 next.player.stopTimer = 0;
@@ -1797,7 +1800,7 @@ function createGameStrategy(parameters = {}) {
             if (state.player.stopTimer <= 0) {
                 state.readyPlayer = true;
                 state.player.stopTimer =
-                    config.STOP_DECISION_INTERVAL;
+                    config.rules.STOP_DECISION_INTERVAL;
             }
         }
 
@@ -2032,8 +2035,8 @@ function createGameStrategy(parameters = {}) {
             // No calibration at all: keep the prior deviation instead of
             // collapsing to a deterministic walk.
             return {
-                mean: node.value + config.BASE_MEAN,
-                standardDeviation: config.BASE_STD
+                mean: node.value + config.strategy.BASE_MEAN,
+                standardDeviation: config.strategy.BASE_STD
             };
         }
 
@@ -2043,14 +2046,14 @@ function createGameStrategy(parameters = {}) {
 
         return {
             mean: node.value +
-                config.BASE_MEAN +
+                config.strategy.BASE_MEAN +
                 (Number.isFinite(correction) ? correction : 0),
             standardDeviation: Number.isFinite(variance)
                 ? Math.max(
-                    config.CALIBRATION_MIN_STD,
+                    config.strategy.CALIBRATION_MIN_STD,
                     Math.sqrt(Math.max(0, variance))
                 )
-                : config.BASE_STD
+                : config.strategy.BASE_STD
         };
     }
 
@@ -2136,7 +2139,7 @@ function createGameStrategy(parameters = {}) {
         createSuccessorIterator: createGameRbfmSuccessors,
         onWalkLimit: warnWalkLimit,
         getDistribution: getCalibrationDistribution,
-        maxExtendDepth: config.SEARCH_MAX_EXTEND_DEPTH
+        maxExtendDepth: config.strategy.SEARCH_MAX_EXTEND_DEPTH
     });
 
     function setSearchRootFromState(state) {
