@@ -11,7 +11,7 @@ The RBFM is now a per-decision tree without transposition or persistence, but th
 Strategy worker
     The worker predicts a longer stretch of decisions than it sends: the internal plan covers 2 s of game time and only the first second goes to the main thread. Inside the plan the RBFM walk samples children at random and the improve/worsen alternation only starts when the walk leaves the plan (best child -> worsen, other -> improve). With a worker a buffer miss falls back to continuing or the first legal move; the local search remains only for environments without Worker. Remove it once the worker is always available.
 Strategy buffer
-    Add the headless event-loop and buffer hit-rate checks to develop/tests; the RBFM plan walk and the worker plan slice checks already live there (rbfm-plan-walk.js, worker-plan.js).
+    Add the headless event-loop and buffer hit-rate checks to src/tests; the RBFM plan walk and the worker plan slice checks already live there (rbfm-plan-walk.js, worker-plan.js).
 Improve strategy. Ghosts are not guarding successfully, oscillation or lack of determination when keeping a position doesn't make them sharp enough. Eaten ghosts are too reluctant to return home. Normal ghosts are too reluctant to close Pac-man domain further when it is cornered. Pac-man is too reluctant to explore in depth and jump out of local optimums. 
 Make front screen more coherent
 Make walls map better: still too difficult because it is too narrow.

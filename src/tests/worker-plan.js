@@ -5,7 +5,7 @@
 // horizon, keeps its links consistent, and never grows past the internal
 // plan the worker built.
 //
-// Usage: node develop/tests/worker-plan.js
+// Usage: node src/tests/worker-plan.js
 
 const fs = require("fs");
 const path = require("path");

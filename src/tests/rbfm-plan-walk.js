@@ -12,7 +12,7 @@
 // - Without a plan the old rule applies: leaving the best child starts
 //   "improve", so the walk keeps taking the first child.
 //
-// Usage: node develop/tests/rbfm-plan-walk.js
+// Usage: node src/tests/rbfm-plan-walk.js
 
 const fs = require("fs");
 const path = require("path");
