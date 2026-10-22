@@ -11,9 +11,15 @@ function createGameRuntime(parameters = {}) {
     // GAME LOOP
     // ============================================================
 
-    function gameLoop(time) {
-        const dt = Math.min((time - state.currentTime) / 1000, 0.05);
+    let lastLongFrameAt = 0;
+    let lastFrameAt = 0;
 
+    function gameLoop(time) {
+        const gap = lastFrameAt > 0 ? time - lastFrameAt : 0;
+        const dt = Math.min((time - state.currentTime) / 1000, 0.05);
+        const frameStartedAt = performance.now();
+
+        lastFrameAt = time;
         state.currentTime = time;
 
         rules.update(dt);
@@ -23,6 +29,18 @@ function createGameRuntime(parameters = {}) {
         }
 
         renderer.draw();
+
+        const elapsed = performance.now() - frameStartedAt;
+
+        if (Date.now() - lastLongFrameAt > 1000) {
+            if (elapsed > 40) {
+                lastLongFrameAt = Date.now();
+                console.warn(`[frame] long frame ${elapsed.toFixed(1)}ms`);
+            } else if (gap > 50) {
+                lastLongFrameAt = Date.now();
+                console.warn(`[frame] gap ${gap.toFixed(1)}ms`);
+            }
+        }
 
         requestAnimationFrame(gameLoop);
     }

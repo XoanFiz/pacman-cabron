@@ -38,6 +38,8 @@ let pendingAnchor = null;
 let currentJob = null;
 let jobId = 0;
 let graphDirty = false;
+let lastAnchorAt = 0;
+let lastSaveAt = 0;
 
 // The strategy is rebuilt when the map changes, including its id: two
 // maps can share a layout but have different persisted graphs.
@@ -103,6 +105,7 @@ function persistStrategyData(expectedMapId = null) {
     }
 
     try {
+        const startedAt = Date.now();
         const graph = strategy.exportGraph();
         const values = strategy.exportValueTable();
         const metadata = {
@@ -111,6 +114,7 @@ function persistStrategyData(expectedMapId = null) {
         };
 
         graphDirty = false;
+        lastSaveAt = Date.now();
 
         return Promise.all([
             mapStorage.saveStrategyGraph(
@@ -123,7 +127,14 @@ function persistStrategyData(expectedMapId = null) {
                 values,
                 metadata
             )
-        ]).then(() => true).catch(error => {
+        ]).then(() => {
+            console.log(
+                `[strategy worker] saved ${graph.nodes.length} nodes ` +
+                `in ${Date.now() - startedAt}ms`
+            );
+
+            return true;
+        }).catch(error => {
             graphDirty = true;
             console.warn(
                 "[strategy worker] unable to save the strategy data.",
@@ -170,8 +181,18 @@ function ensureStrategy(definition) {
     return strategy;
 }
 
+// Exporting a large graph is expensive, so the periodic save waits until
+// no anchor has arrived for a few seconds: the start screen, a pause or a
+// menu. A five minute ceiling still bounds what a crash can lose.
 setInterval(() => {
-    if (graphDirty) {
+    if (!graphDirty) {
+        return;
+    }
+
+    const idle = Date.now() - lastAnchorAt > 3000;
+    const overdue = Date.now() - lastSaveAt > 300000;
+
+    if (idle || overdue) {
         void persistStrategyData();
     }
 }, STRATEGY_GRAPH_SAVE_INTERVAL_MS);
@@ -326,6 +347,8 @@ self.onmessage = event => {
     }
 
     try {
+        lastAnchorAt = Date.now();
+
         const definition = restoreMap(message.map);
         ensureStrategy(definition);
 
