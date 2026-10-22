@@ -695,12 +695,32 @@ function createGameRules(parameters = {}) {
             if (index === controlledIndex) {
                 const possible = getImmediateGhostDirections(ghost);
                 const desired = findPressedDirection(ghost.x, ghost.y);
-                const chosen = desired && possible.some(direction =>
-                    direction.x === desired.x &&
-                    direction.y === desired.y
-                )
-                    ? desired
-                    : { ...ghost.direction };
+                let chosen = { ...ghost.direction };
+
+                if (
+                    desired &&
+                    possible.some(direction =>
+                        direction.x === desired.x &&
+                        direction.y === desired.y
+                    )
+                ) {
+                    chosen = desired;
+                } else if (
+                    !isDecidingBetweenCells(ghost) &&
+                    !map.canMove(ghost.x, ghost.y, ghost.direction)
+                ) {
+                    // The player reached a wall without choosing: bounce
+                    // back, which reads as being driven instead of the
+                    // ghost picking a turn by itself.
+                    const reversed = {
+                        x: -ghost.direction.x,
+                        y: -ghost.direction.y
+                    };
+
+                    chosen = map.canMove(ghost.x, ghost.y, reversed)
+                        ? reversed
+                        : getLegalGhostFallback(ghost);
+                }
 
                 applyGhostDecision(ghost, chosen);
             } else {
