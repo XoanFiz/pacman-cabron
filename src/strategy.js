@@ -896,6 +896,8 @@ function createGameStrategy(parameters = {}) {
                 ? TOTAL_PELLET_VALUE / pelletCount
                 : 0;
 
+        let pacmanPelletValue = 0;
+
 
         for (let y = 0; y < getMapRowCountForMap(); y++) {
 
@@ -925,9 +927,6 @@ function createGameStrategy(parameters = {}) {
 
                 // Only cells the ghosts control count: those are the
                 // ones they can deny to Pac-Man.
-                if (!ghostOwner.startsWith("ghost"))
-                    continue;
-
                 const travelTime =
                     Math.max(
                         0,
@@ -935,15 +934,35 @@ function createGameStrategy(parameters = {}) {
                     );
                 const distanceWeight =
                     1 / (1 + travelTime);
+                const isGhostOwner = ghostOwner.startsWith("ghost");
+                const pelletWeight =
+                    cell === "o"
+                        ? config.POWER_PELLET_WEIGHT
+                        : 1;
+
+                if (ghostOwner === "pacman") {
+                    pacmanPelletValue +=
+                        pelletValue *
+                        pelletWeight *
+                        distanceWeight;
+                    continue;
+                }
+
+                if (!isGhostOwner)
+                    continue;
 
                 pelletScore +=
                     pelletValue *
-                    (cell === "o"
-                        ? config.POWER_PELLET_WEIGHT
-                        : 1) *
+                    pelletWeight *
                     distanceWeight;
             }
         }
+
+        // The ghosts' pellet value is a division against the pellet value
+        // Pac-Man still controls: the less he has, the more they gain.
+        pelletScore =
+            TOTAL_PELLET_VALUE /
+            Math.max(1, pacmanPelletValue);
 
 
         return {
