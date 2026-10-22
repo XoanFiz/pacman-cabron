@@ -1824,9 +1824,8 @@ function createGameStrategy(parameters = {}) {
     // Optional bridge to the strategy Web Worker. The main thread injects
     // `worker` (see game-ai-controller); inside workers it stays null and
     // the search runs locally on the simulation context.
-    // The anchor makes the worker re-predict from the live state. The
-    // lookup happens first so sending it never discards an entry that the
-    // current decision is about to use.
+    // The anchor makes the worker re-predict from the state the game just
+    // reached, after a decision.
     function requestWorkerAction(mode, searchContext, indices, readyPlayer) {
         worker?.anchor?.({
             mode,
@@ -1837,37 +1836,6 @@ function createGameStrategy(parameters = {}) {
         });
     }
 
-    // Used by the worker to keep deepening the live line between anchors:
-    // it installs the root at the state the game is in and advanceSearch()
-    // then extends from it.
-    function advanceSearchFrom(
-        searchContext,
-        readyGhostIndices = [],
-        readyPlayer = false
-    ) {
-        let state = createCurrentGameSearchState(
-            searchContext,
-            readyGhostIndices,
-            readyPlayer
-        );
-        let guard = 0;
-
-        // The graph is only extended from decision states.
-        while (
-            !state.terminal &&
-            !state.readyPlayer &&
-            !state.readyGhosts.some(Boolean) &&
-            guard++ < 64
-        ) {
-            state = advanceSearchToNextEvent(state);
-        }
-
-        setSearchRootFromState(state);
-    }
-
-    // Used by the game rules after a decision so the worker re-predicts
-    // from the state the game actually reached, not from the alternatives
-    // the buffer offered.
     function anchorSearchContext(
         searchContext,
         readyGhostIndices = [],
@@ -2040,6 +2008,9 @@ function createGameStrategy(parameters = {}) {
             maxNodes: Number.isInteger(options.maxNodes)
                 ? options.maxNodes
                 : 64,
+            searchSteps: Number.isInteger(options.searchSteps)
+                ? options.searchSteps
+                : 0,
             humanGhostIndex: root.controlledGhostIndex,
             plan: [],
             nodeCount: 0,
@@ -2108,11 +2079,16 @@ function createGameStrategy(parameters = {}) {
                 state.readyPlayer
             )
             : null;
+        const searchSteps =
+            Math.abs(state.time - job.root.time) <= 1e-9
+                ? job.searchSteps
+                : 0;
         const directions = queryState
             ? chooseGhostDirections(
                 queryState,
                 automatedIndices,
-                state.readyPlayer
+                state.readyPlayer,
+                searchSteps
             )
             : null;
         const node = createPlanNode(job, item, "ghost");
@@ -2192,9 +2168,14 @@ function createGameStrategy(parameters = {}) {
             return;
         }
 
+        const searchSteps =
+            Math.abs(state.time - job.root.time) <= 1e-9
+                ? job.searchSteps
+                : 0;
         const direction = choosePacmanDirection(
             state,
-            readyGhostIndices
+            readyGhostIndices,
+            searchSteps
         );
 
         node.action = { playerDirection: { ...direction } };
@@ -2307,7 +2288,8 @@ function createGameStrategy(parameters = {}) {
     function chooseGhostDirections(
         searchContext,
         readyGhostIndices,
-        readyPlayer = false
+        readyPlayer = false,
+        searchSteps = 0
     ) {
         const planned = worker?.getPlanAction?.("ghost");
 
@@ -2330,6 +2312,11 @@ function createGameStrategy(parameters = {}) {
         }
 
         const root = setSearchRootFromState(state);
+
+        for (let step = 0; step < searchSteps; step++) {
+            advanceSearch();
+        }
+
         const rootAction = getBestAction(root);
 
         if (!rootAction) {
@@ -2355,7 +2342,8 @@ function createGameStrategy(parameters = {}) {
 
     function choosePacmanDirection(
         searchContext,
-        readyGhostIndices = []
+        readyGhostIndices = [],
+        searchSteps = 0
     ) {
         const planned = worker?.getPlanAction?.("player");
 
@@ -2374,6 +2362,11 @@ function createGameStrategy(parameters = {}) {
         }
 
         const root = setSearchRootFromState(state);
+
+        for (let step = 0; step < searchSteps; step++) {
+            advanceSearch();
+        }
+
         const rootEdge = rbfmSearch.getBestChild(root);
         let action = rootEdge?.action;
 
@@ -2413,7 +2406,6 @@ function createGameStrategy(parameters = {}) {
         createPolicyBufferJob,
         stepPolicyBufferJob,
         anchorSearchContext,
-        advanceSearchFrom,
         getNodeType,
         setCalibration
     }

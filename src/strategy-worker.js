@@ -101,7 +101,8 @@ function startJob(anchor) {
             readyGhostIndices: anchor.readyGhostIndices || [],
             readyPlayer: Boolean(anchor.readyPlayer),
             horizonSeconds: STRATEGY_PLAN_HORIZON_SECONDS,
-            maxNodes: STRATEGY_PLAN_MAX_NODES
+            maxNodes: STRATEGY_PLAN_MAX_NODES,
+            searchSteps: config.PLAN_ROOT_SEARCH_STEPS
         });
 
         job.id = ++jobId;
@@ -143,47 +144,8 @@ function scheduleStep(id) {
 
         if (!job.complete) {
             scheduleStep(job.id);
-            return;
         }
-
-        scheduleDeepening(job);
     }, 0);
-}
-
-// Between anchors the worker keeps extending the graph from the state the
-// game reached, the same way the main thread used to do every frame.
-function scheduleDeepening(job) {
-    setTimeout(() => {
-        if (currentJob !== job || !job.complete) {
-            return;
-        }
-
-        try {
-            if (!job.deepening) {
-                job.strategy.advanceSearchFrom(
-                    job.anchor.searchContext,
-                    job.anchor.readyGhostIndices || [],
-                    Boolean(job.anchor.readyPlayer)
-                );
-                job.deepening = true;
-            }
-
-            const startedAt = Date.now();
-
-            while (Date.now() - startedAt < 4) {
-                job.strategy.advanceSearch();
-            }
-        } catch (error) {
-            postError(
-                { map: { id: job.mapId }, revision: job.revision },
-                error
-            );
-
-            return;
-        }
-
-        scheduleDeepening(job);
-    }, 16);
 }
 
 self.onmessage = event => {
