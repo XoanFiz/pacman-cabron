@@ -102,15 +102,23 @@ function check(label, actual, expected) {
     }
 }
 
-check("initial facing", ghost.facingDirection, DIRECTIONS.up);
+if (ghost.direction.x !== 0 || ghost.direction.y !== -1) {
+    throw new Error("the ghost should start moving up");
+}
 
-rules.pressDirection("left");
-check("facing after left press", ghost.facingDirection, DIRECTIONS.left);
-check("movement unchanged", ghost.direction, DIRECTIONS.up);
+rules.pressDirection("right");
 
-rules.pressDirection("down");
-check("facing after down press", ghost.facingDirection, DIRECTIONS.down);
-check("movement still unchanged", ghost.direction, DIRECTIONS.up);
+if (ghost.direction.x !== 0 || ghost.direction.y !== -1) {
+    throw new Error("the ghost must not turn before a cell centre");
+}
 
-console.log("ghost eyes ok");
+for (let frame = 0; frame < 120 && ghost.direction.x !== 1; frame++) {
+    rules.update(1 / 60);
+}
+
+if (ghost.direction.x !== 1 || ghost.direction.y !== 0) {
+    throw new Error("the controlled ghost did not turn right at the centre");
+}
+
+console.log("ghost control ok");
 `, ctx);
