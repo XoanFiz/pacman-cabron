@@ -1,5 +1,4 @@
 TODO
-Create directory 'strategy'
 Calibration follow-ups
     Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
     Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
@@ -35,6 +34,8 @@ More than one Pac-man
 
 AGENT NOTES:
 Automated agents, please take the following points into account when working:
+- Do not commit. Leave every change in the working tree, tell the developer what changed and which tests pass, and let them test it and commit. Run git commit only when the developer asks for a commit in that same message.
+- Do not make changes while there are open questions on the table. Ask first and wait for the answer; never guess what the developer wants and implement the guess.
 - Do not waste time checking every possible language. Test only English and one else and ensure that all languages have the same structure. To test this use automatic tools and include them in this project for the developers to use. Include them in the develop directory.
 - After doing changes check if the request is here and ask to delete it and include it in the commit and the commit message.
 - After doing any changes check if this file was changed by the human developer and include the change in the commit message.
@@ -43,3 +44,5 @@ Automated agents, please take the following points into account when working:
 - Do not automatically pick a TODO or SUGGESTIONS task and engage it. Do it just when a developer asks it to.
 - Do not override changes to files on the work tree without asking what to do with the changes. 
 - Add the relevant tests done to the program to the directory 'src/tests'.
+- If a task is left mid-way, put it down here with a high priority (top in the list)
+- If a task is done remove it here
