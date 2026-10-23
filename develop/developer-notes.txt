@@ -1,6 +1,4 @@
 TODO
-Strategy multi-thread (in progress)
-    Shared tree registry done (src/strategy/tree-registry.js, test in src/tests/strategy/tree-registry.js): node ownership, expansion, values bubbling across owners, the plan view and the root advance that drops the untaken branches. Pending: the searcher worker that walks the registry and asks the owner for the states it does not own, the coordinator that assigns branches and sends the plan view, and wiring both into src/strategy/worker.js.
 Calibration follow-ups
     Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
     Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
