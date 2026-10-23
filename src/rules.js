@@ -847,6 +847,7 @@ function createGameRules(parameters = {}) {
         updatePositions();
 
         if (
+            gs.running &&
             getReadyGhostIndices().length === 0 &&
             !gs.player.ready &&
             typeof intelligence.anchorSearch === "function"

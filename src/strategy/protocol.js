@@ -24,7 +24,7 @@
 //
 // plan (worker -> main):
 //   {
-//     type, mapId, revision, complete,
+//     type, mapId, revision, complete, first,
 //     plan: [
 //       {
 //         id, parent, choice,        // choice: the human action that led here

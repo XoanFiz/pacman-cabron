@@ -72,20 +72,31 @@ function ensureStrategy(definition) {
 // The plan is small: the main thread gets the whole tree it needs to follow
 // the branch that matches the player's decisions. The worker keeps a longer
 // plan internally so the search has a temporal cushion.
-function postPlan(job, complete) {
+function postPlan(job, complete, first = false) {
     const plan = job.strategy.getTransmittedPlan(job);
-
-    self.postMessage({
+    const postedAt = Date.now();
+    const message = {
         type: STRATEGY_BUFFER_MESSAGE.plan,
         mapId: job.mapId,
         revision: job.revision,
+        first,
         plan,
         complete,
         stats: {
             nodes: plan.filter(Boolean).length,
             queued: 0
         }
-    });
+    };
+
+    job.postedAt = postedAt;
+
+    // How long the game waited for the first plan of this anchor: when it
+    // is longer than the decision interval the plan arrives too late.
+    if (first) {
+        message.latency = postedAt - job.anchor.receivedAt;
+    }
+
+    self.postMessage(message);
 }
 
 function postError(anchor, error) {
@@ -113,17 +124,49 @@ function startJob(anchor) {
         job.strategy = strategy;
         job.anchor = anchor;
         job.deepening = false;
+        job.postedAt = 0;
+        job.startedAt = Date.now();
         currentJob = job;
 
-        postPlan(job, job.complete);
+        postPlan(job, job.complete, true);
         scheduleStep(job.id);
     } catch (error) {
         postError(anchor, error);
+
+        if (currentJob) {
+            scheduleStep(currentJob.id);
+        }
+    }
+}
+
+// The internal plan is one transmitted plan longer than the view. Between
+// anchors the worker keeps expanding it along the branches the next plan
+// will follow, so the next plan is a read of the tree instead of an
+// expansion that would arrive after the decision it answers.
+const CUSHION_SLICE_MILLISECONDS = 8;
+
+// Building the plan view costs more than a walk slice. Posting it on every
+// slice would keep the worker inside a view when the next anchor arrives,
+// and that anchor (the one the game is waiting for) would queue behind it.
+// The main thread consumes a plan per decision, so an interval is enough.
+const PLAN_POST_INTERVAL_MILLISECONDS = 50;
+
+// The game waits for the plan of the anchor it just sent, so an arriving
+// anchor drops the walk slice that is still queued: it would only add
+// latency to the answer the game is waiting for.
+let stepTimer = null;
+
+function stopStep() {
+    if (stepTimer !== null) {
+        clearTimeout(stepTimer);
+        stepTimer = null;
     }
 }
 
 function scheduleStep(id) {
-    setTimeout(() => {
+    stepTimer = setTimeout(() => {
+        stepTimer = null;
+
         const job = currentJob;
 
         if (!job || job.id !== id || job.complete) {
@@ -132,7 +175,17 @@ function scheduleStep(id) {
 
         try {
             job.strategy.stepPolicyBufferJob(job, 1);
-            postPlan(job, job.complete);
+            job.strategy.expandPolicyBufferCushion(
+                job,
+                CUSHION_SLICE_MILLISECONDS
+            );
+
+            if (
+                Date.now() - job.postedAt >=
+                PLAN_POST_INTERVAL_MILLISECONDS
+            ) {
+                postPlan(job, job.complete);
+            }
         } catch (error) {
             postError({ map: { id: job.mapId }, revision: job.revision }, error);
             job.complete = true;
@@ -143,6 +196,49 @@ function scheduleStep(id) {
     }, 0);
 }
 
+// The main thread signals the root again after every decision, so the
+// worker may receive several anchors while it is still building a plan.
+// Only the latest one matters: the intermediate ones describe roots the
+// game has already left behind.
+let pendingAnchor = null;
+let anchorScheduled = false;
+
+function queueAnchor(anchor) {
+    pendingAnchor = anchor;
+
+    if (anchorScheduled) {
+        return;
+    }
+
+    // The game is waiting for this anchor: drop the walk slice still queued.
+    stopStep();
+    anchorScheduled = true;
+    setTimeout(buildPendingAnchor, 0);
+}
+
+function buildPendingAnchor() {
+    anchorScheduled = false;
+
+    const anchor = pendingAnchor;
+
+    pendingAnchor = null;
+
+    if (!anchor) {
+        return;
+    }
+
+    try {
+        ensureStrategy(restoreMap(anchor.map));
+        startJob(anchor);
+    } catch (error) {
+        postError(anchor, error);
+
+        if (currentJob) {
+            scheduleStep(currentJob.id);
+        }
+    }
+}
+
 self.onmessage = event => {
     const message = event.data;
 
@@ -150,11 +246,6 @@ self.onmessage = event => {
         return;
     }
 
-    try {
-        const definition = restoreMap(message.map);
-        ensureStrategy(definition);
-        startJob(message);
-    } catch (error) {
-        postError(message, error);
-    }
+    message.receivedAt = Date.now();
+    queueAnchor(message);
 };

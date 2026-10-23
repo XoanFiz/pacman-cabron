@@ -33,7 +33,10 @@
             records: 0,
             nodes: 0,
             complete: false,
-            revision: 0
+            revision: 0,
+            late: 0,
+            lost: 0,
+            missing: {}
         };
         let revision = 0;
         let activeMapId = null;
@@ -50,6 +53,43 @@
             return cursor === null ? null : plan[cursor] || null;
         }
 
+        // The plan nodes carry the key of the state they represent, so the
+        // bridge can find its node again after the worker rebuilds the view.
+        function findPlanNode(nodes, key) {
+            for (let index = 0; index < nodes.length; index++) {
+                const node = nodes[index];
+
+                if (node && node.key === key) {
+                    return index;
+                }
+            }
+
+            return -1;
+        }
+
+        let lastProblemLogAt = 0;
+
+        // Every time the plan cannot answer, the console says why and the
+        // reason is counted: the plan is empty or from the previous anchor
+        // (not updated yet), the node has no action (not enough search
+        // done), the cursor went past the last node (the plan ran out) or
+        // the state does not match the node.
+        function logProblem(reason, detail = {}) {
+            metrics.missing[reason] = (metrics.missing[reason] || 0) + 1;
+
+            const now = Date.now();
+
+            if (now - lastProblemLogAt < 1000) {
+                return;
+            }
+
+            lastProblemLogAt = now;
+            console.log(
+                "[plan] " + reason + " " + JSON.stringify(detail) +
+                " totals=" + JSON.stringify(metrics.missing)
+            );
+        }
+
         worker.onmessage = event => {
             const message = event.data;
 
@@ -62,26 +102,71 @@
                 return;
             }
 
-            if (message.mapId !== activeMapId || message.revision !== revision) {
+            if (message.mapId !== activeMapId) {
                 return;
             }
 
-            if (message.revision !== planRevision) {
+            const incoming = message.plan || [];
+
+            if (message.revision === revision) {
                 // The first message of a new anchor may still be empty;
                 // keep the previous plan until the new root exists.
-                if (!message.plan || !message.plan[0]) {
+                if (!incoming[0]) {
+                    logProblem("waiting-new-plan", {
+                        revision: message.revision
+                    });
                     return;
                 }
 
-                planRevision = message.revision;
-                plan = message.plan;
-                cursor = 0;
-            } else {
-                plan = message.plan || [];
-
-                if (cursor === null && plan[0]) {
+                if (message.revision !== planRevision) {
+                    planRevision = message.revision;
+                    plan = incoming;
                     cursor = 0;
+                } else {
+                    // A refreshed view of the tree the game is already
+                    // following: keep its node and take the newer
+                    // exploration instead of moving the cursor to the root.
+                    const node = currentNode();
+                    const index = node === null
+                        ? -1
+                        : findPlanNode(incoming, node.key);
+
+                    plan = incoming;
+                    cursor = index >= 0 ? index : 0;
                 }
+            } else {
+                // A plan of an anchor the game already left is still a view
+                // of the same tree. It is usable when it contains the state
+                // the game reached: the key finds the node again and the
+                // newer exploration comes with it. Only a plan that cannot
+                // be placed is lost.
+                const node = currentNode();
+                const index = node === null
+                    ? -1
+                    : findPlanNode(incoming, node.key);
+
+                if (index < 0 && node !== null) {
+                    // Only the first plan of an anchor is a plan the game
+                    // was waiting for: a refresh is just extra work.
+                    if (message.first) {
+                        metrics.lost++;
+                        logProblem("stale-plan-dropped", {
+                            revision: message.revision,
+                            current: revision,
+                            latency: message.latency
+                        });
+                    }
+
+                    return;
+                }
+
+                // Without a cursor (the previous plan ran out or was
+                // discarded) there is nothing to keep: the plan is stored
+                // and the next decision places it by its state key.
+                planRevision = message.revision;
+                plan = incoming;
+                cursor = index >= 0 ? index : null;
+                metrics.late++;
             }
 
             metrics.plans++;
@@ -111,15 +196,47 @@
                 });
             },
             getPlanAction(mode, key) {
-                const node = currentNode();
+                let node = currentNode();
 
-                if (
-                    !node ||
-                    node.actor !== mode ||
-                    !node.action ||
-                    (key !== undefined && node.key !== key)
-                ) {
+                // The worker rebuilds the plan while it explores, so a node
+                // id can move between posts and a fallback decision can
+                // leave the cursor on a branch the game did not take. The
+                // state key is the stable reference: it finds the node that
+                // represents the state the game reached.
+                if (key !== undefined && (!node || node.key !== key)) {
+                    const index = findPlanNode(plan, key);
+
+                    if (index >= 0) {
+                        cursor = index;
+                        node = plan[index];
+                    }
+                }
+
+                let reason = null;
+
+                if (!node) {
+                    reason = plan.length === 0
+                        ? (planRevision === revision
+                            ? "empty-plan"
+                            : "plan-not-updated")
+                        : "plan-exhausted";
+                } else if (node.actor !== mode) {
+                    reason = "actor-mismatch";
+                } else if (!node.action) {
+                    reason = "no-action";
+                } else if (key !== undefined && node.key !== key) {
+                    reason = "key-mismatch";
+                }
+
+                if (reason !== null) {
                     metrics.misses++;
+                    logProblem(reason, {
+                        mode,
+                        cursor,
+                        nodes: plan.length,
+                        stale: planRevision !== revision,
+                        time: node ? Number(node.time.toFixed(3)) : null
+                    });
 
                     return null;
                 }
@@ -135,9 +252,31 @@
                 return node.action;
             },
             recordHuman(mode, index, direction) {
+                // Pac-Man stopped against a wall has no direction to record:
+                // the plan keeps its node for the next decision instead of
+                // being thrown away.
+                if (direction && direction.x === 0 && direction.y === 0) {
+                    return;
+                }
+
                 const node = currentNode();
 
                 if (!node || node.actor !== mode || !node.choices) {
+                    logProblem("human-node-missing", {
+                        mode,
+                        cursor,
+                        nodes: plan.length,
+                        stale: planRevision !== revision,
+                        node: node ? {
+                            id: node.id,
+                            actor: node.actor,
+                            choices: node.choices
+                                ? node.choices.length
+                                : null,
+                            child: node.child,
+                            time: Number(node.time.toFixed(3))
+                        } : null
+                    });
                     invalidatePlan();
 
                     return;
@@ -149,6 +288,11 @@
                 );
 
                 if (!choice) {
+                    logProblem("human-choice-not-in-plan", {
+                        mode,
+                        direction,
+                        time: Number(node.time.toFixed(3))
+                    });
                     invalidatePlan();
 
                     return;

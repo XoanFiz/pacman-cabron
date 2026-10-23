@@ -2164,6 +2164,10 @@ function createGameStrategy(parameters = {}) {
             }
         }
 
+        // The tree could not be reused: the cushion queue pointed at nodes
+        // of the discarded tree, so it has to start over.
+        resetPlanCushion();
+
         return rbfmSearch.setRoot(
             state,
             evaluateSearchState(state),
@@ -2298,15 +2302,178 @@ function createGameStrategy(parameters = {}) {
         return key;
     }
 
+    // The plan tree follows one branch per computer decision and every
+    // direction of the agent the player controls. The transmitted plan and
+    // the internal cushion walk this same structure, so the cushion never
+    // explores branches the next plan will not follow.
+    //
+    // `expand` is false when the view cannot afford another expansion: the
+    // node is then a leaf and a later view carries its children.
+    function getPlanExpansion(node, expand = true) {
+        const state = node.state;
+        const actor = state.firstActor === "player" ? "player" : "ghost";
+        const human = state.firstActor === "player"
+            ? state.controlledGhostIndex < 0
+            : state.controlledGhostIndex >= 0 &&
+                Boolean(state.readyGhosts[state.controlledGhostIndex]);
+
+        if (expand) {
+            ensureExpanded(node);
+        } else if (!node.expansionComplete) {
+            return {
+                actor,
+                human,
+                expanded: false,
+                action: null,
+                branches: []
+            };
+        }
+
+        if (!human) {
+            const best = rbfmSearch.getBestChild(node);
+
+            if (!best) {
+                return {
+                    actor,
+                    human,
+                    expanded: true,
+                    action: null,
+                    branches: []
+                };
+            }
+
+            return {
+                actor,
+                human,
+                expanded: true,
+                action: state.firstActor === "player"
+                    ? { playerDirection: { ...best.action.playerDirection } }
+                    : {
+                        ghostDirections: (best.action.ghostDirections || [])
+                            .map(([index, direction]) => [
+                                index,
+                                { ...direction }
+                            ])
+                    },
+                branches: [{ choice: null, child: best.child }]
+            };
+        }
+
+        if (state.firstActor === "player") {
+            const branches = [];
+
+            for (const edge of node.successors) {
+                const direction = edge.action?.playerDirection;
+
+                if (!direction) {
+                    continue;
+                }
+
+                branches.push({
+                    choice: {
+                        mode: "player",
+                        index: -1,
+                        direction: { ...direction }
+                    },
+                    child: edge.child
+                });
+            }
+
+            return { actor, human, expanded: true, action: null, branches };
+        }
+
+        // The player controls a ghost: the plan carries the joint action of
+        // the automated ghosts and one branch for each direction of the
+        // controlled ghost, taken from the same joint action so the live
+        // state matches the branch child.
+        const humanIndex = state.controlledGhostIndex;
+        const best = rbfmSearch.getBestChild(node);
+        const automated = best
+            ? (best.action.ghostDirections || [])
+                .filter(([index]) => index !== humanIndex)
+                .map(([index, direction]) => [index, { ...direction }])
+            : [];
+        const branches = [];
+        const seen = new Set();
+
+        for (const edge of node.successors) {
+            const directions = edge.action?.ghostDirections || [];
+            const humanEntry = directions.find(
+                ([index]) => index === humanIndex
+            );
+
+            if (!humanEntry) {
+                continue;
+            }
+
+            const direction = humanEntry[1];
+            const key = direction.x + "," + direction.y;
+
+            if (seen.has(key)) {
+                continue;
+            }
+
+            const sameAutomated = automated.every(
+                ([index, automatedDirection]) => {
+                    const entry = directions.find(
+                        ([otherIndex]) => otherIndex === index
+                    );
+
+                    return entry &&
+                        entry[1].x === automatedDirection.x &&
+                        entry[1].y === automatedDirection.y;
+                }
+            );
+
+            if (
+                !sameAutomated ||
+                directions.length !== automated.length + 1
+            ) {
+                continue;
+            }
+
+            seen.add(key);
+            branches.push({
+                choice: {
+                    mode: "ghost",
+                    index: humanIndex,
+                    direction: { ...direction }
+                },
+                child: edge.child
+            });
+        }
+
+        return {
+            actor,
+            human,
+            expanded: true,
+            action: automated.length > 0
+                ? { ghostDirections: automated }
+                : null,
+            branches
+        };
+    }
+
     // The plan that goes to the main thread is a view of the exploration
     // tree: up to the transmitted horizon, only the best child for the
     // computer-controlled agents, every direction for the player agent.
+    // It is walked breadth first so the nodes added later (deeper in the
+    // tree) never move the id of a node the main thread cursor may hold.
+    //
+    // The view never waits for a long expansion: the worker has to answer
+    // the anchor before the next decision, so it only expands while it has
+    // budget and the rest of the window is carried by the cushion and the
+    // next views. A plan that arrives in time with a few decisions beats a
+    // complete plan that arrives after the decision it answered.
+    const PLAN_VIEW_EXPAND_MILLISECONDS = 8;
+
     function getTransmittedPlan(job) {
         if (!job.root) {
             return [];
         }
 
         const endTime = job.originTime + job.transmittedHorizonSeconds;
+        const startedAt = Date.now();
         const plan = [];
         const treeNodes = [];
         const ids = new Map();
@@ -2349,45 +2516,32 @@ function createGameStrategy(parameters = {}) {
 
         while (pending.length > 0) {
             const id = pending.shift();
-            const node = treeNodes[id];
-            const state = node.state;
             const planNode = plan[id];
-            const playerActs = state.firstActor === "player"
-                ? state.controlledGhostIndex < 0
-                : state.controlledGhostIndex >= 0 &&
-                    Boolean(state.readyGhosts[state.controlledGhostIndex]);
+            const expansion = getPlanExpansion(
+                treeNodes[id],
+                Date.now() - startedAt < PLAN_VIEW_EXPAND_MILLISECONDS
+            );
 
-            ensureExpanded(node);
+            planNode.actor = expansion.actor;
+            planNode.action = expansion.action;
 
-            planNode.actor = state.firstActor === "player"
-                ? "player"
-                : "ghost";
+            if (!expansion.expanded) {
+                continue;
+            }
 
-            if (playerActs) {
+            if (expansion.human) {
                 planNode.choices = [];
 
-                for (const edge of node.successors) {
-                    const direction = state.firstActor === "player"
-                        ? edge.action?.playerDirection
-                        : edge.action?.ghostDirections.find(
-                            ([index]) => index === state.controlledGhostIndex
-                        )?.[1];
-
-                    if (!direction) {
-                        continue;
-                    }
-
-                    const child = addNode(edge.child, id, {
-                        mode: planNode.actor,
-                        index: state.firstActor === "player"
-                            ? -1
-                            : state.controlledGhostIndex,
-                        direction: { ...direction }
-                    });
+                for (const branch of expansion.branches) {
+                    const child = addNode(
+                        branch.child,
+                        id,
+                        branch.choice
+                    );
 
                     if (child !== null) {
                         planNode.choices.push({
-                            direction: { ...direction },
+                            direction: { ...branch.choice.direction },
                             child
                         });
                     }
@@ -2396,23 +2550,90 @@ function createGameStrategy(parameters = {}) {
                 continue;
             }
 
-            const best = rbfmSearch.getBestChild(node);
-
-            if (!best) {
-                continue;
+            if (expansion.branches.length > 0) {
+                planNode.child = addNode(
+                    expansion.branches[0].child,
+                    id,
+                    null
+                );
             }
-
-            planNode.action = state.firstActor === "player"
-                ? { playerDirection: { ...best.action.playerDirection } }
-                : {
-                    ghostDirections: (best.action.ghostDirections || []).map(
-                        ([index, direction]) => [index, { ...direction }]
-                    )
-                };
-            planNode.child = addNode(best.child, id, null);
         }
 
         return plan;
+    }
+
+    // ============================================================
+    // INTERNAL PLAN CUSHION
+    // ============================================================
+    //
+    // The worker works over a longer plan than the one it transmits: the
+    // tree is expanded up to the internal horizon along the same branches
+    // the next transmitted plan will follow. The next anchor then finds its
+    // window already explored, so the plan view is a read of the tree and
+    // not an expansion that arrives after the decision it answers.
+
+    let cushionRoot = null;
+    let cushionQueue = [];
+    let cushionSeen = new WeakSet();
+
+    function resetPlanCushion(root = null) {
+        cushionRoot = root;
+        cushionQueue = [];
+        cushionSeen = new WeakSet();
+
+        if (root) {
+            cushionSeen.add(root);
+            cushionQueue.push(root);
+        }
+    }
+
+    // Expands one bounded slice of the internal plan, so a new anchor is
+    // never delayed by the cushion. Re-anchoring keeps the queue: the new
+    // root is a descendant of the previous one, so the pending nodes still
+    // belong to the tree and only the branches the game left behind are
+    // expanded in vain.
+    function expandPolicyBufferCushion(job, maxMilliseconds = 8) {
+        if (!job.root) {
+            return 0;
+        }
+
+        if (job.root !== cushionRoot) {
+            cushionRoot = job.root;
+
+            if (!cushionSeen.has(job.root)) {
+                cushionSeen.add(job.root);
+                cushionQueue.push(job.root);
+            }
+        }
+
+        const limit = Number.isFinite(job.planEndTime)
+            ? job.planEndTime
+            : job.originTime + job.transmittedHorizonSeconds;
+        const startedAt = Date.now();
+
+        while (
+            cushionQueue.length > 0 &&
+            Date.now() - startedAt < maxMilliseconds
+        ) {
+            const node = cushionQueue[0];
+
+            if (node.state.time > limit + 1e-9) {
+                break;
+            }
+
+            cushionQueue.shift();
+
+            for (const branch of getPlanExpansion(node).branches) {
+                const child = branch.child;
+
+                if (child && child.state && !cushionSeen.has(child)) {
+                    cushionSeen.add(child);
+                    cushionQueue.push(child);
+                }
+            }
+        }
+
+        return Date.now() - startedAt;
     }
 
     // One exploration walk over the tree. The plan is a view of that tree,
@@ -2496,9 +2717,32 @@ function createGameStrategy(parameters = {}) {
             readyGhostIndices,
             readyPlayer
         );
+        const controlledIndex = searchContext.controlledGhostIndex;
+        const controlledGhost = controlledIndex >= 0
+            ? searchContext.ghosts[controlledIndex]
+            : null;
+        const keyIndices = [...readyGhostIndices];
+
+        // The plan node covers the whole decision event: the automated
+        // ghosts and, when the player controls one, that ghost too.
+        if (
+            controlledGhost &&
+            controlledGhost.needsDirection &&
+            !keyIndices.includes(controlledIndex)
+        ) {
+            keyIndices.push(controlledIndex);
+        }
+
+        const keyState = keyIndices.length === readyGhostIndices.length
+            ? state
+            : createCurrentGameSearchState(
+                searchContext,
+                keyIndices,
+                readyPlayer
+            );
         const planned = worker?.getPlanAction?.(
             "ghost",
-            buildStateKey(state)
+            buildStateKey(keyState)
         );
 
         if (planned?.ghostDirections) {
@@ -2610,6 +2854,7 @@ function createGameStrategy(parameters = {}) {
         choosePacmanDirection,
         createPolicyBufferJob,
         stepPolicyBufferJob,
+        expandPolicyBufferCushion,
         getTransmittedPlan,
         anchorSearchContext,
         getNodeType,
