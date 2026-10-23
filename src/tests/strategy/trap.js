@@ -206,18 +206,15 @@ function anchorPlan(state) {
         readyGhostIndices: readyGhosts(state),
         readyPlayer: state.readyPlayer,
         horizonSeconds: 2,
-        maxNodes: 128,
         transmittedHorizonSeconds: 1,
-        transmittedMaxNodes: 64,
         searchSteps: searchSteps
     });
 
-    let steps = 0;
-    while (!job.complete && steps++ < 500) {
+    for (let step = 0; step < searchSteps; step++) {
         strategy.stepPolicyBufferJob(job, 1);
     }
 
-    return job;
+    return strategy.getTransmittedPlan(job);
 }
 
 let state = strategy.createCurrentGameSearchState(context(), [0], false);
@@ -225,8 +222,8 @@ let plans = 0;
 let caught = false;
 
 while (plans++ < 20 && state.lives === 3 && !state.terminal) {
-    const job = anchorPlan(state);
-    let node = job.plan[0];
+    const plan = anchorPlan(state);
+    let node = plan[0];
 
     while (node) {
         if (node.actor === "ghost") {
@@ -243,7 +240,7 @@ while (plans++ < 20 && state.lives === 3 && !state.terminal) {
             );
         }
 
-        node = node.child !== null ? job.plan[node.child] : null;
+        node = node.child !== null ? plan[node.child] : null;
     }
 
     if (state.lives < 3) {

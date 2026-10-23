@@ -655,7 +655,8 @@ function createRbfmCalibrationRunner({
         getStateKey,
         getNodeType,
         createSuccessorIterator,
-        onNodeVisit: calibration.onNodeVisit
+        onNodeVisit: calibration.onNodeVisit,
+        trackNodes: true
     });
     const experiment = createRbfmCalibrationExperiment({
         calibration,

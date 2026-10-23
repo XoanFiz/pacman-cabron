@@ -58,10 +58,3 @@ const STRATEGY_PLAN_HORIZON_SECONDS = 1;
 // plan longer than what the main thread receives.
 const STRATEGY_PLAN_INTERNAL_HORIZON_SECONDS =
     STRATEGY_PLAN_HORIZON_SECONDS * 2;
-
-// Hard cap on the plan nodes sent to the main thread; the cap only bounds
-// the message size and clone time.
-const STRATEGY_PLAN_MAX_NODES = 64;
-
-// Hard cap on the internal plan nodes; it bounds the plan build time.
-const STRATEGY_PLAN_INTERNAL_MAX_NODES = STRATEGY_PLAN_MAX_NODES * 2;

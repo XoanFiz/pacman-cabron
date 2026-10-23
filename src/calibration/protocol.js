@@ -62,10 +62,12 @@ const CALIBRATION_FINISH_REASON = Object.freeze({
     drift: "drift"
 });
 
-// Bumped whenever the calibration payload or the evaluated heuristic
-// changes; entries from another version are recalibrated automatically at
-// startup or map selection.
-const CALIBRATION_VERSION = 4;
+// Bumped whenever the calibration payload, the evaluated heuristic or the
+// search changes; entries from another version are recalibrated
+// automatically at startup or map selection.
+// Version 5: the exploration tree is kept across decisions and the walk
+// stops the random phase on the first non-optimal child.
+const CALIBRATION_VERSION = 5;
 
 // Used by the main thread to build the request and by the worker as the
 // fallback when a field is missing.

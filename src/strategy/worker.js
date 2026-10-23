@@ -73,15 +73,17 @@ function ensureStrategy(definition) {
 // the branch that matches the player's decisions. The worker keeps a longer
 // plan internally so the search has a temporal cushion.
 function postPlan(job, complete) {
+    const plan = job.strategy.getTransmittedPlan(job);
+
     self.postMessage({
         type: STRATEGY_BUFFER_MESSAGE.plan,
         mapId: job.mapId,
         revision: job.revision,
-        plan: job.strategy.getTransmittedPlan(job),
+        plan,
         complete,
         stats: {
-            nodes: job.nodeCount,
-            queued: job.queue.length
+            nodes: plan.filter(Boolean).length,
+            queued: 0
         }
     });
 }
@@ -102,10 +104,7 @@ function startJob(anchor) {
             readyGhostIndices: anchor.readyGhostIndices || [],
             readyPlayer: Boolean(anchor.readyPlayer),
             horizonSeconds: STRATEGY_PLAN_INTERNAL_HORIZON_SECONDS,
-            maxNodes: STRATEGY_PLAN_INTERNAL_MAX_NODES,
-            transmittedHorizonSeconds: STRATEGY_PLAN_HORIZON_SECONDS,
-            transmittedMaxNodes: STRATEGY_PLAN_MAX_NODES,
-            searchSteps: config.strategy.PLAN_ROOT_SEARCH_STEPS
+            transmittedHorizonSeconds: STRATEGY_PLAN_HORIZON_SECONDS
         });
 
         job.id = ++jobId;
@@ -132,12 +131,7 @@ function scheduleStep(id) {
         }
 
         try {
-            const startedAt = Date.now();
-
-            while (!job.complete && Date.now() - startedAt < 8) {
-                job.strategy.stepPolicyBufferJob(job, 1);
-            }
-
+            job.strategy.stepPolicyBufferJob(job, 1);
             postPlan(job, job.complete);
         } catch (error) {
             postError({ map: { id: job.mapId }, revision: job.revision }, error);
@@ -145,9 +139,7 @@ function scheduleStep(id) {
             return;
         }
 
-        if (!job.complete) {
-            scheduleStep(job.id);
-        }
+        scheduleStep(job.id);
     }, 0);
 }
 

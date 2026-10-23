@@ -141,7 +141,10 @@ setTimeout(() => {
     }
 
     const nodes = planMessage.plan.filter(Boolean);
-    const outOfWindow = nodes.filter(node => node.time > 1 + 1e-9);
+    const anchorTime = anchor.searchContext.time;
+    const outOfWindow = nodes.filter(node =>
+        node.time > anchorTime + 1 + 1e-9
+    );
 
     if (outOfWindow.length > 0) {
         console.error("transmitted plan exceeds the transmitted horizon");
@@ -165,6 +168,10 @@ setTimeout(() => {
     console.log(JSON.stringify({
         transmitted: nodes.length,
         internal: planMessage.stats.nodes,
-        maxTime: Number(Math.max(...nodes.map(node => node.time)).toFixed(2))
+        maxTime: Number((
+            Math.max(...nodes.map(node => node.time)) - anchorTime
+        ).toFixed(2))
     }));
+
+    process.exit(0);
 }, 400);

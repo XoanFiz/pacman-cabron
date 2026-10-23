@@ -2139,10 +2139,31 @@ function createGameStrategy(parameters = {}) {
         createSuccessorIterator: createGameRbfmSuccessors,
         onWalkLimit: warnWalkLimit,
         getDistribution: getCalibrationDistribution,
+        // Only the calibration needs the registry of every node.
+        trackNodes: false,
         maxExtendDepth: config.strategy.SEARCH_MAX_EXTEND_DEPTH
     });
 
+    // Re-roots the exploration tree on the state the game reached: the
+    // child of the current root that was taken. The subtree is kept; only
+    // the branches that were not taken are left behind.
     function setSearchRootFromState(state) {
+        const key = buildStateKey(state);
+        const root = rbfmSearch.root;
+
+        if (root) {
+            for (const edge of root.successors) {
+                if (
+                    edge.child.state &&
+                    buildStateKey(edge.child.state) === key
+                ) {
+                    rbfmSearch.root = edge.child;
+
+                    return edge.child;
+                }
+            }
+        }
+
         return rbfmSearch.setRoot(
             state,
             evaluateSearchState(state),
@@ -2191,42 +2212,11 @@ function createGameStrategy(parameters = {}) {
     }
 
     // ============================================================
-    // POLICY BUFFER
+    // EXPLORATION TREE AND PLAN VIEW
     // ============================================================
     //
-    // The worker walks the event tree of the next second and stores the
-    // direction every AI-controlled character would choose at each
-    // decision state. Only the human-controlled character branches, so
-    // any legal line the player takes is already covered.
-
-    function getReadySearchGhostIndices(state) {
-        const indices = [];
-
-        for (let index = 0; index < state.readyGhosts.length; index++) {
-            if (state.readyGhosts[index]) {
-                indices.push(index);
-            }
-        }
-
-        return indices;
-    }
-
-    function getHumanGhostDirections(state, ghostIndex) {
-        const directions = new Map();
-
-        for (const profile of getSearchGhostActionProfiles(state)) {
-            for (const [index, direction] of profile) {
-                if (index === ghostIndex) {
-                    directions.set(
-                        `${direction.x},${direction.y}`,
-                        { ...direction }
-                    );
-                }
-            }
-        }
-
-        return [...directions.values()];
-    }
+    // The worker keeps one exploration tree and walks it. The plan sent to
+    // the main thread is a view of that tree, not a separate structure.
 
     // Advances a state without any ready actor to the next decision event.
     function advanceSearchToNextEvent(state) {
@@ -2274,307 +2264,149 @@ function createGameStrategy(parameters = {}) {
 
         const horizonSeconds = Number.isFinite(options.horizonSeconds)
             ? options.horizonSeconds
-            : 1;
-        const maxNodes = Number.isInteger(options.maxNodes)
-            ? options.maxNodes
-            : 64;
+            : 2;
 
         return {
-            root,
+            // The exploration root is the state the game reached; the tree
+            // keeps its subtree instead of being rebuilt.
+            root: root.terminal ? null : setSearchRootFromState(root),
             originTime,
-            // The worker builds a longer plan than the slice it sends: the
-            // extra game time is the cushion the search walks randomly
-            // before it starts the improve/worsen alternation.
             horizonSeconds,
-            maxNodes,
             transmittedHorizonSeconds: Number.isFinite(
                 options.transmittedHorizonSeconds
             )
                 ? options.transmittedHorizonSeconds
-                : horizonSeconds,
-            transmittedMaxNodes: Number.isInteger(
-                options.transmittedMaxNodes
-            )
-                ? options.transmittedMaxNodes
-                : maxNodes,
+                : 1,
             planEndTime: originTime + horizonSeconds,
-            searchSteps: Number.isInteger(options.searchSteps)
-                ? options.searchSteps
-                : 0,
-            humanGhostIndex: root.controlledGhostIndex,
-            plan: [],
-            nodeCount: 0,
-            queue: [{
-                id: 0,
-                state: root,
-                parent: -1,
-                choice: null
-            }],
-            nextId: 1,
-            visited: new Set([buildStateKey(root)]),
             complete: false
         };
     }
 
-    function enqueuePlanState(job, state, parent, choice) {
-        if (state.terminal) {
-            return null;
-        }
-
-        const key = buildStateKey(state);
-
-        if (job.visited.has(key)) {
-            return null;
-        }
-
-        job.visited.add(key);
-
-        const id = job.nextId++;
-
-        job.queue.push({ id, state, parent, choice });
-
-        return id;
-    }
-
-    function createPlanNode(job, item, actor) {
-        const node = {
-            id: item.id,
-            parent: item.parent,
-            choice: item.choice,
-            actor,
-            action: null,
-            choices: null,
-            child: null,
-            time: item.state.time - job.originTime
-        };
-
-        job.plan[node.id] = node;
-        job.nodeCount++;
-
-        return node;
-    }
-
-    // Builds the plan slice that goes to the main thread: only the first
-    // part of the internal plan (the transmitted game-time horizon) and a
-    // bounded node count. Links to nodes outside the slice are cut so the
-    // cursor stops cleanly instead of jumping to a missing node.
+    // The plan that goes to the main thread is a view of the exploration
+    // tree: up to the transmitted horizon, only the best child for the
+    // computer-controlled agents, every direction for the player agent.
     function getTransmittedPlan(job) {
-        const horizon = job.transmittedHorizonSeconds;
-        const maxNodes = job.transmittedMaxNodes;
+        if (!job.root) {
+            return [];
+        }
 
-        const transmitted = Array.from(
-            { length: job.plan.length },
-            (_, id) => {
-                const node = job.plan[id];
+        const endTime = job.originTime + job.transmittedHorizonSeconds;
+        const plan = [];
+        const treeNodes = [];
+        const ids = new Map();
+        const pending = [];
 
-                if (!node || id >= maxNodes || node.time > horizon + 1e-9) {
-                    return null;
+        function addNode(treeChild, parent, choice) {
+            if (!treeChild || !treeChild.state) {
+                return null;
+            }
+
+            if (treeChild.state.time > endTime + 1e-9) {
+                return null;
+            }
+
+            if (ids.has(treeChild)) {
+                return ids.get(treeChild);
+            }
+
+            const id = plan.length;
+
+            ids.set(treeChild, id);
+            treeNodes[id] = treeChild;
+            plan.push({
+                id,
+                parent,
+                choice,
+                actor: null,
+                action: null,
+                choices: null,
+                child: null,
+                time: treeChild.state.time
+            });
+            pending.push(id);
+
+            return id;
+        }
+
+        addNode(job.root, -1, null);
+
+        while (pending.length > 0) {
+            const id = pending.shift();
+            const node = treeNodes[id];
+            const state = node.state;
+            const planNode = plan[id];
+            const playerActs = state.firstActor === "player"
+                ? state.controlledGhostIndex < 0
+                : state.controlledGhostIndex >= 0 &&
+                    Boolean(state.readyGhosts[state.controlledGhostIndex]);
+
+            ensureExpanded(node);
+
+            planNode.actor = state.firstActor === "player"
+                ? "player"
+                : "ghost";
+
+            if (playerActs) {
+                planNode.choices = [];
+
+                for (const edge of node.successors) {
+                    const direction = state.firstActor === "player"
+                        ? edge.action?.playerDirection
+                        : edge.action?.ghostDirections.find(
+                            ([index]) => index === state.controlledGhostIndex
+                        )?.[1];
+
+                    if (!direction) {
+                        continue;
+                    }
+
+                    const child = addNode(edge.child, id, {
+                        mode: planNode.actor,
+                        index: state.firstActor === "player"
+                            ? -1
+                            : state.controlledGhostIndex,
+                        direction: { ...direction }
+                    });
+
+                    if (child !== null) {
+                        planNode.choices.push({
+                            direction: { ...direction },
+                            child
+                        });
+                    }
                 }
 
-                return {
-                    id: node.id,
-                    parent: node.parent,
-                    choice: node.choice,
-                    actor: node.actor,
-                    action: node.action,
-                    choices: null,
-                    child: null,
-                    time: node.time
-                };
-            }
-        );
-
-        for (const node of transmitted) {
-            if (node === null) {
                 continue;
             }
 
-            const source = job.plan[node.id];
+            const best = rbfmSearch.getBestChild(node);
 
-            if (
-                Number.isInteger(source.child) &&
-                transmitted[source.child]
-            ) {
-                node.child = source.child;
+            if (!best) {
+                continue;
             }
 
-            if (source.choices !== null) {
-                node.choices = source.choices.map(choice => ({
-                    direction: { ...choice.direction },
-                    child: transmitted[choice.child]
-                        ? choice.child
-                        : null
-                }));
-            }
+            planNode.action = state.firstActor === "player"
+                ? { playerDirection: { ...best.action.playerDirection } }
+                : {
+                    ghostDirections: (best.action.ghostDirections || []).map(
+                        ([index, direction]) => [index, { ...direction }]
+                    )
+                };
+            planNode.child = addNode(best.child, id, null);
         }
 
-        return transmitted;
+        return plan;
     }
 
-    function stepGhostDecision(job, state, item) {
-        const readyGhostIndices = getReadySearchGhostIndices(state);
-        const humanIndex = readyGhostIndices.includes(job.humanGhostIndex) &&
-            !state.ghosts[job.humanGhostIndex].eaten
-            ? job.humanGhostIndex
-            : -1;
-        const automatedIndices = readyGhostIndices.filter(
-            index => index !== humanIndex
-        );
-        const queryState = automatedIndices.length > 0
-            ? createCurrentGameSearchState(
-                state,
-                automatedIndices,
-                state.readyPlayer
-            )
-            : null;
-        const searchSteps =
-            Math.abs(state.time - job.root.time) <= 1e-9
-                ? job.searchSteps
-                : 0;
-        const directions = queryState
-            ? chooseGhostDirections(
-                queryState,
-                automatedIndices,
-                state.readyPlayer,
-                searchSteps,
-                job.planEndTime
-            )
-            : null;
-        const node = createPlanNode(job, item, "ghost");
-
-        if (directions) {
-            node.action = {
-                ghostDirections: [...directions.entries()].map(
-                    ([index, direction]) => [index, { ...direction }]
-                )
-            };
-        }
-
-        if (humanIndex < 0) {
-            node.child = enqueuePlanState(
-                job,
-                advanceSearchState(state, directions || new Map(), null),
-                node.id,
-                null
-            );
-
-            return;
-        }
-
-        node.choices = [];
-
-        for (const direction of getHumanGhostDirections(state, humanIndex)) {
-            const jointDirections = new Map(directions || []);
-            jointDirections.set(humanIndex, { ...direction });
-
-            const child = enqueuePlanState(
-                job,
-                advanceSearchState(state, jointDirections, null),
-                node.id,
-                {
-                    mode: "ghost",
-                    index: humanIndex,
-                    direction: { ...direction }
-                }
-            );
-
-            if (child !== null) {
-                node.choices.push({
-                    direction: { ...direction },
-                    child
-                });
-            }
-        }
-    }
-
-    function stepPlayerDecision(job, state, item) {
-        const readyGhostIndices = getReadySearchGhostIndices(state);
-        const node = createPlanNode(job, item, "player");
-
-        if (job.humanGhostIndex < 0) {
-            node.choices = [];
-
-            for (const direction of getSearchPlayerActionProfiles(state)) {
-                const child = enqueuePlanState(
-                    job,
-                    advanceSearchState(state, [], direction),
-                    node.id,
-                    {
-                        mode: "player",
-                        index: -1,
-                        direction: { ...direction }
-                    }
-                );
-
-                if (child !== null) {
-                    node.choices.push({
-                        direction: { ...direction },
-                        child
-                    });
-                }
-            }
-
-            return;
-        }
-
-        const searchSteps =
-            Math.abs(state.time - job.root.time) <= 1e-9
-                ? job.searchSteps
-                : 0;
-        const direction = choosePacmanDirection(
-            state,
-            readyGhostIndices,
-            searchSteps,
-            job.planEndTime
-        );
-
-        node.action = { playerDirection: { ...direction } };
-        node.child = enqueuePlanState(
-            job,
-            advanceSearchState(state, [], direction),
-            node.id,
-            null
-        );
-    }
-
+    // One exploration walk over the tree. The plan is a view of that tree,
+    // so nothing is built here.
     function stepPolicyBufferJob(job, maxStates = 1) {
         for (let step = 0; step < maxStates; step++) {
-            if (job.complete) {
+            if (!job.root || !rbfmSearch.root) {
                 break;
             }
 
-            if (job.queue.length === 0) {
-                job.complete = true;
-                break;
-            }
-
-            if (job.nodeCount >= job.maxNodes) {
-                job.complete = true;
-                break;
-            }
-
-            const item = job.queue.shift();
-            const state = item.state;
-
-            if (state.time - job.originTime > job.horizonSeconds) {
-                continue;
-            }
-
-            if (state.terminal) {
-                continue;
-            }
-
-            const readyGhostIndices = getReadySearchGhostIndices(state);
-
-            if (readyGhostIndices.length === 0 && !state.readyPlayer) {
-                continue;
-            }
-
-            if (state.firstActor === "ghosts") {
-                stepGhostDecision(job, state, item);
-            } else if (state.firstActor === "player") {
-                stepPlayerDecision(job, state, item);
-            }
+            advanceSearch(job.planEndTime);
         }
 
         return job;

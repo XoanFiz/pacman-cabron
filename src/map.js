@@ -633,6 +633,7 @@ function createGameMap(parameters = {}) {
         const calibration = definition?.calibration;
 
         return isCalibrationVersionCurrent(calibration) &&
+            calibration.status !== "error" &&
             Boolean(calibration.samples) &&
             Object.keys(calibration.samples).length > 0;
     }
@@ -641,6 +642,7 @@ function createGameMap(parameters = {}) {
         const calibration = definition?.calibration;
 
         return isCalibrationVersionCurrent(calibration) &&
+            calibration.status !== "error" &&
             Number(calibration.sampleCount) > 0 &&
             Object.keys(calibration.f || {}).length > 0;
     }
@@ -650,7 +652,8 @@ function createGameMap(parameters = {}) {
 
         if (
             !isCalibrationVersionCurrent(calibration) ||
-            calibration.status === "completed"
+            calibration.status === "completed" ||
+            calibration.status === "error"
         ) {
             return { samples: {} };
         }
@@ -802,7 +805,10 @@ function createGameMap(parameters = {}) {
             : getCalibrationResume(definition);
         const resumeCount = Object.values(resume.samples)
             .reduce((sum, errors) => sum + errors.length, 0);
-        const assumedCalibration = !fresh && definition.calibration?.f
+        const assumedCalibration = !fresh &&
+            isCalibrationVersionCurrent(definition.calibration) &&
+            definition.calibration?.status !== "error" &&
+            definition.calibration?.f
             ? {
                 f: { ...definition.calibration.f },
                 g: { ...(definition.calibration.g || {}) }
@@ -995,9 +1001,12 @@ function createGameMap(parameters = {}) {
     }
 
     // Returns the calibration used as a playable fallback: a completed one
-    // if any exists, otherwise the most advanced partial calibration.
-    function findReferenceCalibration() {
-        const definitions = getAllDefinitions();
+    // if any exists, otherwise a calibration that already has tables. The
+    // definition being calibrated is never its own reference.
+    function findReferenceCalibration(definition = null) {
+        const definitions = getAllDefinitions().filter(other =>
+            !definition || other.id !== definition.id
+        );
         const completed = definitions.find(isCalibrationCompleted);
 
         if (completed) {
@@ -1010,7 +1019,12 @@ function createGameMap(parameters = {}) {
             const calibration = definition.calibration;
             const sampleCount = Number(calibration?.sampleCount) || 0;
 
-            if (sampleCount <= 0 || !isCalibrationVersionCurrent(calibration)) {
+            if (
+                sampleCount <= 0 ||
+                !isCalibrationVersionCurrent(calibration) ||
+                calibration.status === "error" ||
+                Object.keys(calibration.f || {}).length === 0
+            ) {
                 continue;
             }
 
@@ -1070,7 +1084,7 @@ function createGameMap(parameters = {}) {
                     return calibrateMap(definition);
                 }
 
-                const reference = findReferenceCalibration();
+                const reference = findReferenceCalibration(definition);
 
                 if (reference) {
                     inheritCalibration(definition, reference);

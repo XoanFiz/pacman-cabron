@@ -16,6 +16,7 @@ function createRandomizedBestFirstMinimax({
     onNodeVisit = null,
     onWalkLimit = null,
     getDistribution = null,
+    trackNodes = true,
     maxExtendDepth = 4096
 }) {
     if (typeof getNodeType !== "function") {
@@ -129,7 +130,10 @@ function createRandomizedBestFirstMinimax({
     }
 
     const search = {
-        root: null
+        root: null,
+        // Every node created by this search, by creation number. The
+        // calibration refreshes the distributions of all of them.
+        nodes: new Map()
     };
 
     let createdNodeCount = 0;
@@ -170,7 +174,7 @@ function createRandomizedBestFirstMinimax({
 
         createdNodeCount++;
 
-        return {
+        const node = {
             state,
             type,
             value: initialValue,
@@ -183,6 +187,12 @@ function createRandomizedBestFirstMinimax({
 
             searchCount: 0
         };
+
+        if (trackNodes) {
+            search.nodes.set(createdNodeCount, node);
+        }
+
+        return node;
     }
 
     function recordSearchVisit(node) {
@@ -539,13 +549,17 @@ function createRandomizedBestFirstMinimax({
             let nextMode;
 
             if (currentMode === null) {
-                // Inside the plan: no alternation yet. The first child that
-                // takes the walk past the plan starts the alternation. If it
-                // is the best child the walk keeps balancing with "worsen";
-                // otherwise it improves from there.
-                nextMode = time + edge.duration > planEndTime + TIME_EPSILON
-                    ? (edge === getBestChild(current) ? "worsen" : "improve")
-                    : null;
+                // Inside the plan the walk keeps picking children at random
+                // until it either takes a decision that is not the best one
+                // or leaves the plan. Leaving through the best child starts
+                // "worsen"; any other case starts "improve".
+                const best = edge === getBestChild(current);
+                const leavesPlan = time + edge.duration >
+                    planEndTime + TIME_EPSILON;
+
+                nextMode = best
+                    ? (leavesPlan ? "worsen" : null)
+                    : "improve";
             } else {
                 const sameType = edge.child.type === current.type;
 
