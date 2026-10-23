@@ -1,4 +1,6 @@
 TODO
+Strategy multi-thread (in progress)
+    Shared tree registry done (src/strategy/tree-registry.js, test in src/tests/strategy/tree-registry.js): node ownership, expansion, values bubbling across owners, the plan view and the root advance that drops the untaken branches. Pending: the searcher worker that walks the registry and asks the owner for the states it does not own, the coordinator that assigns branches and sends the plan view, and wiring both into src/strategy/worker.js.
 Calibration follow-ups
     Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
     Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
@@ -35,7 +37,7 @@ More than one Pac-man
 AGENT NOTES:
 Automated agents, please take the following points into account when working:
 - Do not commit. Leave every change in the working tree, tell the developer what changed and which tests pass, and let them test it and commit. Run git commit only when the developer asks for a commit in that same message.
-- Do not make changes while there are open questions on the table. Ask first and wait for the answer; never guess what the developer wants and implement the guess.
+- Do not make changes while there are open questions or doubts on the table. Ask first and wait for the answer; never guess what the developer wants and implement the guess.
 - Do not waste time checking every possible language. Test only English and one else and ensure that all languages have the same structure. To test this use automatic tools and include them in this project for the developers to use. Include them in the develop directory.
 - After doing changes check if the request is here and ask to delete it and include it in the commit and the commit message.
 - After doing any changes check if this file was changed by the human developer and include the change in the commit message.

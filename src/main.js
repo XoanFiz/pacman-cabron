@@ -110,10 +110,15 @@
                     readyPlayer
                 });
             },
-            getPlanAction(mode) {
+            getPlanAction(mode, key) {
                 const node = currentNode();
 
-                if (!node || node.actor !== mode || !node.action) {
+                if (
+                    !node ||
+                    node.actor !== mode ||
+                    !node.action ||
+                    (key !== undefined && node.key !== key)
+                ) {
                     metrics.misses++;
 
                     return null;

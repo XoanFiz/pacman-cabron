@@ -2282,6 +2282,22 @@ function createGameStrategy(parameters = {}) {
         };
     }
 
+    // The main thread compares the key of the state it reached with the key
+    // of the plan node it is following. A node state never changes, so its
+    // key is computed once.
+    const planStateKeys = new WeakMap();
+
+    function getPlanStateKey(treeChild) {
+        let key = planStateKeys.get(treeChild);
+
+        if (key === undefined) {
+            key = buildStateKey(treeChild.state);
+            planStateKeys.set(treeChild, key);
+        }
+
+        return key;
+    }
+
     // The plan that goes to the main thread is a view of the exploration
     // tree: up to the transmitted horizon, only the best child for the
     // computer-controlled agents, every direction for the player agent.
@@ -2321,7 +2337,8 @@ function createGameStrategy(parameters = {}) {
                 action: null,
                 choices: null,
                 child: null,
-                time: treeChild.state.time
+                time: treeChild.state.time,
+                key: getPlanStateKey(treeChild)
             });
             pending.push(id);
 
@@ -2474,7 +2491,15 @@ function createGameStrategy(parameters = {}) {
         searchSteps = 0,
         planEndTime = null
     ) {
-        const planned = worker?.getPlanAction?.("ghost");
+        const state = createCurrentGameSearchState(
+            searchContext,
+            readyGhostIndices,
+            readyPlayer
+        );
+        const planned = worker?.getPlanAction?.(
+            "ghost",
+            buildStateKey(state)
+        );
 
         if (planned?.ghostDirections) {
             return new Map(planned.ghostDirections.map(([index, direction]) => [
@@ -2482,12 +2507,6 @@ function createGameStrategy(parameters = {}) {
                 { ...direction }
             ]));
         }
-
-        const state = createCurrentGameSearchState(
-            searchContext,
-            readyGhostIndices,
-            readyPlayer
-        );
 
         // The worker owns the search: never run it on the main thread.
         if (worker) {
@@ -2529,17 +2548,19 @@ function createGameStrategy(parameters = {}) {
         searchSteps = 0,
         planEndTime = null
     ) {
-        const planned = worker?.getPlanAction?.("player");
-
-        if (planned?.playerDirection) {
-            return { ...planned.playerDirection };
-        }
-
         const state = createCurrentGameSearchState(
             searchContext,
             readyGhostIndices,
             true
         );
+        const planned = worker?.getPlanAction?.(
+            "player",
+            buildStateKey(state)
+        );
+
+        if (planned?.playerDirection) {
+            return { ...planned.playerDirection };
+        }
 
         if (worker) {
             return getCheapPlayerDirection(state);

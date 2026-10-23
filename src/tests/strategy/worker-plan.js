@@ -151,6 +151,13 @@ setTimeout(() => {
         process.exit(1);
     }
 
+    if (nodes.some(node =>
+        typeof node.key !== "string" || node.key.length === 0
+    )) {
+        console.error("transmitted plan node without state key");
+        process.exit(1);
+    }
+
     for (const node of nodes) {
         if (node.child !== null && !planMessage.plan[node.child]) {
             console.error("dangling child", node.id, node.child);
