@@ -110,11 +110,15 @@
 
             if (message.revision === revision) {
                 // The first message of a new anchor may still be empty;
-                // keep the previous plan until the new root exists.
+                // keep the previous plan until the new root exists. A
+                // complete message will not be followed by another one.
                 if (!incoming[0]) {
-                    logProblem("waiting-new-plan", {
-                        revision: message.revision
-                    });
+                    if (!message.complete) {
+                        logProblem("waiting-new-plan", {
+                            revision: message.revision
+                        });
+                    }
+
                     return;
                 }
 
@@ -277,8 +281,13 @@
                             time: Number(node.time.toFixed(3))
                         } : null
                     });
-                    invalidatePlan();
 
+                    // The plan is a view of the tree and the view may be
+                    // truncated: a miss on the human node does not mean the
+                    // rest of the plan is useless. Keep it, the next lookup
+                    // seeks by state key and the next anchor replaces it.
+                    // Discarding it here emptied the buffer for the whole
+                    // decision and the AI played the cheap fallback.
                     return;
                 }
 
@@ -293,7 +302,6 @@
                         direction,
                         time: Number(node.time.toFixed(3))
                     });
-                    invalidatePlan();
 
                     return;
                 }

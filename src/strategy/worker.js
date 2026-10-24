@@ -126,6 +126,9 @@ function startJob(anchor) {
         job.deepening = false;
         job.postedAt = 0;
         job.startedAt = Date.now();
+        // A terminal origin has no plan to transmit: say it once and stop
+        // instead of posting an empty plan on every slice.
+        job.complete = job.root === null;
         currentJob = job;
 
         postPlan(job, job.complete, true);
