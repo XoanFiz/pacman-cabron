@@ -40,7 +40,8 @@ const options = {
     pellets: 0,
     weights: null,
     jobs: 1,
-    json: false
+    json: false,
+    out: null
 };
 
 for (let index = 2; index < process.argv.length; index++) {
@@ -63,6 +64,8 @@ for (let index = 2; index < process.argv.length; index++) {
     } else if (argument.startsWith("--weights")) {
         const file = path.resolve(process.argv[++index]);
         options.weights = JSON.parse(fs.readFileSync(file, "utf8"));
+    } else if (argument.startsWith("--out")) {
+        options.out = process.argv[++index];
     } else {
         console.error("unknown option " + argument);
         process.exit(1);
@@ -446,6 +449,14 @@ function summarize(games) {
 }
 
 function report(result) {
+    if (options.out) {
+        fs.writeFileSync(
+            path.resolve(options.out),
+            JSON.stringify(result),
+            "utf8"
+        );
+    }
+
     if (options.json) {
         console.log(JSON.stringify(result));
 
