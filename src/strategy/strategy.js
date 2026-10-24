@@ -1248,6 +1248,11 @@ function createGameStrategy(parameters = {}) {
     //           ghost, weighted by how soon he reaches them.
     // danger    closeness of the nearest ghost that is not frightened.
     // prey      closeness of the nearest frightened ghost.
+    // pellet    distance to the nearest remaining pellet, normalised by the
+    //           map size. It only applies when few pellets are left
+    //           (SEARCH_VALUE_PELLET_PHASE): during the level the control
+    //           share already pulls him and the extra gradient only makes
+    //           him myopic.
     //
     // Every term is a fraction in [0, 1], so the value keeps the same scale
     // over the whole level and the weights are the only trade-off. The old
@@ -1261,6 +1266,8 @@ function createGameStrategy(parameters = {}) {
             SEARCH_VALUE_DANGER,
             SEARCH_VALUE_PROGRESS,
             SEARCH_VALUE_PREY,
+            SEARCH_VALUE_PELLET,
+            SEARCH_VALUE_PELLET_PHASE,
             SEARCH_VALUE_DANGER_RADIUS
         } = config.strategy;
         const powerWeight = config.strategy.POWER_PELLET_WEIGHT;
@@ -1380,11 +1387,74 @@ function createGameStrategy(parameters = {}) {
             }
         }
 
+        let pelletDistance = 0;
+
+        if (
+            SEARCH_VALUE_PELLET > 0 &&
+            remaining > 0 &&
+            (!(SEARCH_VALUE_PELLET_PHASE > 0) ||
+                remaining <= SEARCH_VALUE_PELLET_PHASE * initial)
+        ) {
+            const nearest = getNearestPelletDistance(state);
+
+            pelletDistance = nearest === Infinity
+                ? 0
+                : Math.min(1, nearest / (rowCount + columnCount));
+        }
+
         return SEARCH_VALUE_LIVES * (1 - state.lives / INITIAL_LIVES) +
             SEARCH_VALUE_CONTROL * (1 - control) +
-            SEARCH_VALUE_DANGER * danger -
+            SEARCH_VALUE_DANGER * danger +
+            SEARCH_VALUE_PELLET * pelletDistance -
             SEARCH_VALUE_PROGRESS * progress -
             SEARCH_VALUE_PREY * prey;
+    }
+
+    // Maze distance from Pac-Man to the nearest remaining pellet. It is the
+    // local gradient the control share cannot give: when the remaining
+    // pellets are far away the share is almost flat and the search
+    // oscillates in a cleared area.
+    function getNearestPelletDistance(state) {
+        const rowCount = getMapRowCountForMap();
+        const columnCount = getMapColumnCountForMap();
+        const directions = Object.values(DIRECTIONS);
+        const seen = new Set([state.player.y * columnCount + state.player.x]);
+        let frontier = [{ x: state.player.x, y: state.player.y }];
+        let distance = 0;
+
+        while (frontier.length > 0) {
+            const next = [];
+
+            distance++;
+
+            for (const cell of frontier) {
+                for (const direction of directions) {
+                    if (!canMoveForMap(cell.x, cell.y, direction)) {
+                        continue;
+                    }
+
+                    const x = wrap(cell.x + direction.x, columnCount);
+                    const y = wrap(cell.y + direction.y, rowCount);
+                    const cellKey = y * columnCount + x;
+
+                    if (seen.has(cellKey)) {
+                        continue;
+                    }
+
+                    seen.add(cellKey);
+
+                    if (state.pellets.has(`${x},${y}`)) {
+                        return distance;
+                    }
+
+                    next.push({ x, y });
+                }
+            }
+
+            frontier = next;
+        }
+
+        return Infinity;
     }
 
     // Evaluates a hypothetical state with the strategic heuristic.

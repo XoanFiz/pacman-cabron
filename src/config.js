@@ -45,6 +45,13 @@ function createStrategyConfig() {
         SEARCH_VALUE_DANGER: 0.15,
         SEARCH_VALUE_PROGRESS: 1,
         SEARCH_VALUE_PREY: 0.15,
+        // Attraction to the nearest pellet, only while this fraction of the
+        // level or less is left: with few pellets the control share is flat
+        // and Pac-Man oscillates in the cleared area. 0.2 with a phase of
+        // 0.35 clears 0.67 of the level in 180 s against 0.65 without it,
+        // with the same deaths, and gives the first cleared levels.
+        SEARCH_VALUE_PELLET: 0.2,
+        SEARCH_VALUE_PELLET_PHASE: 0.35,
         // How many cells away a ghost stops counting as danger or prey.
         SEARCH_VALUE_DANGER_RADIUS: 4,
         // Power pellets are worth more than normal pellets in the pellet
