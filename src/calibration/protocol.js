@@ -67,7 +67,9 @@ const CALIBRATION_FINISH_REASON = Object.freeze({
 // automatically at startup or map selection.
 // Version 5: the exploration tree is kept across decisions and the walk
 // stops the random phase on the first non-optimal child.
-const CALIBRATION_VERSION = 5;
+// Version 6: the strategic value is a weighted sum of normalised terms, so
+// its scale changed from ~1e-4 to ~0.3.
+const CALIBRATION_VERSION = 6;
 
 // Used by the main thread to build the request and by the worker as the
 // fallback when a field is missing.

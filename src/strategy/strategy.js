@@ -1234,77 +1234,157 @@ function createGameStrategy(parameters = {}) {
         };
     }
 
-    // Strategic heuristic:
-    //   ((1 + Dg * Pg * Wg) / (1 + Dp * Pp * Wp)
-    //       - k * (1 + totalPellets * totalLives)
-    //           / (1 + remainingPellets * remainingLives))
-    //   / remainingPellets
-    // D/P/W are the normal cells, pellets and power pellets inside each
-    // side's domain. Ghosts maximize it and Pac-Man minimizes it.
+    // Strategic value of a state: the ghosts maximise it and Pac-Man
+    // minimises it.
+    //
+    //   V = LIVES    * (1 - lives / initialLives)
+    //     + CONTROL  * (1 - control)
+    //     + DANGER   * danger
+    //     - PROGRESS * progress
+    //     - PREY     * prey
+    //
+    // progress  pellets already eaten over the initial pellets.
+    // control   share of the remaining pellets Pac-Man reaches before any
+    //           ghost, weighted by how soon he reaches them.
+    // danger    closeness of the nearest ghost that is not frightened.
+    // prey      closeness of the nearest frightened ghost.
+    //
+    // Every term is a fraction in [0, 1], so the value keeps the same scale
+    // over the whole level and the weights are the only trade-off. The old
+    // formula divided by the remaining pellets (the scale drifted from 1e-4
+    // to 1e-2 over a level) and took a ratio between the two domains, which
+    // rewarded Pac-Man for collapsing the ghosts' product next to them.
     function evaluateHeuristic(state, domain) {
-        let ghostsNormal = 0;
-        let ghostsPellets = 0;
-        let ghostsPower = 0;
-        let pacmanNormal = 0;
-        let pacmanPellets = 0;
-        let pacmanPower = 0;
+        const {
+            SEARCH_VALUE_LIVES,
+            SEARCH_VALUE_CONTROL,
+            SEARCH_VALUE_DANGER,
+            SEARCH_VALUE_PROGRESS,
+            SEARCH_VALUE_PREY,
+            SEARCH_VALUE_DANGER_RADIUS
+        } = config.strategy;
+        const powerWeight = config.strategy.POWER_PELLET_WEIGHT;
+        const radius = SEARCH_VALUE_DANGER_RADIUS;
+        const rowCount = getMapRowCountForMap();
+        const columnCount = getMapColumnCountForMap();
+        const directions = Object.values(DIRECTIONS);
+        let remaining = 0;
+        let secured = 0;
 
-        for (let y = 0; y < getMapRowCountForMap(); y++) {
-            for (let x = 0; x < getMapColumnCountForMap(); x++) {
+        for (let y = 0; y < rowCount; y++) {
+            for (let x = 0; x < columnCount; x++) {
                 const tile = map.tiles[y][x];
 
-                if (tile === "#") {
+                if (tile !== "." && tile !== "o") {
                     continue;
                 }
 
-                const owner = domain[y][x].owner;
-
-                if (!owner) {
+                if (!state.pellets.has(`${x},${y}`)) {
                     continue;
                 }
 
-                const isPacman = owner === "pacman";
-                const isGhost = owner.startsWith("ghost");
+                const weight = tile === "o" ? powerWeight : 1;
 
-                if (!isPacman && !isGhost) {
-                    continue;
-                }
+                remaining += weight;
 
-                const hasPellet =
-                    (tile === "." || tile === "o") &&
-                    state.pellets.has(`${x},${y}`);
+                if (domain[y][x].owner === "pacman") {
+                    const wait = Math.max(
+                        0,
+                        domain[y][x].arrival - state.time
+                    );
 
-                if (hasPellet && tile === "o") {
-                    if (isPacman) pacmanPower++;
-                    else ghostsPower++;
-                } else if (hasPellet) {
-                    if (isPacman) pacmanPellets++;
-                    else ghostsPellets++;
-                } else if (isPacman) {
-                    pacmanNormal++;
-                } else {
-                    ghostsNormal++;
+                    secured += weight / (1 + wait);
                 }
             }
         }
 
-        const remainingPellets = state.pellets.size;
-        const remainingLives = state.lives;
-        const totalPellets =
-            initialNormalPelletCount + initialPowerPelletCount;
-        const ghostProduct = ghostsNormal * ghostsPellets * ghostsPower;
-        const pacmanProduct = pacmanNormal * pacmanPellets * pacmanPower;
-        // Remaining and total lives are inverted: losing lives must help
-        // the ghosts, while eating pellets must help Pac-Man.
-        const progress =
-            (1 + totalPellets * remainingLives) /
-            (1 + remainingPellets * INITIAL_LIVES);
+        const initial = initialNormalPelletCount +
+            powerWeight * initialPowerPelletCount;
+        const progress = initial > 0 ? 1 - remaining / initial : 1;
+        const control = remaining > 0 ? secured / remaining : 1;
 
-        return (
-            (1 + ghostProduct) /
-            (1 + pacmanProduct) -
-            config.strategy.SEARCH_HEURISTIC_K * progress
-        ) / Math.max(1, remainingPellets);
+        // Short range distances: the danger and the prey are about the
+        // ghosts that are close enough to matter, not about territory.
+        const ghostCells = new Map();
+        const distances = new Map();
+
+        for (let index = 0; index < state.ghosts.length; index++) {
+            const ghost = state.ghosts[index];
+
+            if (ghost.eaten) {
+                continue;
+            }
+
+            if (ghost.x === state.player.x && ghost.y === state.player.y) {
+                distances.set(index, 0);
+                continue;
+            }
+
+            ghostCells.set(ghost.y * columnCount + ghost.x, index);
+        }
+
+        if (ghostCells.size > 0) {
+            const seen = new Set([
+                state.player.y * columnCount + state.player.x
+            ]);
+            let frontier = [{ x: state.player.x, y: state.player.y }];
+            let reached = 0;
+
+            for (
+                let distance = 1;
+                distance <= radius && frontier.length > 0 &&
+                    reached < ghostCells.size;
+                distance++
+            ) {
+                const next = [];
+
+                for (const cell of frontier) {
+                    for (const direction of directions) {
+                        if (!canMoveForMap(cell.x, cell.y, direction)) {
+                            continue;
+                        }
+
+                        const x = wrap(cell.x + direction.x, columnCount);
+                        const y = wrap(cell.y + direction.y, rowCount);
+                        const cellKey = y * columnCount + x;
+
+                        if (seen.has(cellKey)) {
+                            continue;
+                        }
+
+                        seen.add(cellKey);
+
+                        if (ghostCells.has(cellKey)) {
+                            distances.set(ghostCells.get(cellKey), distance);
+                            reached++;
+                        }
+
+                        next.push({ x, y });
+                    }
+                }
+
+                frontier = next;
+            }
+        }
+
+        let danger = 0;
+        let prey = 0;
+
+        for (const [index, distance] of distances) {
+            const closeness = Math.max(0, 1 - distance / radius);
+
+            if (state.ghosts[index].frightened) {
+                prey = Math.max(prey, closeness);
+            } else {
+                danger = Math.max(danger, closeness);
+            }
+        }
+
+        return SEARCH_VALUE_LIVES * (1 - state.lives / INITIAL_LIVES) +
+            SEARCH_VALUE_CONTROL * (1 - control) +
+            SEARCH_VALUE_DANGER * danger -
+            SEARCH_VALUE_PROGRESS * progress -
+            SEARCH_VALUE_PREY * prey;
     }
 
     // Evaluates a hypothetical state with the strategic heuristic.

@@ -34,8 +34,19 @@ function createStrategyConfig() {
         // pellets still on the board. Eating must outweigh keeping a pellet
         // inside his own domain.
         PELLET_PROGRESS_WEIGHT: 2,
-        // Weight of the progress term in the strategic heuristic.
-        SEARCH_HEURISTIC_K: 0.1,
+        // Strategic value weights. Every term of the heuristic is a
+        // fraction in [0, 1], so these are the only trade-off: a lost life
+        // costs SEARCH_VALUE_LIVES / initialLives and the whole level
+        // costs SEARCH_VALUE_PROGRESS. The seeded benchmark
+        // (src/tests/strategy/bench.js) chose the progress weight: with 0.3
+        // Pac-Man cleared 51% of the level and with 1 it clears 59%.
+        SEARCH_VALUE_LIVES: 0.9,
+        SEARCH_VALUE_CONTROL: 0.25,
+        SEARCH_VALUE_DANGER: 0.15,
+        SEARCH_VALUE_PROGRESS: 1,
+        SEARCH_VALUE_PREY: 0.15,
+        // How many cells away a ghost stops counting as danger or prey.
+        SEARCH_VALUE_DANGER_RADIUS: 4,
         // Power pellets are worth more than normal pellets in the pellet
         // domain of both sides.
         POWER_PELLET_WEIGHT: 5,
