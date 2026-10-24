@@ -37,6 +37,7 @@ const options = {
     walks: 6,
     seed: 12345,
     maxTime: 90,
+    pellets: 0,
     weights: null,
     jobs: 1,
     json: false
@@ -55,6 +56,8 @@ for (let index = 2; index < process.argv.length; index++) {
         options.seed = Number(process.argv[++index]);
     } else if (argument.startsWith("--max-time")) {
         options.maxTime = Number(process.argv[++index]);
+    } else if (argument.startsWith("--pellets")) {
+        options.pellets = Number(process.argv[++index]);
     } else if (argument.startsWith("--jobs")) {
         options.jobs = Math.max(1, Number(process.argv[++index]));
     } else if (argument.startsWith("--weights")) {
@@ -91,6 +94,26 @@ const TILES = [
     "#..................#",
     "####################"
 ].map(row => Array.from(row));
+
+// A sparse map keeps the layout and only the first PELLET_LIMIT normal
+// pellets, so a level is cleared soon enough for the win to be the metric.
+if (PELLET_LIMIT > 0) {
+    let normal = 0;
+
+    for (let y = 0; y < TILES.length; y++) {
+        for (let x = 0; x < TILES[y].length; x++) {
+            if (TILES[y][x] !== ".") {
+                continue;
+            }
+
+            normal++;
+
+            if (normal > PELLET_LIMIT) {
+                TILES[y][x] = " ";
+            }
+        }
+    }
+}
 
 const ROWS = TILES.length;
 const COLUMNS = TILES[0].length;
@@ -317,7 +340,11 @@ function playGame(seed, walks, maxTime, overrides) {
 `;
 
 function createGameContext() {
-    const ctx = vm.createContext({ console, Date });
+    const ctx = vm.createContext({
+        console,
+        Date,
+        PELLET_LIMIT: options.pellets
+    });
 
     for (const file of [
         "config.js",
@@ -380,9 +407,26 @@ function spread(values) {
 }
 
 function summarize(games) {
+    const wonGames = games.filter(game => game.won);
+    const winScore = games.map(game => game.won
+        ? 1 + Math.max(0, options.maxTime - game.time) / options.maxTime
+        : game.cleared);
+
     return {
         games: games.length,
-        wins: games.filter(game => game.won).length,
+        wins: wonGames.length,
+        winRate: Number((wonGames.length / Math.max(1, games.length))
+            .toFixed(3)),
+        // A win is worth more than any partial clear, and among wins the
+        // faster one scores higher.
+        winScore: Number(mean(winScore).toFixed(3)),
+        winScoreSpread: Number(spread(winScore).toFixed(3)),
+        // Mean game time of the games that cleared the level: lower is
+        // better and it does not depend on the time cap.
+        wonAt: wonGames.length > 0
+            ? Number(mean(wonGames.map(game => game.time)).toFixed(1))
+            : null,
+        diedOut: games.filter(game => game.lives <= 0).length,
         deaths: Number(mean(games.map(game => game.deaths)).toFixed(2)),
         deathsMedian: median(games.map(game => game.deaths)),
         cleared: Number(mean(games.map(game => game.cleared)).toFixed(3)),
