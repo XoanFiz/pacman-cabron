@@ -27,6 +27,7 @@ function createGameState(parameters = {}) {
     const editorGhostListElement = document.getElementById("editor-ghost-list");
     const editorPacmanListElement = document.getElementById("editor-pacman-list");
     const ghostCharacterChoicesElement = document.getElementById("ghost-character-choices");
+    const pacmanCharacterChoicesElement = document.getElementById("pacman-character-choices");
     const pressedDirectionKeys = new Set();
 
     const messages = window.PACMAN_TRANSLATIONS;
@@ -38,6 +39,7 @@ function createGameState(parameters = {}) {
 
     const currentGameState = {
         score: 0,
+        lives: INITIAL_LIVES,
         pellets: new Set(),
 
         // Every Pac-Man on the map. `player` is the one the game shows and
@@ -53,21 +55,6 @@ function createGameState(parameters = {}) {
         livesVisibleUntil: 0,
         time: 0
     };
-
-    // The lives everyone reads belong to the Pac-Man the game follows;
-    // every Pac-Man keeps its own counter in `players`.
-    Object.defineProperty(currentGameState, "lives", {
-        get() {
-            return currentGameState.player
-                ? currentGameState.player.lives
-                : INITIAL_LIVES;
-        },
-        set(value) {
-            if (currentGameState.player) {
-                currentGameState.player.lives = value;
-            }
-        }
-    });
 
     // ============================================================
     // DEBUG
@@ -241,6 +228,7 @@ function createGameState(parameters = {}) {
         editorGhostListElement,
         editorPacmanListElement,
         ghostCharacterChoicesElement,
+        pacmanCharacterChoicesElement,
         pressedDirectionKeys,
 
         // Localization.

@@ -633,9 +633,40 @@ function createGameMap(parameters = {}) {
     }
 
     function updateCharacterChoices() {
-        const ghostStarts = getCurrentMapDefinition().ghostStarts;
+        const definition = getCurrentMapDefinition();
+        const ghostStarts = definition.ghostStarts;
+        const playerStarts = getPlayerStarts(definition);
 
+        state.pacmanCharacterChoicesElement.replaceChildren();
         state.ghostCharacterChoicesElement.replaceChildren();
+
+        for (let index = 0; index < playerStarts.length; index++) {
+            const name = getPacmanName(index);
+            const button = document.createElement("button");
+
+            button.className = "character-choice";
+            button.dataset.character = `pacman-${index}`;
+            button.setAttribute("aria-label", name);
+
+            const icon = createPacmanIcon(
+                playerStarts[index].color ||
+                state.BASE_PACMAN_COLORS[index] ||
+                state.BASE_PACMAN_COLORS[0],
+                "character-figure"
+            );
+
+            const label = document.createElement("span");
+            label.textContent = name;
+
+            button.append(icon, label);
+
+            button.addEventListener(
+                "click",
+                () => selectCharacter(button)
+            );
+
+            state.pacmanCharacterChoicesElement.append(button);
+        }
 
         for (let index = 0; index < ghostStarts.length; index++) {
             const name = getGhostName(index, ghostStarts);
@@ -661,6 +692,35 @@ function createGameMap(parameters = {}) {
             );
 
             state.ghostCharacterChoicesElement.append(button);
+        }
+
+        // A map can lose characters while its choice is still remembered.
+        if (state.selectedCharacter.startsWith("pacman-")) {
+            const index = Number(
+                state.selectedCharacter.slice("pacman-".length)
+            );
+
+            if (
+                !Number.isInteger(index) ||
+                index < 0 ||
+                index >= playerStarts.length
+            ) {
+                state.selectedCharacter = "pacman";
+            }
+        }
+
+        if (state.selectedCharacter.startsWith("ghost-")) {
+            const index = Number(
+                state.selectedCharacter.slice("ghost-".length)
+            );
+
+            if (
+                !Number.isInteger(index) ||
+                index < 0 ||
+                index >= ghostStarts.length
+            ) {
+                state.selectedCharacter = "pacman";
+            }
         }
     }
 

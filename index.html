@@ -146,6 +146,7 @@
         gap: 10px;
     }
 
+    #pacman-character-choices,
     #ghost-character-choices {
         display: contents;
     }
@@ -332,13 +333,8 @@
                 <select id="map-select" data-i18n-aria-label="selectMap"></select>
             </label>
             <div class="character-choices">
-                <button class="character-choice" data-character="pacman" data-i18n-aria-label="pacman">
-                    <svg class="character-figure" viewBox="0 0 48 48" aria-hidden="true">
-                        <path d="M24 4a20 20 0 1 0 0 40c11 0 20-9 20-20H24L38 10A20 20 0 0 0 24 4Z" fill="#ffd43b"/>
-                    </svg>
-                    <span data-i18n="pacman">Pac-Man</span>
-                </button>
-                <div id="ghost-character-choices" class="character-choices"></div>
+                <div id="pacman-character-choices"></div>
+                <div id="ghost-character-choices"></div>
             </div>
             <button id="edit-map" data-i18n="editMap">Edit map</button>
         </div>

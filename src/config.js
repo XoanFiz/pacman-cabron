@@ -22,6 +22,9 @@ function createGameRuleConfig() {
         FRIGHTENED_GHOST_SPEED: 1.5,
         EATEN_GHOST_SPEED: 4,
         INITIAL_LIVES: 3,
+        // A Pac-Man that respawns after a death is untouchable for a
+        // while, so a ghost standing on its start cannot chain deaths.
+        RESPAWN_INVINCIBILITY_SECONDS: 2,
         // How long the lives of each Pac-Man stay drawn above it after the
         // game starts and after a life is lost.
         LIVES_DISPLAY_MILLISECONDS: 2200

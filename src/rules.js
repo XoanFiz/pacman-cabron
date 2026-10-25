@@ -11,6 +11,7 @@ function createGameRules(parameters = {}) {
     const {
         INITIAL_LIVES,
         LIVES_DISPLAY_MILLISECONDS,
+        RESPAWN_INVINCIBILITY_SECONDS,
         PACMAN_SPEED,
         GHOST_SPEED,
         FRIGHTENED_DURATION,
@@ -30,6 +31,14 @@ function createGameRules(parameters = {}) {
     } = model;
 
     const gameState = () => state.currentGameState;
+
+    // `lives` is the counter the HUD and the search read; it belongs to
+    // the Pac-Man the game follows, while every Pac-Man keeps its own.
+    function syncFollowedLives() {
+        const gs = gameState();
+
+        gs.lives = gs.player ? gs.player.lives : INITIAL_LIVES;
+    }
 
     // Wall clock in milliseconds. The rules run in a bare context in the
     // tests, where `performance` does not exist, so Date.now() is enough.
@@ -95,6 +104,7 @@ function createGameRules(parameters = {}) {
         });
 
         gs.player = gs.players[getControlledPlayerIndex()] || gs.players[0];
+        syncFollowedLives();
         gs.livesVisibleUntil =
             nowMilliseconds() + LIVES_DISPLAY_MILLISECONDS;
 
@@ -173,9 +183,8 @@ function createGameRules(parameters = {}) {
     // PELLETS
     // ============================================================
 
-    function eatPellet() {
+    function eatPelletAt(player) {
         const gs = gameState();
-        const player = gs.player;
         const x = player.x;
         const y = player.y;
 
@@ -533,6 +542,11 @@ function createGameRules(parameters = {}) {
         return collisionTime >= 0 ? collisionTime : Infinity;
     }
 
+    function isPlayerInvincible(player) {
+        return Number.isFinite(player.invincibleUntil) &&
+            player.invincibleUntil > gameState().time;
+    }
+
     function getTimeToNextEvent(gs) {
         let timeToNextEvent = Infinity;
         let collisionedGhostIndex = -1;
@@ -591,6 +605,10 @@ function createGameRules(parameters = {}) {
                 considerEvent(ghost.frightenedTimer);
             }
 
+            if (isPlayerInvincible(gs.player)) {
+                continue;
+            }
+
             const collisionTime = getCollisionTime(
                 gs.player,
                 ghost,
@@ -619,25 +637,303 @@ function createGameRules(parameters = {}) {
         ui.updateUI();
     }
 
-    function loseLife() {
+    function anyPlayerAlive() {
+        return gameState().players.some(player => player.lives > 0);
+    }
+
+    function getDeathMode() {
+        const definition = map.getCurrentMapDefinition();
+
+        return definition.deathMode === "respawn" ? "respawn" : "restart";
+    }
+
+    // A dead Pac-Man that still had lives is put back on its start cell.
+    function respawnPlayer(player) {
+        const gs = gameState();
+        const definition = map.getCurrentMapDefinition();
+        const playerStarts = definition.playerStarts ||
+            [definition.playerStart];
+        const start = playerStarts[gs.players.indexOf(player)] ||
+            playerStarts[0];
+
+        player.x = start.x;
+        player.y = start.y;
+        player.px = start.x;
+        player.py = start.y;
+        player.progress = 0;
+        player.direction = { x: 0, y: 0 };
+        player.nextDirection = { x: 0, y: 0 };
+        player.ready = true;
+        player.stopped = false;
+        player.stopTimer = 0;
+        player.invincibleUntil = gs.time + RESPAWN_INVINCIBILITY_SECONDS;
+    }
+
+    // When the Pac-Man the search follows runs out of lives there is still
+    // a game to play, so the control passes to the next one that is alive.
+    function transferControl() {
+        const gs = gameState();
+
+        if (gs.player && gs.player.lives > 0) {
+            return;
+        }
+
+        const index = gs.players.findIndex(player => player.lives > 0);
+
+        if (index < 0) {
+            return;
+        }
+
+        gs.player = gs.players[index];
+
+        if (state.selectedCharacter.startsWith("pacman")) {
+            state.selectedCharacter = index === 0
+                ? "pacman"
+                : `pacman-${index}`;
+        }
+
+        syncFollowedLives();
+    }
+
+    function loseLife(playerIndex) {
         const gs = gameState();
 
         if (gs.deathTimer > 0) return;
 
-        gs.lives--;
-        gs.running = false;
-        gs.deathTimer = 1.0;
+        const player = gs.players[playerIndex] || gs.player;
+
+        if (!player || player.lives <= 0) {
+            return;
+        }
+
+        player.lives--;
         gs.livesVisibleUntil =
             nowMilliseconds() + LIVES_DISPLAY_MILLISECONDS;
+
+        if (player.lives <= 0) {
+            transferControl();
+        }
+
+        syncFollowedLives();
+
+        if (!anyPlayerAlive()) {
+            gs.running = false;
+            gs.deathTimer = 0;
+            state.setStatus("gameOver");
+            ui.updateUI();
+            return;
+        }
+
+        if (getDeathMode() === "respawn") {
+            // The other Pac-Mans keep playing: only the one that was
+            // caught pays, and it comes back untouchable for a moment.
+            respawnPlayer(gs.players[playerIndex] || player);
+            state.setStatus("lifeLost");
+            ui.updateUI();
+            return;
+        }
+
+        gs.running = false;
+        gs.deathTimer = 1.0;
 
         // The ghosts keep their frightened/eaten state during the death
         // pause; resetPositions restores them when the round restarts.
 
-        state.setStatus(
-            gs.lives > 0 ? "lifeLost" : "gameOver"
-        );
-
+        state.setStatus("lifeLost");
         ui.updateUI();
+    }
+
+    // ============================================================
+    // COMPANION PAC-MANS
+    // ============================================================
+    //
+    // Only one Pac-Man is modelled by the search; the others move on
+    // their own, outside the event queue, so the events of the search
+    // actors stay exactly where it predicts them. They follow the
+    // shortest path to the nearest pellet, eat, and can be caught.
+
+    function getCompanionTargetDistances(player) {
+        const gs = gameState();
+        const currentMap = map.currentMap;
+        const key = (x, y) => `${x},${y}`;
+        const distances = new Map([[key(player.x, player.y), 0]]);
+        const queue = [{ x: player.x, y: player.y }];
+
+        for (let index = 0; index < queue.length; index++) {
+            const cell = queue[index];
+
+            if (gs.pellets.has(key(cell.x, cell.y))) {
+                break;
+            }
+
+            const distance = distances.get(key(cell.x, cell.y));
+
+            for (const next of map.graph[cell.y][cell.x]) {
+                const nextKey = key(next.x, next.y);
+
+                if (!distances.has(nextKey)) {
+                    distances.set(nextKey, distance + 1);
+                    queue.push(next);
+                }
+            }
+        }
+
+        return distances;
+    }
+
+    function chooseCompanionDirection(player) {
+        const directions = map.getPossibleDirections(player);
+
+        if (directions.length === 0) {
+            player.direction = { x: 0, y: 0 };
+            return;
+        }
+
+        const currentMap = map.currentMap;
+        const distances = getCompanionTargetDistances(player);
+        const key = (x, y) => `${x},${y}`;
+
+        // Continuing is preferred, so a companion never dithers between
+        // two directions with the same distance.
+        const ordered = directions.slice().sort((first, second) => {
+            const firstCurrent =
+                first.x === player.direction.x &&
+                first.y === player.direction.y;
+            const secondCurrent =
+                second.x === player.direction.x &&
+                second.y === player.direction.y;
+
+            return Number(secondCurrent) - Number(firstCurrent);
+        });
+
+        let best = ordered[0];
+        let bestDistance = Infinity;
+
+        for (const direction of ordered) {
+            const next = {
+                x: map.wrap(
+                    player.x + direction.x,
+                    map.getMapColumnCount(currentMap)
+                ),
+                y: map.wrap(
+                    player.y + direction.y,
+                    map.getMapRowCount(currentMap)
+                )
+            };
+            const distance = distances.get(key(next.x, next.y));
+
+            if (distance !== undefined && distance < bestDistance) {
+                bestDistance = distance;
+                best = direction;
+            }
+        }
+
+        player.direction = { ...best };
+        player.facingDirection = { ...best };
+    }
+
+    function updateCompanionPixels(player) {
+        player.px = player.x + player.direction.x * player.progress;
+        player.py = player.y + player.direction.y * player.progress;
+    }
+
+    function moveCompanion(player, elapsedTime) {
+        const gs = gameState();
+        const currentMap = map.currentMap;
+        let remaining = elapsedTime;
+
+        if (player.direction.x === 0 && player.direction.y === 0) {
+            chooseCompanionDirection(player);
+        }
+
+        while (remaining > 0 && gs.running) {
+            const distanceToCell = 1 - player.progress;
+            const step = PACMAN_SPEED * remaining;
+
+            if (step < distanceToCell) {
+                player.progress += step;
+                break;
+            }
+
+            player.progress = 0;
+            remaining -= distanceToCell / PACMAN_SPEED;
+            player.x = map.wrap(
+                player.x + player.direction.x,
+                map.getMapColumnCount(currentMap)
+            );
+            player.y = map.wrap(
+                player.y + player.direction.y,
+                map.getMapRowCount(currentMap)
+            );
+
+            eatPelletAt(player);
+
+            if (!gs.running) {
+                break;
+            }
+
+            chooseCompanionDirection(player);
+        }
+
+        updateCompanionPixels(player);
+    }
+
+    function updateCompanions(elapsedTime) {
+        const gs = gameState();
+        const controlledIndex = gs.players.indexOf(gs.player);
+
+        gs.players.forEach((player, index) => {
+            if (index === controlledIndex || player.lives <= 0) {
+                return;
+            }
+
+            moveCompanion(player, elapsedTime);
+        });
+
+        checkCompanionCollisions();
+    }
+
+    function checkCompanionCollisions() {
+        const gs = gameState();
+
+        for (const ghost of gs.ghosts) {
+            if (ghost.eaten) {
+                continue;
+            }
+
+            for (const player of gs.players) {
+                if (
+                    player === gs.player ||
+                    player.lives <= 0 ||
+                    isPlayerInvincible(player)
+                ) {
+                    continue;
+                }
+
+                const offsetX = ghost.px - player.px;
+                const offsetY = ghost.py - player.py;
+
+                if (
+                    offsetX * offsetX + offsetY * offsetY >
+                    GHOST_COLLISION_DISTANCE ** 2
+                ) {
+                    continue;
+                }
+
+                if (ghost.frightened) {
+                    eatGhost(ghost);
+                    break;
+                }
+
+                loseLife(gs.players.indexOf(player));
+
+                if (!gs.running) {
+                    return;
+                }
+
+                break;
+            }
+        }
     }
 
     // ============================================================
@@ -698,7 +994,7 @@ function createGameRules(parameters = {}) {
     function decidePlayer(readyGhostIndices) {
         const gs = gameState();
         const player = gs.player;
-        const automated = state.selectedCharacter !== "pacman";
+        const automated = !state.selectedCharacter.startsWith("pacman");
         let direction = null;
 
         if (!automated) {
@@ -895,7 +1191,7 @@ function createGameRules(parameters = {}) {
         if (gs.deathTimer > 0) {
             gs.deathTimer -= dt;
 
-            if (gs.deathTimer <= 0 && gs.lives > 0) {
+            if (gs.deathTimer <= 0 && anyPlayerAlive()) {
                 resetPositions();
                 state.setStatus("continue");
             }
@@ -941,7 +1237,7 @@ function createGameRules(parameters = {}) {
             remaining -= elapsed;
 
             if (playerArrived) {
-                eatPellet();
+                eatPelletAt(gs.player);
 
                 if (!gs.running) {
                     break;
@@ -954,10 +1250,14 @@ function createGameRules(parameters = {}) {
                 if (ghost.frightened) {
                     eatGhost(ghost);
                 } else if (!ghost.eaten) {
-                    loseLife();
+                    loseLife(gs.players.indexOf(gs.player));
                     break;
                 }
             }
+        }
+
+        if (gs.running) {
+            updateCompanions(Math.max(0, dt));
         }
 
         updatePositions();
@@ -986,9 +1286,14 @@ function createGameRules(parameters = {}) {
             player.ready = true;
             player.stopped = false;
             player.stopTimer = 0;
+            player.invincibleUntil = 0;
         });
 
-        gs.player = gs.players[getControlledPlayerIndex()] || gs.players[0];
+        const controlled = gs.players[getControlledPlayerIndex()];
+        gs.player = controlled && controlled.lives > 0
+            ? controlled
+            : gs.players.find(player => player.lives > 0) || gs.players[0];
+        syncFollowedLives();
 
         const ghostStarts = mapDefinition.ghostStarts;
 
@@ -1040,7 +1345,7 @@ function createGameRules(parameters = {}) {
             controlled.facingDirection = { ...pressedDirection };
         }
 
-        if (!gs.running && gs.deathTimer <= 0 && gs.lives > 0) {
+        if (!gs.running && gs.deathTimer <= 0 && anyPlayerAlive()) {
             gs.running = true;
 
             state.statusElement.textContent = "";

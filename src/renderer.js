@@ -168,8 +168,25 @@ function createGameRenderer(parameters = {}) {
         const gs = gameState();
 
         for (const player of gs.players || [gs.player]) {
+            if (player.lives <= 0 || isPlayerBlinking(player)) {
+                continue;
+            }
+
             drawPlayer(player);
         }
+    }
+
+    // A Pac-Man that just respawned is untouchable for a moment and
+    // blinks so the player can tell it is not a normal one yet.
+    function isPlayerBlinking(player) {
+        if (
+            !Number.isFinite(player.invincibleUntil) ||
+            player.invincibleUntil <= gameState().time
+        ) {
+            return false;
+        }
+
+        return Math.floor(performance.now() / 120) % 2 === 0;
     }
 
     function drawPlayer(player) {
@@ -222,6 +239,10 @@ function createGameRenderer(parameters = {}) {
         const ctx = state.ctx;
 
         for (const player of gs.players || [gs.player]) {
+            if (player.lives <= 0) {
+                continue;
+            }
+
             const cx = player.px * CELL + CELL / 2;
             const cy = player.py * CELL + CELL / 2;
             const label = String(player.lives);

@@ -109,10 +109,13 @@ comments and commit messages in English.
 - Branch `chatgpt-search-engine-refactor0`. Recent feature commits:
   `44ce825` (the editor removes ghosts), `7d5ee6d` (the plan carries a
   short state key) and `e20018e` (a map carries several Pac-Mans).
-- Multiple Pac-Mans are half in: the map definitions, the editor (add,
-  remove, colours, death mode), the rendering and the per-Pac-Man lives
-  badges work, but the simulation and the search still follow a single
-  Pac-Man, so extra ones do not move yet.
+- Multiple Pac-Mans work end to end: the editor adds and removes them,
+  the start screen lets the human pick one, each one has its own lives,
+  the ones the human does not drive walk to the nearest pellet, eat and
+  can be caught, and the map's death mode decides between resetting the
+  positions and respawning the caught one untouchable. What is still
+  missing is the search modelling every Pac-Man, so the ghosts only plan
+  against the one the game follows.
 - Open threads: navigation and oscillation (no level cleared), the
   `pacman-avoid` playout and the `circuit` escapes above.
 
