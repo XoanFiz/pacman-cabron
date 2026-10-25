@@ -366,7 +366,7 @@ function createGameRules(parameters = {}) {
     function updatePositions() {
         const gs = gameState();
 
-        for (const character of [gs.player, ...gs.ghosts]) {
+        for (const character of [...gs.players, ...gs.ghosts]) {
             character.px =
                 character.x + character.direction.x * character.progress;
             character.py =
@@ -433,27 +433,35 @@ function createGameRules(parameters = {}) {
 
     function advanceCharactersToEvent(elapsedTime) {
         const gs = gameState();
+        const arrivedPlayers = [];
 
         gs.time += elapsedTime;
 
-        const playerArrived = moveCharacterToEvent(
-            gs.player,
-            PACMAN_SPEED,
-            elapsedTime
-        );
-
-        if (playerArrived) {
-            gs.player.ready = true;
-        }
-
-        if (gs.player.stopped && !gs.player.ready) {
-            gs.player.stopTimer -= elapsedTime;
-
-            if (gs.player.stopTimer <= 0) {
-                gs.player.ready = true;
-                gs.player.stopTimer = STOP_DECISION_INTERVAL;
+        gs.players.forEach((player, index) => {
+            if (player.lives <= 0) {
+                return;
             }
-        }
+
+            const arrived = moveCharacterToEvent(
+                player,
+                PACMAN_SPEED,
+                elapsedTime
+            );
+
+            if (arrived) {
+                player.ready = true;
+                arrivedPlayers.push(index);
+            }
+
+            if (player.stopped && !player.ready) {
+                player.stopTimer -= elapsedTime;
+
+                if (player.stopTimer <= 0) {
+                    player.ready = true;
+                    player.stopTimer = STOP_DECISION_INTERVAL;
+                }
+            }
+        });
 
         for (const ghost of gs.ghosts) {
             const arrived = moveCharacterToEvent(
@@ -471,7 +479,7 @@ function createGameRules(parameters = {}) {
             recoverGhostAtHouse(ghost, arrived);
         }
 
-        return playerArrived;
+        return arrivedPlayers;
     }
 
     // Time at which the player and the ghost are close enough to collide,
@@ -550,11 +558,13 @@ function createGameRules(parameters = {}) {
     function getTimeToNextEvent(gs) {
         let timeToNextEvent = Infinity;
         let collisionedGhostIndex = -1;
+        let collisionedPlayerIndex = -1;
 
-        const considerEvent = (time, ghostIndex = -1) => {
+        const considerEvent = (time, ghostIndex = -1, playerIndex = -1) => {
             if (time < timeToNextEvent) {
                 timeToNextEvent = time;
                 collisionedGhostIndex = ghostIndex;
+                collisionedPlayerIndex = playerIndex;
                 return;
             }
 
@@ -564,6 +574,7 @@ function createGameRules(parameters = {}) {
                 collisionedGhostIndex < 0
             ) {
                 collisionedGhostIndex = ghostIndex;
+                collisionedPlayerIndex = playerIndex;
             }
         };
 
@@ -577,25 +588,28 @@ function createGameRules(parameters = {}) {
             );
         };
 
-        if (!gs.player.ready) {
-            considerArrival(gs.player, PACMAN_SPEED);
+        for (const player of gs.players) {
+            if (player.lives <= 0) {
+                continue;
+            }
+
+            if (!player.ready) {
+                considerArrival(player, PACMAN_SPEED);
+            }
+
+            // A stopped Pac-Man only gets a new chance to start at a
+            // discrete interval, independent of how fast the ghosts move.
+            if (
+                player.stopped &&
+                !player.ready &&
+                Number.isFinite(player.stopTimer)
+            ) {
+                considerEvent(Math.max(0, player.stopTimer));
+            }
         }
 
-        // A stopped Pac-Man only gets a new chance to start at a discrete
-        // interval, independent of how fast the ghosts move.
-        if (
-            gs.player.stopped &&
-            !gs.player.ready &&
-            Number.isFinite(gs.player.stopTimer)
-        ) {
-            considerEvent(Math.max(0, gs.player.stopTimer));
-        }
-
-        const playerVelocityX = gs.player.direction.x * PACMAN_SPEED;
-        const playerVelocityY = gs.player.direction.y * PACMAN_SPEED;
-
-        for (let index = 0; index < gs.ghosts.length; index++) {
-            const ghost = gs.ghosts[index];
+        for (let ghostIndex = 0; ghostIndex < gs.ghosts.length; ghostIndex++) {
+            const ghost = gs.ghosts[ghostIndex];
 
             if (!ghost.needsDirection) {
                 considerArrival(ghost, ghost.speed);
@@ -605,25 +619,34 @@ function createGameRules(parameters = {}) {
                 considerEvent(ghost.frightenedTimer);
             }
 
-            if (isPlayerInvincible(gs.player)) {
-                continue;
-            }
+            for (
+                let playerIndex = 0;
+                playerIndex < gs.players.length;
+                playerIndex++
+            ) {
+                const player = gs.players[playerIndex];
 
-            const collisionTime = getCollisionTime(
-                gs.player,
-                ghost,
-                playerVelocityX,
-                playerVelocityY
-            );
+                if (player.lives <= 0 || isPlayerInvincible(player)) {
+                    continue;
+                }
 
-            if (Number.isFinite(collisionTime)) {
-                considerEvent(collisionTime, index);
+                const collisionTime = getCollisionTime(
+                    player,
+                    ghost,
+                    player.direction.x * PACMAN_SPEED,
+                    player.direction.y * PACMAN_SPEED
+                );
+
+                if (Number.isFinite(collisionTime)) {
+                    considerEvent(collisionTime, ghostIndex, playerIndex);
+                }
             }
         }
 
         return {
             timeToNextEvent,
-            collisionedGhostIndex
+            collisionedGhostIndex,
+            collisionedPlayerIndex
         };
     }
 
@@ -832,108 +855,49 @@ function createGameRules(parameters = {}) {
         player.facingDirection = { ...best };
     }
 
-    function updateCompanionPixels(player) {
-        player.px = player.x + player.direction.x * player.progress;
-        player.py = player.y + player.direction.y * player.progress;
-    }
-
-    function moveCompanion(player, elapsedTime) {
+    // Companions decide at their cell centres, inside the same event
+    // queue as every other actor: the search does not branch on them yet,
+    // so they follow the shortest path to the nearest pellet.
+    function decideCompanions() {
         const gs = gameState();
-        const currentMap = map.currentMap;
-        let remaining = elapsedTime;
-
-        if (player.direction.x === 0 && player.direction.y === 0) {
-            chooseCompanionDirection(player);
-        }
-
-        while (remaining > 0 && gs.running) {
-            const distanceToCell = 1 - player.progress;
-            const step = PACMAN_SPEED * remaining;
-
-            if (step < distanceToCell) {
-                player.progress += step;
-                break;
-            }
-
-            player.progress = 0;
-            remaining -= distanceToCell / PACMAN_SPEED;
-            player.x = map.wrap(
-                player.x + player.direction.x,
-                map.getMapColumnCount(currentMap)
-            );
-            player.y = map.wrap(
-                player.y + player.direction.y,
-                map.getMapRowCount(currentMap)
-            );
-
-            eatPelletAt(player);
-
-            if (!gs.running) {
-                break;
-            }
-
-            chooseCompanionDirection(player);
-        }
-
-        updateCompanionPixels(player);
-    }
-
-    function updateCompanions(elapsedTime) {
-        const gs = gameState();
-        const controlledIndex = gs.players.indexOf(gs.player);
+        const followedIndex = gs.players.indexOf(gs.player);
+        let resolved = false;
 
         gs.players.forEach((player, index) => {
-            if (index === controlledIndex || player.lives <= 0) {
+            if (
+                index === followedIndex ||
+                player.lives <= 0 ||
+                !player.ready
+            ) {
                 return;
             }
 
-            moveCompanion(player, elapsedTime);
+            chooseCompanionDirection(player);
+            player.ready = false;
+            player.stopped = false;
+            player.stopTimer = 0;
+            resolved = true;
         });
 
-        checkCompanionCollisions();
+        return resolved;
     }
 
-    function checkCompanionCollisions() {
+    function getReadyCompanionIndices() {
         const gs = gameState();
+        const followedIndex = gs.players.indexOf(gs.player);
+        const indices = [];
 
-        for (const ghost of gs.ghosts) {
-            if (ghost.eaten) {
-                continue;
+        gs.players.forEach((player, index) => {
+            if (
+                index !== followedIndex &&
+                player.lives > 0 &&
+                player.ready
+            ) {
+                indices.push(index);
             }
+        });
 
-            for (const player of gs.players) {
-                if (
-                    player === gs.player ||
-                    player.lives <= 0 ||
-                    isPlayerInvincible(player)
-                ) {
-                    continue;
-                }
-
-                const offsetX = ghost.px - player.px;
-                const offsetY = ghost.py - player.py;
-
-                if (
-                    offsetX * offsetX + offsetY * offsetY >
-                    GHOST_COLLISION_DISTANCE ** 2
-                ) {
-                    continue;
-                }
-
-                if (ghost.frightened) {
-                    eatGhost(ghost);
-                    break;
-                }
-
-                loseLife(gs.players.indexOf(player));
-
-                if (!gs.running) {
-                    return;
-                }
-
-                break;
-            }
-        }
+        return indices;
     }
 
     // ============================================================
@@ -1149,8 +1113,13 @@ function createGameRules(parameters = {}) {
         const gs = gameState();
         const readyGhostIndices = getReadyGhostIndices();
         const playerReady = gs.player.ready === true;
+        const readyCompanionIndices = getReadyCompanionIndices();
 
-        if (!playerReady && readyGhostIndices.length === 0) {
+        if (
+            !playerReady &&
+            readyGhostIndices.length === 0 &&
+            readyCompanionIndices.length === 0
+        ) {
             return false;
         }
 
@@ -1167,8 +1136,12 @@ function createGameRules(parameters = {}) {
         } else if (readyGhostIndices.length > 0) {
             decideGhosts(readyGhostIndices);
             resolved = true;
-        } else {
+        } else if (playerReady) {
             resolved = decidePlayer(readyGhostIndices);
+        }
+
+        if (decideCompanions()) {
+            resolved = true;
         }
 
         updatePositions();
@@ -1216,7 +1189,8 @@ function createGameRules(parameters = {}) {
 
             const {
                 timeToNextEvent,
-                collisionedGhostIndex
+                collisionedGhostIndex,
+                collisionedPlayerIndex
             } = getTimeToNextEvent(gs);
 
             if (!Number.isFinite(timeToNextEvent)) {
@@ -1233,31 +1207,31 @@ function createGameRules(parameters = {}) {
 
             const elapsed = Math.max(0, timeToNextEvent);
 
-            const playerArrived = advanceCharactersToEvent(elapsed);
+            const arrivedPlayers = advanceCharactersToEvent(elapsed);
             remaining -= elapsed;
 
-            if (playerArrived) {
-                eatPelletAt(gs.player);
+            for (const playerIndex of arrivedPlayers) {
+                eatPelletAt(gs.players[playerIndex]);
 
                 if (!gs.running) {
                     break;
                 }
             }
 
-            if (collisionedGhostIndex >= 0) {
+            if (!gs.running) {
+                break;
+            }
+
+            if (collisionedGhostIndex >= 0 && collisionedPlayerIndex >= 0) {
                 const ghost = gs.ghosts[collisionedGhostIndex];
 
                 if (ghost.frightened) {
                     eatGhost(ghost);
                 } else if (!ghost.eaten) {
-                    loseLife(gs.players.indexOf(gs.player));
+                    loseLife(collisionedPlayerIndex);
                     break;
                 }
             }
-        }
-
-        if (gs.running) {
-            updateCompanions(Math.max(0, dt));
         }
 
         updatePositions();

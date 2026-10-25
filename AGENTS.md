@@ -113,9 +113,11 @@ comments and commit messages in English.
   the start screen lets the human pick one, each one has its own lives,
   the ones the human does not drive walk to the nearest pellet, eat and
   can be caught, and the map's death mode decides between resetting the
-  positions and respawning the caught one untouchable. What is still
-  missing is the search modelling every Pac-Man, so the ghosts only plan
-  against the one the game follows.
+  positions and respawning the caught one untouchable. They already move
+  inside the event queue, so their arrivals and deaths share the timing
+  of the other actors, but the search still does not branch on them:
+  their direction is the pellet-chasing policy and the ghosts only plan
+  against the Pac-Man the game follows.
 - Open threads: navigation and oscillation (no level cleared), the
   `pacman-avoid` playout and the `circuit` escapes above.
 
