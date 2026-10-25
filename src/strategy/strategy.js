@@ -1035,12 +1035,20 @@ function createGameStrategy(parameters = {}) {
     ) {
         const readyGhostSet = new Set(readyGhostIndices);
 
+        // Every Pac-Man travels in the state. The followed one is the
+        // first and keeps the `player` alias the rest of the search reads
+        // while the companions only take part in the key.
+        const players = (
+            searchContext.players || [searchContext.player]
+        ).map(cloneSearchCharacter);
+
         const state = {
             pellets: new Set(searchContext.pellets),
             lives: searchContext.lives,
             time: searchContext.time,
 
-            player: cloneSearchCharacter(searchContext.player),
+            players,
+            player: players[0],
             ghosts: searchContext.ghosts.map(cloneSearchCharacter),
 
             respawnState: {
@@ -1116,7 +1124,12 @@ function createGameStrategy(parameters = {}) {
             state.lives,
             state.terminal,
             state.controlledGhostIndex,
-            characterKey(state.player, state.readyPlayer),
+            state.players.map((player, index) =>
+                characterKey(
+                    player,
+                    index === 0 ? state.readyPlayer : false
+                )
+            ),
             state.ghosts.map((ghost, index) =>
                 characterKey(ghost, state.readyGhosts[index])
             ),
