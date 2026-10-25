@@ -39,27 +39,37 @@ function restoreMap(definition) {
     };
 }
 
+function restoreCharacter(character) {
+    return {
+        ...character,
+        direction: { ...character.direction },
+        nextDirection: character.nextDirection
+            ? { ...character.nextDirection }
+            : null
+    };
+}
+
 function restoreState(state) {
+    const players = (state.players || [state.player]).map(restoreCharacter);
+
     return {
         ...state,
         pellets: new Set(state.pellets || []),
         readyGhosts: [...state.readyGhosts],
-        player: {
-            ...state.player,
-            direction: { ...state.player.direction },
-            nextDirection: state.player.nextDirection
-                ? { ...state.player.nextDirection }
-                : null
-        },
-        ghosts: state.ghosts.map(ghost => ({
-            ...ghost,
-            direction: { ...ghost.direction },
-            nextDirection: ghost.nextDirection
-                ? { ...ghost.nextDirection }
-                : null
-        })),
+        readyPlayers: state.readyPlayers
+            ? [...state.readyPlayers]
+            : players.map((_, index) =>
+                index === (state.controlledPlayerIndex || 0) &&
+                Boolean(state.readyPlayer)
+            ),
+        players,
+        player: players[state.controlledPlayerIndex || 0] || players[0],
+        ghosts: state.ghosts.map(restoreCharacter),
         respawnState: {
             player: { ...state.respawnState.player },
+            players: (state.respawnState.players || []).map(start => ({
+                ...start
+            })),
             ghosts: state.respawnState.ghosts.map(ghost => ({
                 ...ghost,
                 direction: { ...ghost.direction }

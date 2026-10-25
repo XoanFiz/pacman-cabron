@@ -201,10 +201,18 @@ function readyGhosts(state) {
     return indices;
 }
 
+function readyPlayers(state) {
+    const indices = [];
+    for (let index = 0; index < state.readyPlayers.length; index++) {
+        if (state.readyPlayers[index]) indices.push(index);
+    }
+    return indices;
+}
+
 function anchorPlan(state) {
     const job = strategy.createPolicyBufferJob(state, {
         readyGhostIndices: readyGhosts(state),
-        readyPlayer: state.readyPlayer,
+        readyPlayerIndices: readyPlayers(state),
         horizonSeconds: 2,
         transmittedHorizonSeconds: 1,
         searchSteps: searchSteps

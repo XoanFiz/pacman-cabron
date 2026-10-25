@@ -111,18 +111,22 @@ comments and commit messages in English.
   short state key) and `e20018e` (a map carries several Pac-Mans).
 - Multiple Pac-Mans work end to end: the editor adds and removes them,
   the start screen lets the human pick one, each one has its own lives,
-  the ones the human does not drive walk to the nearest pellet, eat and
-  can be caught, and the map's death mode decides between resetting the
-  positions and respawning the caught one untouchable. They already move
-  inside the event queue, so their arrivals and deaths share the timing
-  of the other actors.
-- The pending half is putting them in the search: the state needs a
-  `players` list (the context already carries it), a decision per ready
-  actor, a joint heuristic, and the plan and the key updated. Until that
-  lands their direction is still the pellet-chasing policy and the ghosts
-  only plan against the Pac-Man the game follows. The design decided with
-  the developer: go straight to exploring their decisions (no
-  intermediate step that keeps the policy).
+  and the map's death mode decides between resetting the positions and
+  respawning the caught one untouchable. They move inside the event queue,
+  so their arrivals and deaths share the timing of the other actors.
+- Every Pac-Man is in the search. The state keeps the `players` list and a
+  `readyPlayers` flag per player, the canonical key hashes all of them,
+  each ready actor decides in its own node (the lowest ready index acts
+  first, so a decision is never shared), and the plan names the deciding
+  one with `playerIndex`. The heuristic is joint: the domain is the union
+  of the Pac-Mans' reach, the danger and the prey are the worst threat and
+  the best frightened ghost any of them sees, and the pellet gradient is
+  the nearest pellet over the whole team. The lives are a shared pool that
+  counts the per-player counters, and a Pac-Man with no lives left stays
+  in the list (the plan refers to it by index) but stops moving and
+  deciding. Companions decide through the search like an automated player;
+  the pellet-chasing policy is gone. The state and the heuristic changed,
+  so `CALIBRATION_VERSION` is 7 and every map is calibrated again.
 - Open threads: navigation and oscillation (no level cleared), the
   `pacman-avoid` playout and the `circuit` escapes above.
 

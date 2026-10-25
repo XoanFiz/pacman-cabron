@@ -82,13 +82,16 @@ const gameContext = (() => {
             getCurrentSearchContext: () => {
                 const gs = state.currentGameState;
                 return {
-                    player: gs.player, ghosts: gs.ghosts, pellets: gs.pellets,
+                    player: gs.player, players: gs.players,
+                    ghosts: gs.ghosts, pellets: gs.pellets,
                     lives: gs.lives, time: gs.time,
                     respawnState: {
                         player: { x: 1, y: 1 },
+                        players: gs.players.map(() => ({ x: 1, y: 1 })),
                         ghosts: gs.ghosts.map(g => ({ x: g.x, y: g.y, direction: { ...g.direction }, speed: 2.25 })),
                         houses: []
                     },
+                    controlledPlayerIndex: 0,
                     controlledGhostIndex: -1
                 };
             },
@@ -110,17 +113,22 @@ const gameContext = (() => {
         revision: 1,
         map: { ...currentMap, edges: [...currentMap.edges] },
         searchContext: {
-            player: gs.player, ghosts: gs.ghosts, pellets: gs.pellets,
+            player: gs.player, players: gs.players,
+            ghosts: gs.ghosts, pellets: gs.pellets,
             lives: gs.lives, time: gs.time,
             respawnState: {
                 player: { x: 1, y: 1 },
+                players: gs.players.map(() => ({ x: 1, y: 1 })),
                 ghosts: gs.ghosts.map(g => ({ x: g.x, y: g.y, direction: { ...g.direction }, speed: 2.25 })),
                 houses: []
             },
+            controlledPlayerIndex: 0,
             controlledGhostIndex: -1
         },
         readyGhostIndices: gs.ghosts.map((g, i) => g.needsDirection ? i : -1).filter(i => i >= 0),
-        readyPlayer: Boolean(gs.player.ready)
+        readyPlayerIndices: gs.players
+            .map((player, index) => player.ready ? index : -1)
+            .filter(index => index >= 0)
     };
 })();
 gameContext;

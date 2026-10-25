@@ -352,10 +352,15 @@ const intelligence = {
 
         return directions;
     },
-    choosePacmanDirection: (searchContext, indices) => {
+    choosePacmanDirection: (searchContext, indices, readyPlayerIndices) => {
         stats.pacmanDecisions++;
 
-        return strategy.choosePacmanDirection(searchContext, indices, searchSteps);
+        return strategy.choosePacmanDirection(
+            searchContext,
+            indices,
+            readyPlayerIndices,
+            searchSteps
+        );
     }
 };
 

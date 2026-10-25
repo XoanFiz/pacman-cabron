@@ -64,8 +64,8 @@ function createGameRules(parameters = {}) {
     }
 
     // The character chosen on the start screen decides which Pac-Man the
-    // human drives. Until the search models every Pac-Man, the first one is
-    // also the one the strategy follows.
+    // human drives. The search models every one of them; the human only
+    // decides the followed one and the companions ask the search.
     function getControlledPlayerIndex() {
         const match = /^pacman-(\d+)$/.exec(state.selectedCharacter || "");
 
@@ -152,8 +152,9 @@ function createGameRules(parameters = {}) {
     // PAC-MAN
     // ============================================================
 
-    function setPlayerDirection(direction) {
-        const player = gameState().player;
+    // Applies a decided direction to one Pac-Man. The caller clears the
+    // readiness because the decision may still be a stop at a wall.
+    function setPlayerDirection(player, direction) {
         player.direction = { ...direction };
 
         if (direction.x !== 0 || direction.y !== 0) {
@@ -767,132 +768,20 @@ function createGameRules(parameters = {}) {
     }
 
     // ============================================================
-    // COMPANION PAC-MANS
+    // PAC-MAN DECISIONS
     // ============================================================
     //
-    // Only one Pac-Man is modelled by the search; the others move on
-    // their own, outside the event queue, so the events of the search
-    // actors stay exactly where it predicts them. They follow the
-    // shortest path to the nearest pellet, eat, and can be caught.
+    // Every Pac-Man decides inside the event queue, so a companion's
+    // arrivals and decisions share the timing of the other actors and the
+    // search explores them exactly like the followed one. The human drives
+    // only the Pac-Man the game follows; the rest ask the search.
 
-    function getCompanionTargetDistances(player) {
+    function getReadyPlayerIndices() {
         const gs = gameState();
-        const currentMap = map.currentMap;
-        const key = (x, y) => `${x},${y}`;
-        const distances = new Map([[key(player.x, player.y), 0]]);
-        const queue = [{ x: player.x, y: player.y }];
-
-        for (let index = 0; index < queue.length; index++) {
-            const cell = queue[index];
-
-            if (gs.pellets.has(key(cell.x, cell.y))) {
-                break;
-            }
-
-            const distance = distances.get(key(cell.x, cell.y));
-
-            for (const next of map.graph[cell.y][cell.x]) {
-                const nextKey = key(next.x, next.y);
-
-                if (!distances.has(nextKey)) {
-                    distances.set(nextKey, distance + 1);
-                    queue.push(next);
-                }
-            }
-        }
-
-        return distances;
-    }
-
-    function chooseCompanionDirection(player) {
-        const directions = map.getPossibleDirections(player);
-
-        if (directions.length === 0) {
-            player.direction = { x: 0, y: 0 };
-            return;
-        }
-
-        const currentMap = map.currentMap;
-        const distances = getCompanionTargetDistances(player);
-        const key = (x, y) => `${x},${y}`;
-
-        // Continuing is preferred, so a companion never dithers between
-        // two directions with the same distance.
-        const ordered = directions.slice().sort((first, second) => {
-            const firstCurrent =
-                first.x === player.direction.x &&
-                first.y === player.direction.y;
-            const secondCurrent =
-                second.x === player.direction.x &&
-                second.y === player.direction.y;
-
-            return Number(secondCurrent) - Number(firstCurrent);
-        });
-
-        let best = ordered[0];
-        let bestDistance = Infinity;
-
-        for (const direction of ordered) {
-            const next = {
-                x: map.wrap(
-                    player.x + direction.x,
-                    map.getMapColumnCount(currentMap)
-                ),
-                y: map.wrap(
-                    player.y + direction.y,
-                    map.getMapRowCount(currentMap)
-                )
-            };
-            const distance = distances.get(key(next.x, next.y));
-
-            if (distance !== undefined && distance < bestDistance) {
-                bestDistance = distance;
-                best = direction;
-            }
-        }
-
-        player.direction = { ...best };
-        player.facingDirection = { ...best };
-    }
-
-    // Companions decide at their cell centres, inside the same event
-    // queue as every other actor: the search does not branch on them yet,
-    // so they follow the shortest path to the nearest pellet.
-    function decideCompanions() {
-        const gs = gameState();
-        const followedIndex = gs.players.indexOf(gs.player);
-        let resolved = false;
-
-        gs.players.forEach((player, index) => {
-            if (
-                index === followedIndex ||
-                player.lives <= 0 ||
-                !player.ready
-            ) {
-                return;
-            }
-
-            chooseCompanionDirection(player);
-            player.ready = false;
-            player.stopped = false;
-            player.stopTimer = 0;
-            resolved = true;
-        });
-
-        return resolved;
-    }
-
-    function getReadyCompanionIndices() {
-        const gs = gameState();
-        const followedIndex = gs.players.indexOf(gs.player);
         const indices = [];
 
         gs.players.forEach((player, index) => {
-            if (
-                index !== followedIndex &&
-                player.lives > 0 &&
-                player.ready
-            ) {
+            if (player.ready && player.lives > 0) {
                 indices.push(index);
             }
         });
@@ -928,10 +817,12 @@ function createGameRules(parameters = {}) {
         return gameState().ghosts.indexOf(ghost);
     }
 
-    // The search breaks ties between the player and the ghosts with a hash
-    // of the state key. Reusing it here keeps the live decision order and
-    // the search predictions identical.
-    function getFirstActor(playerReady, readyGhostIndices) {
+    // The search breaks ties between the players and the ghosts with a
+    // hash of the state key. Reusing it here keeps the live decision order
+    // and the search predictions identical.
+    function getFirstActor(readyPlayerIndices, readyGhostIndices) {
+        const playerReady = readyPlayerIndices.length > 0;
+
         if (playerReady && readyGhostIndices.length === 0) {
             return "player";
         }
@@ -947,30 +838,36 @@ function createGameRules(parameters = {}) {
         const searchState = intelligence.createCurrentGameSearchState(
             intelligence.getCurrentSearchContext(),
             readyGhostIndices,
-            true
+            readyPlayerIndices
         );
 
         return searchState.firstActor;
     }
 
-    // Returns true when the player consumed its decision. A player blocked
-    // at a centre without input stays ready so a later key can start it.
-    function decidePlayer(readyGhostIndices) {
+    // One Pac-Man consumes its decision. The human drives only the Pac-Man
+    // the game follows; the companions ask the search, exactly like an
+    // automated followed player. Returns true when the decision was
+    // consumed: a blocked Pac-Man with no input stops and only gets a new
+    // chance at the next decision slot.
+    function decidePlayer(playerIndex, readyGhostIndices) {
         const gs = gameState();
-        const player = gs.player;
-        const automated = !state.selectedCharacter.startsWith("pacman");
+        const player = gs.players[playerIndex] || gs.player;
+        const human = state.selectedCharacter.startsWith("pacman") &&
+            player === gs.player;
         let direction = null;
 
-        if (!automated) {
+        if (human) {
             const desired = findPressedDirection(player.x, player.y);
 
             if (desired && map.canMove(player.x, player.y, desired)) {
                 direction = desired;
             }
         } else {
+            const readyPlayerIndices = getReadyPlayerIndices();
             const chosen = intelligence.choosePacmanDirection(
                 intelligence.getCurrentSearchContext(),
-                readyGhostIndices
+                readyGhostIndices,
+                readyPlayerIndices
             );
 
             if (
@@ -989,15 +886,15 @@ function createGameRules(parameters = {}) {
         }
 
         if (direction) {
-            setPlayerDirection(direction);
+            setPlayerDirection(player, direction);
             player.ready = false;
             player.stopped = false;
             player.stopTimer = 0;
 
-            if (!automated) {
+            if (human) {
                 intelligence.recordHumanDecision?.(
                     "player",
-                    -1,
+                    playerIndex,
                     direction
                 );
             }
@@ -1013,10 +910,10 @@ function createGameRules(parameters = {}) {
             player.stopped = false;
             player.stopTimer = 0;
 
-            if (!automated) {
+            if (human) {
                 intelligence.recordHumanDecision?.(
                     "player",
-                    -1,
+                    playerIndex,
                     player.direction
                 );
             }
@@ -1027,15 +924,15 @@ function createGameRules(parameters = {}) {
         // Blocked at a centre with no input: it is not a pending decision
         // any more, so the buffer and the ghost queries see a stopped
         // player instead of a ready one waiting forever.
-        setPlayerDirection({ x: 0, y: 0 });
+        setPlayerDirection(player, { x: 0, y: 0 });
         player.ready = false;
         player.stopped = true;
         player.stopTimer = STOP_DECISION_INTERVAL;
 
-        if (!automated) {
+        if (human) {
             intelligence.recordHumanDecision?.(
                 "player",
-                -1,
+                playerIndex,
                 { x: 0, y: 0 }
             );
         }
@@ -1045,7 +942,7 @@ function createGameRules(parameters = {}) {
 
     function decideGhosts(readyGhostIndices) {
         const gs = gameState();
-        const playerReady = gs.player.ready === true;
+        const readyPlayerIndices = getReadyPlayerIndices();
         const controlledIndex = getControlledGhostIndex();
         const automatedIndices = readyGhostIndices.filter(
             index => index !== controlledIndex
@@ -1055,7 +952,7 @@ function createGameRules(parameters = {}) {
             ? intelligence.chooseGhostDirections(
                 intelligence.getCurrentSearchContext(),
                 automatedIndices,
-                playerReady
+                readyPlayerIndices
             )
             : new Map();
 
@@ -1110,46 +1007,59 @@ function createGameRules(parameters = {}) {
     // decide one at a time, in the same order the search uses, because a
     // joint event becomes a chain of single-actor decisions.
     function resolveDecisions() {
-        const gs = gameState();
         const readyGhostIndices = getReadyGhostIndices();
-        const playerReady = gs.player.ready === true;
-        const readyCompanionIndices = getReadyCompanionIndices();
+        const readyPlayerIndices = getReadyPlayerIndices();
 
         if (
-            !playerReady &&
             readyGhostIndices.length === 0 &&
-            readyCompanionIndices.length === 0
+            readyPlayerIndices.length === 0
         ) {
             return false;
         }
 
-        const firstActor = getFirstActor(playerReady, readyGhostIndices);
+        const firstActor = getFirstActor(
+            readyPlayerIndices,
+            readyGhostIndices
+        );
         let resolved = false;
 
-        if (firstActor === "player" && playerReady) {
-            resolved = decidePlayer(readyGhostIndices);
+        if (firstActor === "player" && readyPlayerIndices.length > 0) {
+            resolved = decidePlayer(
+                readyPlayerIndices[0],
+                readyGhostIndices
+            );
 
-            if (!resolved && readyGhostIndices.length > 0) {
-                decideGhosts(readyGhostIndices);
-                resolved = true;
+            // The human may be blocked at a centre with nobody to drive
+            // it. The other ready actors still decide in this event.
+            if (!resolved) {
+                if (readyGhostIndices.length > 0) {
+                    decideGhosts(readyGhostIndices);
+                    resolved = true;
+                } else {
+                    for (const index of readyPlayerIndices.slice(1)) {
+                        if (decidePlayer(index, readyGhostIndices)) {
+                            resolved = true;
+                            break;
+                        }
+                    }
+                }
             }
         } else if (readyGhostIndices.length > 0) {
             decideGhosts(readyGhostIndices);
             resolved = true;
-        } else if (playerReady) {
-            resolved = decidePlayer(readyGhostIndices);
-        }
-
-        if (decideCompanions()) {
-            resolved = true;
+        } else if (readyPlayerIndices.length > 0) {
+            resolved = decidePlayer(
+                readyPlayerIndices[0],
+                readyGhostIndices
+            );
         }
 
         updatePositions();
 
         if (
-            gs.running &&
+            gameState().running &&
             getReadyGhostIndices().length === 0 &&
-            !gs.player.ready &&
+            getReadyPlayerIndices().length === 0 &&
             typeof intelligence.anchorSearch === "function"
         ) {
             intelligence.anchorSearch();

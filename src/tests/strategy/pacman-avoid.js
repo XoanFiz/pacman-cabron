@@ -291,11 +291,22 @@ function nearestGhost(state) {
         .map(ghost => distance(state.player, ghost)));
 }
 
+function readyPlayerIndices(state) {
+    return state.readyPlayers
+        .map((ready, index) => ready ? index : -1)
+        .filter(index => index >= 0);
+}
+
 while (events++ < 60 && playState.lives === 3 && !playState.terminal) {
     if (playState.firstActor === "player") {
         const before = playState;
         const nearestBefore = nearestGhost(before);
-        const direction = strategy.choosePacmanDirection(playState, [], searchSteps);
+        const direction = strategy.choosePacmanDirection(
+            playState,
+            [],
+            readyPlayerIndices(playState),
+            searchSteps
+        );
         trail.push("P" + direction.x + "," + direction.y);
         playState = strategy.advanceSearchState(playState, new Map(), direction);
 
@@ -309,7 +320,7 @@ while (events++ < 60 && playState.lives === 3 && !playState.terminal) {
         const directions = strategy.chooseGhostDirections(
             playState,
             indices,
-            playState.readyPlayer,
+            readyPlayerIndices(playState),
             searchSteps
         );
         trail.push("G" + JSON.stringify([...directions]));

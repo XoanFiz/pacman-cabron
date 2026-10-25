@@ -1,5 +1,4 @@
 TODO
-Move the companion Pac-Mans into the search: players in the state, a decision per actor, a joint heuristic, and the plan and the key updated so the ghosts stop planning against one Pac-Man.
 Calibration follow-ups
     Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
     Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
@@ -34,6 +33,5 @@ Campaign mode?
 When a map is edited it becomes a selectable custom map (already stored in IndexedDB); add a way to remove custom maps.
 Allow manipulating number of lifes in the map editor.
 Do not use ghost + a number as the ghost name for the unknown colors. Try to recover the color name from a library to do so. If there is a second ghost with the same color name then you can add a number. This requirement needs a library for colors in multiple languages ​​or a mapping in the language file.
-More than one Pac-man
 
 Agents: the rules, the code map and the test commands are in AGENTS.md at the repository root.

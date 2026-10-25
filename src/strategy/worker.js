@@ -114,7 +114,7 @@ function startJob(anchor) {
     try {
         const job = strategy.createPolicyBufferJob(anchor.searchContext, {
             readyGhostIndices: anchor.readyGhostIndices || [],
-            readyPlayer: Boolean(anchor.readyPlayer),
+            readyPlayerIndices: anchor.readyPlayerIndices || [],
             horizonSeconds: STRATEGY_PLAN_INTERNAL_HORIZON_SECONDS,
             transmittedHorizonSeconds: STRATEGY_PLAN_HORIZON_SECONDS
         });

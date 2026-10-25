@@ -69,7 +69,9 @@ const CALIBRATION_FINISH_REASON = Object.freeze({
 // stops the random phase on the first non-optimal child.
 // Version 6: the strategic value is a weighted sum of normalised terms, so
 // its scale changed from ~1e-4 to ~0.3.
-const CALIBRATION_VERSION = 6;
+// Version 7: every Pac-Man is in the state and decides in its own node, so
+// the transitions, the key and the joint heuristic differ.
+const CALIBRATION_VERSION = 7;
 
 // Used by the main thread to build the request and by the worker as the
 // fallback when a field is missing.

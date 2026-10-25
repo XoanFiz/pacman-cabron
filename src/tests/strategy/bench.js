@@ -226,6 +226,7 @@ function playGame(seed, walks, maxTime, overrides) {
 
         return {
             player: gs.player,
+            players: gs.players,
             ghosts: gs.ghosts,
             pellets: gs.pellets,
             lives: gs.lives,
@@ -240,6 +241,10 @@ function playGame(seed, walks, maxTime, overrides) {
                 })),
                 houses: [{ x: 11, y: 8 }]
             },
+            controlledPlayerIndex: Math.max(
+                0,
+                (gs.players || []).indexOf(gs.player)
+            ),
             controlledGhostIndex: 0
         };
     }
@@ -266,10 +271,15 @@ function playGame(seed, walks, maxTime, overrides) {
                 walks
             );
         },
-        choosePacmanDirection(context, indices) {
+        choosePacmanDirection(context, indices, readyPlayerIndices) {
             counters.pacman++;
 
-            return strategy.choosePacmanDirection(context, indices, walks);
+            return strategy.choosePacmanDirection(
+                context,
+                indices,
+                readyPlayerIndices,
+                walks
+            );
         }
     };
 

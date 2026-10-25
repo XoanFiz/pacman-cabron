@@ -180,7 +180,7 @@
         };
 
         return {
-            anchor({ map, searchContext, readyGhostIndices, readyPlayer }) {
+            anchor({ map, searchContext, readyGhostIndices, readyPlayerIndices }) {
                 if (map.id !== activeMapId) {
                     activeMapId = map.id;
                     invalidatePlan();
@@ -196,7 +196,7 @@
                     map,
                     searchContext,
                     readyGhostIndices,
-                    readyPlayer
+                    readyPlayerIndices
                 });
             },
             getPlanAction(mode, key) {

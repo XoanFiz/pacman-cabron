@@ -36,13 +36,20 @@ function createGameModel() {
         };
     }
 
-    // `players` carries every Pac-Man on the map; `player` is kept while
-    // the search still reasons about a single one.
+    // `players` carries every Pac-Man on the map. `player` stays as the
+    // followed one (the one the game drives) and is still passed alone by
+    // callers that only have one.
     function createWorldSnapshot({ player, players, ghosts, pellets, lives, time }) {
-        const worldPlayers = (players || [player]).map(cloneCharacterState);
+        const sourcePlayers = players && players.length > 0
+            ? players
+            : [player];
+        const worldPlayers = sourcePlayers.map(cloneCharacterState);
+        const followedIndex = player === undefined
+            ? 0
+            : Math.max(0, sourcePlayers.indexOf(player));
 
         return {
-            player: worldPlayers[0],
+            player: worldPlayers[followedIndex],
             players: worldPlayers,
             ghosts: ghosts.map(cloneCharacterState),
             pellets: new Set(pellets),

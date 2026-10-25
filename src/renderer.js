@@ -330,8 +330,10 @@ function createGameRenderer(parameters = {}) {
 
         const getGhostIndex = (owner) => owner.replace("ghost", "");
 
+        // Every Pac-Man owns the territory its wave reaches first, so the
+        // drawn domain is the union the search evaluates.
         const domain = strategy.calculateDomain(
-            gs.player,
+            gs.players || [gs.player],
             gs.ghosts,
             map.buildGhostHouses(map.getCurrentMapDefinition()),
             gs.pellets,

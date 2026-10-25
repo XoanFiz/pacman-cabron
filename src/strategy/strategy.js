@@ -636,12 +636,23 @@ function createGameStrategy(parameters = {}) {
         // PAC-MAN
         // --------------------------------------------------------
 
+        // Every Pac-Man seeds the same "pacman" territory: the wave from
+        // the one that reaches a cell first owns it and the others stop
+        // there, so the pacman domain is the union of their reach.
         if (includePacman) {
-            pushCharacterDomainSeed(
-                player,
-                PACMAN_SPEED,
-                "pacman"
-            );
+            const players = Array.isArray(player) ? player : [player];
+
+            for (const character of players) {
+                if (!character || !isPlayerActive(character)) {
+                    continue;
+                }
+
+                pushCharacterDomainSeed(
+                    character,
+                    PACMAN_SPEED,
+                    "pacman"
+                );
+            }
         }
 
 
@@ -1025,6 +1036,76 @@ function createGameStrategy(parameters = {}) {
         return cloneCharacterState(character);
     }
 
+    // A Pac-Man whose lives have run out stays in the list (the plan
+    // refers to the players by index and those indices must not move) but
+    // takes no part in the game: it does not move, decide, eat or get
+    // caught again.
+    function isPlayerActive(player) {
+        return !Number.isFinite(player.lives) || player.lives > 0;
+    }
+
+    // The index of the Pac-Man the game follows, the one the human drives
+    // when a Pac-Man is the chosen character.
+    function getControlledPlayerIndex(searchContext) {
+        const players = searchContext?.players ||
+            (searchContext?.player ? [searchContext.player] : []);
+        const index = Number.isInteger(searchContext?.controlledPlayerIndex)
+            ? searchContext.controlledPlayerIndex
+            : 0;
+
+        return index >= 0 && index < players.length ? index : 0;
+    }
+
+    // The lives of every Pac-Man added up. Search states built from a live
+    // game carry one counter per player; a hand-built context may only
+    // carry the total, and then this returns null.
+    function sumPlayerLives(players) {
+        let total = 0;
+        let hasLives = false;
+
+        for (const player of players) {
+            if (Number.isFinite(player.lives)) {
+                hasLives = true;
+                total += Math.max(0, player.lives);
+            }
+        }
+
+        return hasLives ? total : null;
+    }
+
+    // The readiness of the players accepts the old single boolean (the
+    // followed Pac-Man is ready), an explicit list of indices, or the flags
+    // of a state used as a context.
+    function normalizeReadyPlayerIndices(searchContext, readyPlayer) {
+        if (Array.isArray(readyPlayer)) {
+            return [...readyPlayer];
+        }
+
+        if (readyPlayer === true) {
+            return [getControlledPlayerIndex(searchContext)];
+        }
+
+        if (Array.isArray(searchContext?.readyPlayers)) {
+            return searchContext.readyPlayers
+                .map((ready, index) => ready ? index : -1)
+                .filter(index => index >= 0);
+        }
+
+        return [];
+    }
+
+    // The Pac-Man whose turn it is. Only one actor decides per event and
+    // the players decide by index, so the lowest ready one acts first.
+    function getActingPlayerIndex(state) {
+        for (let index = 0; index < state.readyPlayers.length; index++) {
+            if (state.readyPlayers[index]) {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
     // Captures the game configuration needed to simulate future events.
     // Readiness flags identify which characters must choose a new direction
     // at the current decision point.
@@ -1034,48 +1115,84 @@ function createGameStrategy(parameters = {}) {
         readyPlayer = false
     ) {
         const readyGhostSet = new Set(readyGhostIndices);
+        const readyPlayerSet = new Set(
+            normalizeReadyPlayerIndices(searchContext, readyPlayer)
+        );
 
-        // Every Pac-Man travels in the state. The followed one is the
-        // first and keeps the `player` alias the rest of the search reads
-        // while the companions only take part in the key.
+        // Every Pac-Man travels and decides in the state. `player` stays
+        // as an alias for the followed one because the calibration bridge,
+        // the tests and a few helpers still read a single character.
         const players = (
             searchContext.players || [searchContext.player]
         ).map(cloneSearchCharacter);
+        const controlledPlayerIndex = getControlledPlayerIndex(searchContext);
+        const totalLives = sumPlayerLives(players);
+        const respawn = searchContext.respawnState || {};
+        const respawnPlayers = Array.isArray(respawn.players)
+            ? respawn.players
+            : null;
+        const defaultStart = respawn.player ||
+            (respawnPlayers && respawnPlayers[0]) ||
+            players[controlledPlayerIndex] ||
+            players[0];
 
         const state = {
             pellets: new Set(searchContext.pellets),
-            lives: searchContext.lives,
+            lives: totalLives !== null
+                ? totalLives
+                : Number.isFinite(searchContext.lives)
+                    ? searchContext.lives
+                    : INITIAL_LIVES * players.length,
+            initialLives: Number.isFinite(searchContext.initialLives)
+                ? searchContext.initialLives
+                : INITIAL_LIVES * players.length,
             time: searchContext.time,
 
             players,
-            player: players[0],
+            player: players[controlledPlayerIndex],
+            readyPlayers: players.map((player, index) =>
+                isPlayerActive(player) && readyPlayerSet.has(index)
+            ),
+
             ghosts: searchContext.ghosts.map(cloneSearchCharacter),
 
             respawnState: {
-                player: { ...searchContext.respawnState.player },
+                players: players.map((player, index) => {
+                    const start = (respawnPlayers && respawnPlayers[index]) ||
+                        defaultStart ||
+                        player;
 
-                ghosts: searchContext.respawnState.ghosts.map(start => ({
+                    return { x: start.x, y: start.y };
+                }),
+
+                player: {
+                    x: ((respawnPlayers && respawnPlayers[controlledPlayerIndex]) ||
+                        defaultStart).x,
+                    y: ((respawnPlayers && respawnPlayers[controlledPlayerIndex]) ||
+                        defaultStart).y
+                },
+
+                ghosts: (respawn.ghosts || []).map(start => ({
                     ...start,
                     direction: { ...start.direction }
                 })),
 
-                houses: searchContext.respawnState.houses.map(
+                houses: (respawn.houses || []).map(
                     house => ({ ...house })
                 )
             },
 
+            controlledPlayerIndex,
             controlledGhostIndex: searchContext.controlledGhostIndex,
 
             terminal: false,
-            readyPlayer,
 
             readyGhosts: searchContext.ghosts.map(
                 (_, index) => readyGhostSet.has(index)
             ),
         }
 
-        state.firstActor = getDeterministicTurnOrder(state)
-        return state;
+        return finalizeSearchState(state);
     }
 
 
@@ -1127,13 +1244,15 @@ function createGameStrategy(parameters = {}) {
             state.players.map((player, index) =>
                 characterKey(
                     player,
-                    index === 0 ? state.readyPlayer : false
-                )
+                    state.readyPlayers[index]
+                ) + (Number.isFinite(player.lives)
+                    ? "," + player.lives
+                    : "")
             ),
             state.ghosts.map((ghost, index) =>
                 characterKey(ghost, state.readyGhosts[index])
             ),
-            state.readyPlayer,
+            state.readyPlayers,
             state.readyGhosts
         ]);
 
@@ -1158,7 +1277,7 @@ function createGameStrategy(parameters = {}) {
 
     function getDeterministicTurnOrder(state) {
         const hasGhostMove = state.readyGhosts.some(Boolean);
-        const hasPlayerMove = state.readyPlayer;
+        const hasPlayerMove = state.readyPlayers.some(Boolean);
 
         if (hasGhostMove && !hasPlayerMove) {
             return "ghosts";
@@ -1343,78 +1462,27 @@ function createGameStrategy(parameters = {}) {
 
         // Short range distances: the danger and the prey are about the
         // ghosts that are close enough to matter, not about territory.
-        const ghostCells = new Map();
-        const distances = new Map();
-
-        for (let index = 0; index < state.ghosts.length; index++) {
-            const ghost = state.ghosts[index];
-
-            if (ghost.eaten) {
-                continue;
-            }
-
-            if (ghost.x === state.player.x && ghost.y === state.player.y) {
-                distances.set(index, 0);
-                continue;
-            }
-
-            ghostCells.set(ghost.y * columnCount + ghost.x, index);
-        }
-
-        if (ghostCells.size > 0) {
-            const seen = new Set([
-                state.player.y * columnCount + state.player.x
-            ]);
-            let frontier = [{ x: state.player.x, y: state.player.y }];
-            let reached = 0;
-
-            for (
-                let distance = 1;
-                distance <= radius && frontier.length > 0 &&
-                    reached < ghostCells.size;
-                distance++
-            ) {
-                const next = [];
-
-                for (const cell of frontier) {
-                    for (const direction of directions) {
-                        if (!canMoveForMap(cell.x, cell.y, direction)) {
-                            continue;
-                        }
-
-                        const x = wrap(cell.x + direction.x, columnCount);
-                        const y = wrap(cell.y + direction.y, rowCount);
-                        const cellKey = y * columnCount + x;
-
-                        if (seen.has(cellKey)) {
-                            continue;
-                        }
-
-                        seen.add(cellKey);
-
-                        if (ghostCells.has(cellKey)) {
-                            distances.set(ghostCells.get(cellKey), distance);
-                            reached++;
-                        }
-
-                        next.push({ x, y });
-                    }
-                }
-
-                frontier = next;
-            }
-        }
-
+        // Every Pac-Man contributes: the danger is the worst threat any of
+        // them faces and the prey the easiest frightened ghost any of them
+        // can reach, so one value covers the whole team.
         let danger = 0;
         let prey = 0;
 
-        for (const [index, distance] of distances) {
-            const closeness = Math.max(0, 1 - distance / radius);
+        for (const player of state.players) {
+            if (!isPlayerActive(player)) {
+                continue;
+            }
 
-            if (state.ghosts[index].frightened) {
-                prey = Math.max(prey, closeness);
-            } else {
-                danger = Math.max(danger, closeness);
+            const distances = getGhostDistances(player, state, radius);
+
+            for (const [index, distance] of distances) {
+                const closeness = Math.max(0, 1 - distance / radius);
+
+                if (state.ghosts[index].frightened) {
+                    prey = Math.max(prey, closeness);
+                } else {
+                    danger = Math.max(danger, closeness);
+                }
             }
         }
 
@@ -1426,14 +1494,29 @@ function createGameStrategy(parameters = {}) {
             (!(SEARCH_VALUE_PELLET_PHASE > 0) ||
                 remaining <= SEARCH_VALUE_PELLET_PHASE * initial)
         ) {
-            const nearest = getNearestPelletDistance(state);
+            let nearest = Infinity;
+
+            for (const player of state.players) {
+                if (!isPlayerActive(player)) {
+                    continue;
+                }
+
+                nearest = Math.min(
+                    nearest,
+                    getNearestPelletDistance(player, state.pellets)
+                );
+            }
 
             pelletDistance = nearest === Infinity
                 ? 0
                 : Math.min(1, nearest / (rowCount + columnCount));
         }
 
-        return SEARCH_VALUE_LIVES * (1 - state.lives / INITIAL_LIVES) +
+        const initialLives = Number.isFinite(state.initialLives)
+            ? state.initialLives
+            : INITIAL_LIVES;
+
+        return SEARCH_VALUE_LIVES * (1 - state.lives / initialLives) +
             SEARCH_VALUE_CONTROL * (1 - control) +
             SEARCH_VALUE_DANGER * danger +
             SEARCH_VALUE_PELLET * pelletDistance -
@@ -1441,16 +1524,88 @@ function createGameStrategy(parameters = {}) {
             SEARCH_VALUE_PREY * prey;
     }
 
-    // Maze distance from Pac-Man to the nearest remaining pellet. It is the
-    // local gradient the control share cannot give: when the remaining
-    // pellets are far away the share is almost flat and the search
-    // oscillates in a cleared area.
-    function getNearestPelletDistance(state) {
+    // Maze distance from one character to every ghost within `radius`,
+    // as a map of ghost index to distance. A ghost sharing the cell is
+    // distance zero.
+    function getGhostDistances(player, state, radius) {
         const rowCount = getMapRowCountForMap();
         const columnCount = getMapColumnCountForMap();
         const directions = Object.values(DIRECTIONS);
-        const seen = new Set([state.player.y * columnCount + state.player.x]);
-        let frontier = [{ x: state.player.x, y: state.player.y }];
+        const ghostCells = new Map();
+        const distances = new Map();
+
+        for (let index = 0; index < state.ghosts.length; index++) {
+            const ghost = state.ghosts[index];
+
+            if (ghost.eaten) {
+                continue;
+            }
+
+            if (ghost.x === player.x && ghost.y === player.y) {
+                distances.set(index, 0);
+                continue;
+            }
+
+            ghostCells.set(ghost.y * columnCount + ghost.x, index);
+        }
+
+        if (ghostCells.size === 0) {
+            return distances;
+        }
+
+        const seen = new Set([player.y * columnCount + player.x]);
+        let frontier = [{ x: player.x, y: player.y }];
+        let reached = 0;
+
+        for (
+            let distance = 1;
+            distance <= radius && frontier.length > 0 &&
+                reached < ghostCells.size;
+            distance++
+        ) {
+            const next = [];
+
+            for (const cell of frontier) {
+                for (const direction of directions) {
+                    if (!canMoveForMap(cell.x, cell.y, direction)) {
+                        continue;
+                    }
+
+                    const x = wrap(cell.x + direction.x, columnCount);
+                    const y = wrap(cell.y + direction.y, rowCount);
+                    const cellKey = y * columnCount + x;
+
+                    if (seen.has(cellKey)) {
+                        continue;
+                    }
+
+                    seen.add(cellKey);
+
+                    if (ghostCells.has(cellKey)) {
+                        distances.set(ghostCells.get(cellKey), distance);
+                        reached++;
+                    }
+
+                    next.push({ x, y });
+                }
+            }
+
+            frontier = next;
+        }
+
+        return distances;
+    }
+
+    // Maze distance from a character to the nearest remaining pellet. It is
+    // the local gradient the control share cannot give: when the remaining
+    // pellets are far away the share is almost flat and the search
+    // oscillates in a cleared area.
+    function getNearestPelletDistance(player, pellets) {
+        const rowCount = getMapRowCountForMap();
+        const columnCount = getMapColumnCountForMap();
+        const directions = Object.values(DIRECTIONS);
+        const seen = new Set([player.y * columnCount + player.x]);
+        let frontier = [{ x: player.x, y: player.y }];
         let distance = 0;
 
         while (frontier.length > 0) {
@@ -1474,7 +1629,7 @@ function createGameStrategy(parameters = {}) {
 
                     seen.add(cellKey);
 
-                    if (state.pellets.has(`${x},${y}`)) {
+                    if (pellets.has(`${x},${y}`)) {
                         return distance;
                     }
 
@@ -1496,7 +1651,7 @@ function createGameStrategy(parameters = {}) {
         }
 
         const domain = calculateDomain(
-            state.player,
+            state.players,
             state.ghosts,
             state.respawnState.houses,
             state.pellets,
@@ -1576,6 +1731,18 @@ function createGameStrategy(parameters = {}) {
 
     function finalizeSearchState(state) {
         state.firstActor = getDeterministicTurnOrder(state);
+        state.decidingPlayerIndex = state.firstActor === "player"
+            ? getActingPlayerIndex(state)
+            : -1;
+        // Keep the single-character aliases pointing at the followed
+        // Pac-Man so a reader that still expects one never sees a stale
+        // clone. The aliases are not part of the canonical key.
+        state.player = state.players[state.controlledPlayerIndex] ||
+            state.players[0];
+        state.readyPlayer = Boolean(
+            state.readyPlayers[state.controlledPlayerIndex]
+        );
+
         return state;
     }
 
@@ -1606,13 +1773,22 @@ function createGameStrategy(parameters = {}) {
         return true;
     }
 
-    function collectSearchPellet(state) {
-        if (!state.readyPlayer) {
-            return;
-        }
+    // Collects the pellet under every Pac-Man that reached a cell centre
+    // during this event and frightens the ghosts when one of them eats a
+    // power pellet.
+    function collectSearchPellets(state) {
+        for (let index = 0; index < state.players.length; index++) {
+            if (!state.readyPlayers[index]) {
+                continue;
+            }
 
-        const cell = map.tiles[state.player.y][state.player.x];
-        const key = `${state.player.x},${state.player.y}`;
+            collectSearchPellet(state, state.players[index]);
+        }
+    }
+
+    function collectSearchPellet(state, player) {
+        const cell = map.tiles[player.y][player.x];
+        const key = `${player.x},${player.y}`;
 
         if (
             (cell !== "." && cell !== "o") ||
@@ -1646,8 +1822,12 @@ function createGameStrategy(parameters = {}) {
         }
     }
 
-    function resolveSearchCollision(state, next, ghostIndex) {
-        if (ghostIndex < 0) {
+    // Resolves a collision between one ghost and one Pac-Man. A frightened
+    // ghost is eaten; the lives of the caught Pac-Man go down and, while
+    // somebody is still in the game, the round restarts: every living
+    // Pac-Man and every ghost go back to their starts.
+    function resolveSearchCollision(state, next, ghostIndex, playerIndex) {
+        if (ghostIndex < 0 || playerIndex < 0) {
             return false;
         }
 
@@ -1659,25 +1839,43 @@ function createGameStrategy(parameters = {}) {
             return false;
         }
 
-        next.lives--;
+        const caught = next.players[playerIndex] || next.player;
+
+        if (Number.isFinite(caught.lives)) {
+            caught.lives = Math.max(0, caught.lives - 1);
+
+            const totalLives = sumPlayerLives(next.players);
+
+            next.lives = totalLives !== null ? totalLives : next.lives - 1;
+        } else {
+            next.lives--;
+        }
 
         if (next.lives <= 0) {
             next.terminal = true;
-            next.readyPlayer = false;
+            next.readyPlayers = next.players.map(() => false);
             next.readyGhosts = next.ghosts.map(() => false);
 
             return true;
         }
 
-        const playerStart = state.respawnState.player;
+        next.players = next.players.map((player, index) => {
+            const restored = cloneSearchCharacter(player);
+            const start = next.respawnState.players[index] ||
+                next.respawnState.player;
 
-        next.player.x = playerStart.x;
-        next.player.y = playerStart.y;
-        next.player.px = playerStart.x;
-        next.player.py = playerStart.y;
-        next.player.progress = 0;
-        next.player.direction = { x: 0, y: 0 };
-        next.player.nextDirection = { x: 0, y: 0 };
+            restored.x = start.x;
+            restored.y = start.y;
+            restored.px = start.x;
+            restored.py = start.y;
+            restored.progress = 0;
+            restored.direction = { x: 0, y: 0 };
+            restored.nextDirection = { x: 0, y: 0 };
+            restored.stopped = false;
+            restored.stopTimer = 0;
+
+            return restored;
+        });
 
         next.ghosts = state.ghosts.map((ghost, index) => {
             const start = state.respawnState.ghosts[index];
@@ -1704,7 +1902,9 @@ function createGameStrategy(parameters = {}) {
             return restoredGhost;
         });
 
-        next.readyPlayer = state.controlledGhostIndex === -1;
+        // The round restarts: every living Pac-Man has to choose again and,
+        // when the human drives a ghost, only that ghost is decided here.
+        next.readyPlayers = next.players.map(isPlayerActive);
 
         next.readyGhosts = next.ghosts.map(
             (_, index) => index === state.controlledGhostIndex
@@ -1784,11 +1984,13 @@ function createGameStrategy(parameters = {}) {
     function getSearchNextEvent(state) {
         let timeToNextEvent = Infinity;
         let collisionedGhostIndex = -1;
+        let collisionedPlayerIndex = -1;
 
-        const considerEvent = (time, ghostIndex = -1) => {
+        const considerEvent = (time, ghostIndex = -1, playerIndex = -1) => {
             if (time < timeToNextEvent) {
                 timeToNextEvent = time;
                 collisionedGhostIndex = ghostIndex;
+                collisionedPlayerIndex = playerIndex;
                 return;
             }
 
@@ -1798,6 +2000,7 @@ function createGameStrategy(parameters = {}) {
                 collisionedGhostIndex < 0
             ) {
                 collisionedGhostIndex = ghostIndex;
+                collisionedPlayerIndex = playerIndex;
             }
         };
 
@@ -1812,21 +2015,27 @@ function createGameStrategy(parameters = {}) {
             considerEvent(timeToCenter);
         };
 
-        considerArrival(state.player, PACMAN_SPEED);
+        for (let index = 0; index < state.players.length; index++) {
+            const player = state.players[index];
 
-        if (
-            state.player.stopped &&
-            !state.readyPlayer &&
-            Number.isFinite(state.player.stopTimer)
-        ) {
-            considerEvent(Math.max(0, state.player.stopTimer));
+            if (!isPlayerActive(player)) {
+                continue;
+            }
+
+            if (!state.readyPlayers[index]) {
+                considerArrival(player, PACMAN_SPEED);
+            }
+
+            // A stopped Pac-Man only gets a new chance to start at a
+            // discrete interval, independent of how fast the ghosts move.
+            if (
+                player.stopped &&
+                !state.readyPlayers[index] &&
+                Number.isFinite(player.stopTimer)
+            ) {
+                considerEvent(Math.max(0, player.stopTimer));
+            }
         }
-
-        const playerVelocityX =
-            state.player.direction.x * PACMAN_SPEED;
-
-        const playerVelocityY =
-            state.player.direction.y * PACMAN_SPEED;
 
         for (let index = 0; index < state.ghosts.length; index++) {
             const ghost = state.ghosts[index];
@@ -1837,21 +2046,34 @@ function createGameStrategy(parameters = {}) {
 
             considerArrival(ghost, ghost.speed);
 
-            const collisionTime = getSearchCollisionTime(
-                state.player,
-                ghost,
-                playerVelocityX,
-                playerVelocityY
-            );
+            for (
+                let playerIndex = 0;
+                playerIndex < state.players.length;
+                playerIndex++
+            ) {
+                const player = state.players[playerIndex];
 
-            if (Number.isFinite(collisionTime)) {
-                considerEvent(collisionTime, index);
+                if (!isPlayerActive(player)) {
+                    continue;
+                }
+
+                const collisionTime = getSearchCollisionTime(
+                    player,
+                    ghost,
+                    player.direction.x * PACMAN_SPEED,
+                    player.direction.y * PACMAN_SPEED
+                );
+
+                if (Number.isFinite(collisionTime)) {
+                    considerEvent(collisionTime, index, playerIndex);
+                }
             }
         }
 
         return {
             timeToNextEvent,
-            collisionedGhostIndex
+            collisionedGhostIndex,
+            collisionedPlayerIndex
         };
     }
 
@@ -1895,9 +2117,9 @@ function createGameStrategy(parameters = {}) {
         const next = {
             ...state,
             pellets: new Set(state.pellets),
-            player: cloneSearchCharacter(state.player),
+            players: state.players.map(cloneSearchCharacter),
             ghosts: state.ghosts.map(cloneSearchCharacter),
-            readyPlayer: state.readyPlayer,
+            readyPlayers: [...state.readyPlayers],
             readyGhosts: [...state.readyGhosts]
         };
 
@@ -1942,22 +2164,26 @@ function createGameStrategy(parameters = {}) {
                 );
             }
 
-            if (!state.readyPlayer || !playerDirection) {
+            const playerIndex = getActingPlayerIndex(state);
+
+            if (playerIndex < 0 || !playerDirection) {
                 throw new Error(
                     "Pac-Man must provide an action in this state."
                 );
             }
 
-            next.player.direction = { ...playerDirection };
-            next.readyPlayer = false;
+            const player = next.players[playerIndex];
+
+            player.direction = { ...playerDirection };
+            next.readyPlayers[playerIndex] = false;
 
             if (playerDirection.x === 0 && playerDirection.y === 0) {
-                next.player.stopped = true;
-                next.player.stopTimer =
+                player.stopped = true;
+                player.stopTimer =
                     config.rules.STOP_DECISION_INTERVAL;
             } else {
-                next.player.stopped = false;
-                next.player.stopTimer = 0;
+                player.stopped = false;
+                player.stopTimer = 0;
             }
         } else {
             throw new Error("No valid actor is available to decide.");
@@ -1969,19 +2195,34 @@ function createGameStrategy(parameters = {}) {
     function advanceSearchCharactersToEvent(state, elapsedTime) {
         state.time += elapsedTime;
 
-        state.readyPlayer = moveSearchCharacterToEvent(
-            state.player,
-            PACMAN_SPEED,
-            elapsedTime
-        );
+        for (
+            let playerIndex = 0;
+            playerIndex < state.players.length;
+            playerIndex++
+        ) {
+            const player = state.players[playerIndex];
 
-        if (state.player.stopped && !state.readyPlayer) {
-            state.player.stopTimer -= elapsedTime;
+            if (!isPlayerActive(player)) {
+                state.readyPlayers[playerIndex] = false;
+                continue;
+            }
 
-            if (state.player.stopTimer <= 0) {
-                state.readyPlayer = true;
-                state.player.stopTimer =
-                    config.rules.STOP_DECISION_INTERVAL;
+            const arrived = moveSearchCharacterToEvent(
+                player,
+                PACMAN_SPEED,
+                elapsedTime
+            );
+
+            state.readyPlayers[playerIndex] = arrived;
+
+            if (player.stopped && !arrived) {
+                player.stopTimer -= elapsedTime;
+
+                if (player.stopTimer <= 0) {
+                    state.readyPlayers[playerIndex] = true;
+                    player.stopTimer =
+                        config.rules.STOP_DECISION_INTERVAL;
+                }
             }
         }
 
@@ -2011,16 +2252,16 @@ function createGameStrategy(parameters = {}) {
     function resolveSearchEvent(
         previousState,
         nextState,
-        collisionedGhostIndex
+        collisionedGhostIndex,
+        collisionedPlayerIndex
     ) {
-        if (nextState.readyPlayer) {
-            collectSearchPellet(nextState);
-        }
+        collectSearchPellets(nextState);
 
         resolveSearchCollision(
             previousState,
             nextState,
-            collisionedGhostIndex
+            collisionedGhostIndex,
+            collisionedPlayerIndex
         );
 
         return nextState;
@@ -2069,13 +2310,14 @@ function createGameStrategy(parameters = {}) {
             playerDirection
         );
 
-        if (next.readyPlayer || next.readyGhosts.some(Boolean)) {
+        if (next.readyPlayers.some(Boolean) || next.readyGhosts.some(Boolean)) {
             return finalizeSearchState(next);
         }
 
         const {
             timeToNextEvent,
-            collisionedGhostIndex
+            collisionedGhostIndex,
+            collisionedPlayerIndex
         } = getSearchNextEvent(next);
 
         if (!Number.isFinite(timeToNextEvent)) {
@@ -2099,7 +2341,8 @@ function createGameStrategy(parameters = {}) {
         resolveSearchEvent(
             state,
             next,
-            collisionedGhostIndex
+            collisionedGhostIndex,
+            collisionedPlayerIndex
         );
 
         return finalizeSearchState(next);
@@ -2143,21 +2386,31 @@ function createGameStrategy(parameters = {}) {
         return profiles;
     }
 
+    // The directions of the Pac-Man whose turn it is. Only one player
+    // decides per event; the rest keep their readiness for the next node.
     function getSearchPlayerActionProfiles(state) {
-        if (!state.readyPlayer) {
+        const playerIndex = getActingPlayerIndex(state);
+
+        if (playerIndex < 0) {
+            return [];
+        }
+
+        const player = state.players[playerIndex];
+
+        if (!isPlayerActive(player)) {
             return [];
         }
 
         const directions = getSearchDirections(
             state,
-            state.player,
+            player,
             false
         );
 
         // A stopped player may wait for the next decision slot instead of
         // starting now, so waiting is an explicit action.
         if (
-            state.player.stopped &&
+            player.stopped &&
             !directions.some(direction =>
                 direction.x === 0 && direction.y === 0
             )
@@ -2180,17 +2433,21 @@ function createGameStrategy(parameters = {}) {
                 ghostDirections => ({
                     ghostDirections,
                     playerDirection: null,
+                    playerIndex: -1,
                     child: null
                 })
             );
         }
 
         if (state.firstActor === "player") {
+            const playerIndex = getActingPlayerIndex(state);
+
             return getSearchPlayerActionProfiles(state)
                 .filter(Boolean)
                 .map(playerDirection => ({
                     ghostDirections: [],
                     playerDirection,
+                    playerIndex,
                     child: null
                 }));
         }
@@ -2266,7 +2523,8 @@ function createGameStrategy(parameters = {}) {
                 duration: nextState.time - state.time,
                 action: {
                     ghostDirections: profile.ghostDirections,
-                    playerDirection: profile.playerDirection
+                    playerDirection: profile.playerDirection,
+                    playerIndex: profile.playerIndex
                 }
             };
         }
@@ -2277,26 +2535,34 @@ function createGameStrategy(parameters = {}) {
     // the search runs locally on the simulation context.
     // The anchor makes the worker re-predict from the state the game just
     // reached, after a decision.
-    function requestWorkerAction(mode, searchContext, indices, readyPlayer) {
+    function requestWorkerAction(
+        mode,
+        searchContext,
+        indices,
+        readyPlayerIndices
+    ) {
         worker?.anchor?.({
             mode,
             map,
             searchContext,
             readyGhostIndices: indices,
-            readyPlayer
+            readyPlayerIndices: normalizeReadyPlayerIndices(
+                searchContext,
+                readyPlayerIndices
+            )
         });
     }
 
     function anchorSearchContext(
         searchContext,
         readyGhostIndices = [],
-        readyPlayer = false
+        readyPlayerIndices = []
     ) {
         requestWorkerAction(
             "ghost",
             searchContext,
             readyGhostIndices,
-            readyPlayer
+            readyPlayerIndices
         );
     }
 
@@ -2408,13 +2674,13 @@ function createGameStrategy(parameters = {}) {
         const next = {
             ...state,
             pellets: new Set(state.pellets),
-            player: cloneSearchCharacter(state.player),
+            players: state.players.map(cloneSearchCharacter),
             ghosts: state.ghosts.map(cloneSearchCharacter),
-            readyPlayer: state.readyPlayer,
+            readyPlayers: [...state.readyPlayers],
             readyGhosts: [...state.readyGhosts]
         };
 
-        const { timeToNextEvent, collisionedGhostIndex } =
+        const { timeToNextEvent, collisionedGhostIndex, collisionedPlayerIndex } =
             getSearchNextEvent(next);
 
         if (!Number.isFinite(timeToNextEvent)) {
@@ -2422,7 +2688,12 @@ function createGameStrategy(parameters = {}) {
         }
 
         advanceSearchCharactersToEvent(next, timeToNextEvent);
-        resolveSearchEvent(state, next, collisionedGhostIndex);
+        resolveSearchEvent(
+            state,
+            next,
+            collisionedGhostIndex,
+            collisionedPlayerIndex
+        );
 
         return finalizeSearchState(next);
     }
@@ -2431,7 +2702,7 @@ function createGameStrategy(parameters = {}) {
         const origin = createCurrentGameSearchState(
             searchContext,
             options.readyGhostIndices || [],
-            Boolean(options.readyPlayer)
+            options.readyPlayerIndices || []
         );
 
         const originTime = origin.time;
@@ -2440,7 +2711,7 @@ function createGameStrategy(parameters = {}) {
 
         while (
             !root.terminal &&
-            !root.readyPlayer &&
+            !root.readyPlayers.some(Boolean) &&
             !root.readyGhosts.some(Boolean) &&
             guard++ < 64
         ) {
@@ -2493,8 +2764,15 @@ function createGameStrategy(parameters = {}) {
     function getPlanExpansion(node, expand = true) {
         const state = node.state;
         const actor = state.firstActor === "player" ? "player" : "ghost";
-        const human = state.firstActor === "player"
-            ? state.controlledGhostIndex < 0
+        const playerIndex = actor === "player"
+            ? getActingPlayerIndex(state)
+            : -1;
+        // The human drives one character: the Pac-Man the game follows or
+        // the chosen ghost. Every other Pac-Man, companions included, is
+        // automated and its node carries a single action.
+        const human = actor === "player"
+            ? state.controlledGhostIndex < 0 &&
+                playerIndex === state.controlledPlayerIndex
             : state.controlledGhostIndex >= 0 &&
                 Boolean(state.readyGhosts[state.controlledGhostIndex]);
 
@@ -2503,6 +2781,7 @@ function createGameStrategy(parameters = {}) {
         } else if (!node.expansionComplete) {
             return {
                 actor,
+                playerIndex,
                 human,
                 expanded: false,
                 action: null,
@@ -2516,6 +2795,7 @@ function createGameStrategy(parameters = {}) {
             if (!best) {
                 return {
                     actor,
+                    playerIndex,
                     human,
                     expanded: true,
                     action: null,
@@ -2525,10 +2805,14 @@ function createGameStrategy(parameters = {}) {
 
             return {
                 actor,
+                playerIndex,
                 human,
                 expanded: true,
                 action: state.firstActor === "player"
-                    ? { playerDirection: { ...best.action.playerDirection } }
+                    ? {
+                        playerIndex,
+                        playerDirection: { ...best.action.playerDirection }
+                    }
                     : {
                         ghostDirections: (best.action.ghostDirections || [])
                             .map(([index, direction]) => [
@@ -2553,14 +2837,21 @@ function createGameStrategy(parameters = {}) {
                 branches.push({
                     choice: {
                         mode: "player",
-                        index: -1,
+                        index: playerIndex,
                         direction: { ...direction }
                     },
                     child: edge.child
                 });
             }
 
-            return { actor, human, expanded: true, action: null, branches };
+            return {
+                actor,
+                playerIndex,
+                human,
+                expanded: true,
+                action: null,
+                branches
+            };
         }
 
         // The player controls a ghost: the plan carries the joint action of
@@ -2626,6 +2917,7 @@ function createGameStrategy(parameters = {}) {
 
         return {
             actor,
+            playerIndex: -1,
             human,
             expanded: true,
             action: automated.length > 0
@@ -2682,6 +2974,7 @@ function createGameStrategy(parameters = {}) {
                 parent,
                 choice,
                 actor: null,
+                playerIndex: -1,
                 action: null,
                 choices: null,
                 child: null,
@@ -2704,6 +2997,7 @@ function createGameStrategy(parameters = {}) {
             );
 
             planNode.actor = expansion.actor;
+            planNode.playerIndex = expansion.playerIndex;
             planNode.action = expansion.action;
 
             if (!expansion.expanded) {
@@ -2868,8 +3162,8 @@ function createGameStrategy(parameters = {}) {
         return directions;
     }
 
-    function getCheapPlayerDirection(state) {
-        const player = state.player;
+    function getCheapPlayerDirection(state, playerIndex) {
+        const player = state.players[playerIndex] || state.player;
         const legal = getSearchDirections(state, player, false);
         const continues = legal.find(direction =>
             direction.x === player.direction.x &&
@@ -2967,16 +3261,22 @@ function createGameStrategy(parameters = {}) {
         ]));
     }
 
+    // The direction of the Pac-Man whose turn it is. `readyPlayerIndices`
+    // must describe every ready Pac-Man, not only the deciding one, because
+    // the plan node is found by the key of the whole state.
     function choosePacmanDirection(
         searchContext,
         readyGhostIndices = [],
+        readyPlayerIndices = undefined,
         searchSteps = 0,
         planEndTime = null
     ) {
         const state = createCurrentGameSearchState(
             searchContext,
             readyGhostIndices,
-            true
+            readyPlayerIndices === undefined
+                ? [getControlledPlayerIndex(searchContext)]
+                : readyPlayerIndices
         );
         const planned = worker?.getPlanAction?.(
             "player",
@@ -2987,8 +3287,11 @@ function createGameStrategy(parameters = {}) {
             return { ...planned.playerDirection };
         }
 
+        const playerIndex = getActingPlayerIndex(state);
+        const player = state.players[playerIndex] || state.player;
+
         if (worker) {
-            return getCheapPlayerDirection(state);
+            return getCheapPlayerDirection(state, playerIndex);
         }
 
         const root = setSearchRootFromState(state);
@@ -3012,13 +3315,13 @@ function createGameStrategy(parameters = {}) {
         // the search fallback used to return direction { x: 0, y: 0 }.
         const fallback = getSearchDirections(
             state,
-            state.player,
+            player,
             false
         )[0];
 
         return fallback && (fallback.x !== 0 || fallback.y !== 0)
             ? { ...fallback }
-            : { ...searchContext.player.direction };
+            : { ...player.direction };
     }
     return {
         calculateDomain,
@@ -3030,6 +3333,7 @@ function createGameStrategy(parameters = {}) {
         getSearchGhostActionProfiles,
         getSearchPlayerActionProfiles,
         getSearchActionProfiles,
+        getActingPlayerIndex,
         advanceSearch,
         chooseGhostDirections,
         choosePacmanDirection,

@@ -833,12 +833,13 @@ function createGameMap(parameters = {}) {
     // Builds the initial search state for a definition, with no
     // dependency on the active map or the live game state.
     function createCalibrationInitialState(definition) {
-        const firstPlayerStart = getPlayerStarts(definition)[0];
+        const playerStarts = getPlayerStarts(definition);
+        const firstPlayerStart = playerStarts[0];
 
-        const player = model.createPlayerState(
-            firstPlayerStart,
+        const players = playerStarts.map(start => model.createPlayerState(
+            start,
             config.PACMAN_SPEED
-        );
+        ));
 
         const ghosts = definition.ghostStarts.map((start, index) =>
             model.createGhostState(
@@ -849,17 +850,23 @@ function createGameMap(parameters = {}) {
         );
 
         const searchContext = {
-            player,
+            player: players[0],
+            players,
             ghosts,
             pellets: buildPellets(definition),
-            lives: config.INITIAL_LIVES,
+            lives: config.INITIAL_LIVES * players.length,
             time: 0,
+            controlledPlayerIndex: 0,
             controlledGhostIndex: -1,
             respawnState: {
                 player: {
                     x: firstPlayerStart.x,
                     y: firstPlayerStart.y
                 },
+                players: playerStarts.map(start => ({
+                    x: start.x,
+                    y: start.y
+                })),
                 ghosts: definition.ghostStarts.map(start => ({
                     x: start.x,
                     y: start.y,
@@ -871,13 +878,14 @@ function createGameMap(parameters = {}) {
         };
 
         const readyGhostIndices = ghosts.map((_, index) => index);
+        const readyPlayerIndices = players.map((_, index) => index);
 
         // Reuse the strategy's canonical state adapter so the worker
         // receives exactly the same shape the game would produce.
         return runtime.createCurrentGameSearchState(
             searchContext,
             readyGhostIndices,
-            true
+            readyPlayerIndices
         );
     }
 

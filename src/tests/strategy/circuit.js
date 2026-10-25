@@ -154,10 +154,20 @@ Math.random = () => {
     return seed / 4294967296;
 };
 
+function readyPlayerIndices(state) {
+    return state.readyPlayers
+        .map((isReady, index) => isReady ? index : -1)
+        .filter(index => index >= 0);
+}
+
 function run(scenario) {
     const start = makeContext(scenario);
     const ready = scenario.ghostReady ? [0] : [];
-    let state = strategy.createCurrentGameSearchState(start, ready, scenario.playerReady);
+    let state = strategy.createCurrentGameSearchState(
+        start,
+        ready,
+        scenario.playerReady ? [0] : []
+    );
     let events = 0;
     let escaped = false;
     let caught = false;
@@ -171,7 +181,10 @@ function run(scenario) {
                 .map((isReady, index) => isReady ? index : -1)
                 .filter(index => index >= 0);
             const directions = strategy.chooseGhostDirections(
-                state, indices, state.readyPlayer, searchSteps
+                state,
+                indices,
+                readyPlayerIndices(state),
+                searchSteps
             );
 
             if (indices.includes(0)) {
@@ -188,7 +201,13 @@ function run(scenario) {
 
             state = strategy.advanceSearchState(state, directions, null);
         } else if (state.firstActor === "player") {
-            const direction = strategy.choosePacmanDirection(state, [], searchSteps);
+            const direction = strategy.choosePacmanDirection(
+                state,
+                [],
+                readyPlayerIndices(state),
+                searchSteps
+            );
+
             state = strategy.advanceSearchState(state, new Map(), direction);
         } else {
             break;

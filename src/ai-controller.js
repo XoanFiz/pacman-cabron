@@ -41,14 +41,6 @@ function createGameAiController(parameters = {}) {
         });
     }
 
-    // The character chosen on the start screen decides which Pac-Man the
-    // human drives; the search follows that one until it models them all.
-    function getControlledPlayerIndex() {
-        const match = /^pacman-(\d+)$/.exec(state.selectedCharacter || "");
-
-        return match ? Number(match[1]) : 0;
-    }
-
     function ensureStrategy() {
         const signature = computeMapSignature();
 
@@ -90,8 +82,25 @@ function createGameAiController(parameters = {}) {
         ensureStrategy().anchorSearchContext(
             getCurrentSearchContext(),
             readyGhostIndices,
-            Boolean(gameState.player.ready)
+            getReadyPlayerIndices(gameState)
         );
+    }
+
+    // Every Pac-Man that has to decide right now, in index order.
+    function getReadyPlayerIndices(gameState) {
+        const players = gameState.players || [];
+        const indices = [];
+
+        players.forEach((player, index) => {
+            if (
+                player.ready &&
+                (player.lives === undefined || player.lives > 0)
+            ) {
+                indices.push(index);
+            }
+        });
+
+        return indices;
     }
 
     function getStrategyBufferMetrics() {
@@ -102,20 +111,40 @@ function createGameAiController(parameters = {}) {
         const gameState = state.currentGameState;
         const mapDefinition = map.getCurrentMapDefinition();
         const playerStarts = map.getPlayerStarts(mapDefinition);
-        const controlledStart = playerStarts[getControlledPlayerIndex()] ||
+        const players = gameState.players && gameState.players.length > 0
+            ? gameState.players
+            : [gameState.player];
+        const controlledPlayerIndex = Math.max(
+            0,
+            players.indexOf(gameState.player)
+        );
+        const controlledStart = playerStarts[controlledPlayerIndex] ||
             playerStarts[0];
+        const totalLives = players.every(player =>
+            Number.isFinite(player.lives)
+        )
+            ? players.reduce(
+                (total, player) => total + Math.max(0, player.lives),
+                0
+            )
+            : gameState.lives;
 
         const world = createWorldSnapshot({
             player: gameState.player,
-            players: gameState.players,
+            players,
             ghosts: gameState.ghosts,
             pellets: gameState.pellets,
-            lives: gameState.lives,
+            lives: totalLives,
             time: gameState.time
         });
 
         return {
             ...world,
+
+            // The Pac-Man the game follows (the one the human drives) and
+            // the start of every other one, so the search knows where each
+            // comes back after a death.
+            controlledPlayerIndex,
 
             controlledGhostIndex: state.selectedCharacter.startsWith("ghost-")
                 ? Number(state.selectedCharacter.slice("ghost-".length))
@@ -126,6 +155,13 @@ function createGameAiController(parameters = {}) {
                     x: controlledStart.x,
                     y: controlledStart.y
                 },
+
+                players: players.map((player, index) => {
+                    const start = playerStarts[index] || playerStarts[0];
+
+                    return { x: start.x, y: start.y };
+                }),
+
                 ghosts: mapDefinition.ghostStarts.map(start => ({
                     x: start.x,
                     y: start.y,
@@ -142,18 +178,27 @@ function createGameAiController(parameters = {}) {
     // STRATEGY DELEGATION
     // ============================================================
 
-    function chooseGhostDirections(searchContext, readyGhostIndices, readyPlayer = false) {
+    function chooseGhostDirections(
+        searchContext,
+        readyGhostIndices,
+        readyPlayerIndices = []
+    ) {
         return ensureStrategy().chooseGhostDirections(
             searchContext,
             readyGhostIndices,
-            readyPlayer
+            readyPlayerIndices
         );
     }
 
-    function choosePacmanDirection(searchContext, readyGhostIndices = []) {
+    function choosePacmanDirection(
+        searchContext,
+        readyGhostIndices = [],
+        readyPlayerIndices = undefined
+    ) {
         return ensureStrategy().choosePacmanDirection(
             searchContext,
-            readyGhostIndices
+            readyGhostIndices,
+            readyPlayerIndices
         );
     }
 
@@ -200,4 +245,4 @@ function createGameAiController(parameters = {}) {
         setCalibration,
         recordHumanDecision
     };
-}
+}

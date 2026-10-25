@@ -19,7 +19,7 @@
 //     map,              // map definition; edges serialized as an array
 //     searchContext,    // live characters, pellets, lives, time, ...
 //     readyGhostIndices,
-//     readyPlayer
+//     readyPlayerIndices // every Pac-Man that has to decide right now
 //   }
 //
 // plan (worker -> main):
@@ -29,7 +29,9 @@
 //       {
 //         id, parent, choice,        // choice: the human action that led here
 //         actor: "ghost" | "player",
+//         playerIndex,               // deciding Pac-Man, -1 for a ghost node
 //         action: null | { ghostDirections?: [[index, { x, y }]],
+//                          playerIndex?: number,
 //                          playerDirection?: { x, y } },
 //         choices: null | [{ direction: { x, y }, child: id }],
 //         child: null | id,
@@ -38,9 +40,11 @@
 //     ]
 //   }
 //
-// The plan is a tree of decisions: the AI decision is taken once, and only
-// the human-controlled character branches, so the main thread follows the
-// branch that matches the player's actual choices.
+// The plan is a tree of decisions: every actor decides in its own node,
+// the AI decision is taken once, and only the human-controlled character
+// branches, so the main thread follows the branch that matches the
+// player's actual choices. One Pac-Man decides per player node; the
+// companions are automated and carry a single action like the ghosts.
 
 const STRATEGY_BUFFER_MESSAGE = Object.freeze({
     anchor: "anchor",
