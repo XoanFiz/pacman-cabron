@@ -543,9 +543,19 @@ function createGameMap(parameters = {}) {
             "orangeGhost",
             "pinkGhost"
         ];
+        // Ghosts keep their colour when another one is removed, so the
+        // name follows the colour instead of the position.
+        const color = ghostStarts[index] && ghostStarts[index].color;
+        const colorIndex = color
+            ? state.BASE_GHOST_COLORS.findIndex(
+                baseColor =>
+                    baseColor.toLowerCase() === String(color).toLowerCase()
+            )
+            : -1;
+        const nameIndex = colorIndex === -1 ? index : colorIndex;
 
-        if (index < standardNames.length) {
-            return state.messages[standardNames[index]];
+        if (nameIndex < standardNames.length) {
+            return state.messages[standardNames[nameIndex]];
         }
 
         return state.messages.ghostNumber.replace(

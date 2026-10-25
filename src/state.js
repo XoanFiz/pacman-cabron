@@ -22,6 +22,7 @@ function createGameState(parameters = {}) {
     const mapSelectElement = document.getElementById("map-select");
     const newMapButton = document.getElementById("editor-new-map");
     const addGhostButton = document.getElementById("editor-add-ghost");
+    const editorGhostListElement = document.getElementById("editor-ghost-list");
     const ghostCharacterChoicesElement = document.getElementById("ghost-character-choices");
     const pressedDirectionKeys = new Set();
 
@@ -213,6 +214,7 @@ function createGameState(parameters = {}) {
         mapSelectElement,
         newMapButton,
         addGhostButton,
+        editorGhostListElement,
         ghostCharacterChoicesElement,
         pressedDirectionKeys,
 

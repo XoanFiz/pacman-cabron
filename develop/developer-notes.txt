@@ -4,8 +4,8 @@ Calibration follow-ups
     Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
     Add a schema/migration step for the IndexedDB stores (currently database version 4) and a way to remove custom maps.
     Tune the calibration reference (2 s horizon, 200 states) against step time and calibration quality.
-Allow a way to remove ghosts. Recover the color for the new ghosts if done. 
 Fix characters traversing walls
+Collisions on map warp are not working
 Move many things from map.js to rules.js.
 The RBFM is now a per-decision tree without transposition or persistence, but the extend walk still starts at the root each time, so its cost is the tree height; a frontier-based expansion would avoid that.
 Strategy worker

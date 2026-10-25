@@ -25,6 +25,7 @@ function createGameEditor(parameters = {}) {
         state.editorToastElement.hidden = true;
         rules.resetGame();
         updateAddGhostButton();
+        renderEditorGhostList();
         document.body.classList.add("map-editor-active");
         state.editorToolbarElement.hidden = false;
         state.startScreenElement.hidden = true;
@@ -42,6 +43,7 @@ function createGameEditor(parameters = {}) {
         state.addingGhost = false;
         rules.resetGame();
         updateAddGhostButton();
+        renderEditorGhostList();
         state.setMapEditorInstructions();
     }
 
@@ -65,12 +67,7 @@ function createGameEditor(parameters = {}) {
             return false;
         }
 
-        const existingColors = gs.ghosts.map((ghost, index) =>
-            ghost.color || state.getGhostColor(index)
-        );
-        const color = existingColors.length < state.BASE_GHOST_COLORS.length
-            ? state.BASE_GHOST_COLORS[existingColors.length]
-            : state.getMostDistinctGhostColor(existingColors);
+        const color = nextGhostColor(getGhostColors());
         const newGhost = {
             x: position.x,
             y: position.y,
@@ -104,9 +101,113 @@ function createGameEditor(parameters = {}) {
         map.strategicSearch.root = null;
         syncEditorDraftMap();
         updateAddGhostButton();
+        renderEditorGhostList();
         state.setMapEditorInstructions();
 
         return true;
+    }
+
+    function getGhostColors() {
+        return gameState().ghosts.map((ghost, index) =>
+            ghost.color || state.getGhostColor(index)
+        );
+    }
+
+    // Removing a ghost frees its colour so the next added ghost takes it
+    // back instead of a new distinct hue.
+    function nextGhostColor(existingColors) {
+        const used = new Set(
+            existingColors.map(color => String(color).toLowerCase())
+        );
+        const free = state.BASE_GHOST_COLORS.find(
+            color => !used.has(color.toLowerCase())
+        );
+
+        return free || state.getMostDistinctGhostColor(existingColors);
+    }
+
+    function removeGhostAt(index) {
+        const gs = gameState();
+
+        if (
+            !state.editorMode ||
+            !Number.isInteger(index) ||
+            index < 0 ||
+            index >= gs.ghosts.length
+        ) {
+            return false;
+        }
+
+        gs.ghosts.splice(index, 1);
+
+        if (state.selectedCharacter.startsWith("ghost-")) {
+            const selectedIndex = Number(
+                state.selectedCharacter.slice("ghost-".length)
+            );
+
+            if (selectedIndex === index) {
+                state.selectedCharacter = "pacman";
+            } else if (selectedIndex > index) {
+                state.selectedCharacter = `ghost-${selectedIndex - 1}`;
+            }
+        }
+
+        map.strategicSearch.nodes.clear();
+        map.strategicSearch.frontier = [];
+        map.strategicSearch.root = null;
+        syncEditorDraftMap();
+        updateAddGhostButton();
+        renderEditorGhostList();
+
+        return true;
+    }
+
+    function renderEditorGhostList() {
+        const list = state.editorGhostListElement;
+        const gs = gameState();
+
+        if (!list) {
+            return;
+        }
+
+        const visible = state.editorMode && gs.ghosts.length > 0;
+
+        list.replaceChildren();
+        list.hidden = !visible;
+
+        if (!visible) {
+            return;
+        }
+
+        for (let index = 0; index < gs.ghosts.length; index++) {
+            const name = map.getGhostName(index, gs.ghosts);
+            const button = document.createElement("button");
+
+            button.type = "button";
+            button.className = "editor-ghost-chip";
+            button.dataset.ghostIndex = String(index);
+            button.title = name;
+
+            const label = document.createElement("span");
+            label.textContent = name;
+
+            const remove = document.createElement("span");
+            remove.className = "editor-ghost-chip-remove";
+            remove.textContent = "\u00d7";
+
+            button.append(
+                map.createGhostIcon(
+                    gs.ghosts[index].color || state.getGhostColor(index),
+                    "character-figure"
+                ),
+                label,
+                remove
+            );
+
+            button.addEventListener("click", () => removeGhostAt(index));
+
+            list.append(button);
+        }
     }
 
     function syncEditorDraftMap() {
@@ -142,6 +243,7 @@ function createGameEditor(parameters = {}) {
         state.editorMode = false;
         state.editorGesture = null;
         state.addingGhost = false;
+        renderEditorGhostList();
         map.updateCharacterChoices();
         window.clearTimeout(state.editorToastTimer);
         state.editorToastElement.hidden = true;
@@ -418,15 +520,7 @@ function createGameEditor(parameters = {}) {
     }
 
     function updateAddGhostButton() {
-        const gs = gameState();
-
-        const existingColors = gs.ghosts.map((ghost, index) =>
-            ghost.color || state.getGhostColor(index)
-        );
-
-        const color = existingColors.length < state.BASE_GHOST_COLORS.length
-            ? state.BASE_GHOST_COLORS[existingColors.length]
-            : state.getMostDistinctGhostColor(existingColors);
+        const color = nextGhostColor(getGhostColors());
 
         const label = document.createElement("span");
         label.textContent = state.messages.addGhost;
