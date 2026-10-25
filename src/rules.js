@@ -10,6 +10,7 @@ function createGameRules(parameters = {}) {
 
     const {
         INITIAL_LIVES,
+        LIVES_DISPLAY_MILLISECONDS,
         PACMAN_SPEED,
         GHOST_SPEED,
         FRIGHTENED_DURATION,
@@ -30,6 +31,14 @@ function createGameRules(parameters = {}) {
 
     const gameState = () => state.currentGameState;
 
+    // Wall clock in milliseconds. The rules run in a bare context in the
+    // tests, where `performance` does not exist, so Date.now() is enough.
+    function nowMilliseconds() {
+        return typeof performance !== "undefined" && performance.now
+            ? performance.now()
+            : Date.now();
+    }
+
     // START / RESTART
     // ============================================================
 
@@ -43,6 +52,15 @@ function createGameRules(parameters = {}) {
 
         ui.updateUI();
         intelligence.anchorSearch?.();
+    }
+
+    // The character chosen on the start screen decides which Pac-Man the
+    // human drives. Until the search models every Pac-Man, the first one is
+    // also the one the strategy follows.
+    function getControlledPlayerIndex() {
+        const match = /^pacman-(\d+)$/.exec(state.selectedCharacter || "");
+
+        return match ? Number(match[1]) : 0;
     }
 
     function resetLevel() {
@@ -62,12 +80,23 @@ function createGameRules(parameters = {}) {
         map.strategicSearch.frontier = [];
         map.strategicSearch.root = null;
 
-        const playerStart = map.currentMap.playerStart;
+        const playerStarts = map.currentMap.playerStarts ||
+            [map.currentMap.playerStart];
 
-        gs.player = createPlayerState(
-            playerStart,
-            PACMAN_SPEED
-        );
+        gs.players = playerStarts.map(start => {
+            const player = createPlayerState(start, PACMAN_SPEED);
+
+            player.lives = INITIAL_LIVES;
+            player.color = start.color ||
+                state.BASE_PACMAN_COLORS?.[0] ||
+                "#ffd43b";
+
+            return player;
+        });
+
+        gs.player = gs.players[getControlledPlayerIndex()] || gs.players[0];
+        gs.livesVisibleUntil =
+            nowMilliseconds() + LIVES_DISPLAY_MILLISECONDS;
 
         const ghostStarts = map.currentMap.ghostStarts;
 
@@ -87,7 +116,7 @@ function createGameRules(parameters = {}) {
         map.graph = map.buildGraph(map.currentMap);
 
         state.setStatus(
-            state.selectedCharacter === "pacman"
+            state.selectedCharacter.startsWith("pacman")
                 ? "startPacman"
                 : "startGhost"
         );
@@ -598,6 +627,8 @@ function createGameRules(parameters = {}) {
         gs.lives--;
         gs.running = false;
         gs.deathTimer = 1.0;
+        gs.livesVisibleUntil =
+            nowMilliseconds() + LIVES_DISPLAY_MILLISECONDS;
 
         // The ghosts keep their frightened/eaten state during the death
         // pause; resetPositions restores them when the round restarts.
@@ -939,19 +970,25 @@ function createGameRules(parameters = {}) {
     function resetPositions() {
         const gs = gameState();
         const mapDefinition = map.getCurrentMapDefinition();
-        const playerStart = mapDefinition.playerStart;
-        const player = gs.player;
+        const playerStarts = mapDefinition.playerStarts ||
+            [mapDefinition.playerStart];
 
-        player.x = playerStart.x;
-        player.y = playerStart.y;
-        player.px = playerStart.x;
-        player.py = playerStart.y;
-        player.progress = 0;
-        player.direction = { x: 0, y: 0 };
-        player.nextDirection = { x: 0, y: 0 };
-        player.ready = true;
-        player.stopped = false;
-        player.stopTimer = 0;
+        gs.players.forEach((player, index) => {
+            const start = playerStarts[index] || playerStarts[0];
+
+            player.x = start.x;
+            player.y = start.y;
+            player.px = start.x;
+            player.py = start.y;
+            player.progress = 0;
+            player.direction = { x: 0, y: 0 };
+            player.nextDirection = { x: 0, y: 0 };
+            player.ready = true;
+            player.stopped = false;
+            player.stopTimer = 0;
+        });
+
+        gs.player = gs.players[getControlledPlayerIndex()] || gs.players[0];
 
         const ghostStarts = mapDefinition.ghostStarts;
 

@@ -220,11 +220,14 @@ function createGameEditor(parameters = {}) {
 
         map.editorDraftMap.tiles = currentMap.tiles.map(row => row.slice());
         map.editorDraftMap.edges = Array.from(currentMap.edges);
-        map.editorDraftMap.playerStart = {
-            x: gs.player.x,
-            y: gs.player.y,
-            direction: { ...gs.player.facingDirection }
-        };
+        map.editorDraftMap.playerStarts = (gs.players || [gs.player]).map(
+            player => ({
+                x: player.x,
+                y: player.y,
+                direction: { ...player.facingDirection },
+                color: player.color
+            })
+        );
         map.editorDraftMap.ghostStarts = gs.ghosts.map(ghost => ({
             x: ghost.x,
             y: ghost.y,

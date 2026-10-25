@@ -21,7 +21,10 @@ function createGameRuleConfig() {
         GHOST_SPEED: 2.25,
         FRIGHTENED_GHOST_SPEED: 1.5,
         EATEN_GHOST_SPEED: 4,
-        INITIAL_LIVES: 3
+        INITIAL_LIVES: 3,
+        // How long the lives of each Pac-Man stay drawn above it after the
+        // game starts and after a life is lost.
+        LIVES_DISPLAY_MILLISECONDS: 2200
     });
 }
 

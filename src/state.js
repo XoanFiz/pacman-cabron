@@ -35,9 +35,11 @@ function createGameState(parameters = {}) {
 
     const currentGameState = {
         score: 0,
-        lives: INITIAL_LIVES,
         pellets: new Set(),
 
+        // Every Pac-Man on the map. `player` is the one the game shows and
+        // the strategy follows: the one the human controls, or the first.
+        players: [],
         player: null,
         ghosts: [],
 
@@ -45,8 +47,24 @@ function createGameState(parameters = {}) {
         paused: false,
         gameWon: false,
         deathTimer: 0,
+        livesVisibleUntil: 0,
         time: 0
     };
+
+    // The lives everyone reads belong to the Pac-Man the game follows;
+    // every Pac-Man keeps its own counter in `players`.
+    Object.defineProperty(currentGameState, "lives", {
+        get() {
+            return currentGameState.player
+                ? currentGameState.player.lives
+                : INITIAL_LIVES;
+        },
+        set(value) {
+            if (currentGameState.player) {
+                currentGameState.player.lives = value;
+            }
+        }
+    });
 
     // ============================================================
     // DEBUG
@@ -57,6 +75,7 @@ function createGameState(parameters = {}) {
 
     // TODO move this to game-renderer
     const BASE_GHOST_COLORS = ["#e05252", "#e99b35", "#d66ad9"];
+    const BASE_PACMAN_COLORS = ["#ffd43b"];
     const ghostColorPalette = BASE_GHOST_COLORS.slice();
 
     function hexToRgb(hex) {
@@ -241,6 +260,7 @@ function createGameState(parameters = {}) {
         // Debug.
         DOMAIN_COLORS,
         BASE_GHOST_COLORS,
+        BASE_PACMAN_COLORS,
 
         // Helpers.
         localizeContent,

@@ -35,9 +35,18 @@ function createGameAiController(parameters = {}) {
             id: definition.id,
             tiles: definition.tiles,
             edges: [...definition.edges].sort(),
-            playerStart: definition.playerStart,
+            playerStarts: map.getPlayerStarts(definition),
+            deathMode: map.getDeathMode(definition),
             ghostStarts: definition.ghostStarts
         });
+    }
+
+    // The character chosen on the start screen decides which Pac-Man the
+    // human drives; the search follows that one until it models them all.
+    function getControlledPlayerIndex() {
+        const match = /^pacman-(\d+)$/.exec(state.selectedCharacter || "");
+
+        return match ? Number(match[1]) : 0;
     }
 
     function ensureStrategy() {
@@ -92,6 +101,9 @@ function createGameAiController(parameters = {}) {
     function getCurrentSearchContext() {
         const gameState = state.currentGameState;
         const mapDefinition = map.getCurrentMapDefinition();
+        const playerStarts = map.getPlayerStarts(mapDefinition);
+        const controlledStart = playerStarts[getControlledPlayerIndex()] ||
+            playerStarts[0];
 
         const world = createWorldSnapshot({
             player: gameState.player,
@@ -110,8 +122,8 @@ function createGameAiController(parameters = {}) {
 
             respawnState: {
                 player: {
-                    x: mapDefinition.playerStart.x,
-                    y: mapDefinition.playerStart.y
+                    x: controlledStart.x,
+                    y: controlledStart.y
                 },
                 ghosts: mapDefinition.ghostStarts.map(start => ({
                     x: start.x,

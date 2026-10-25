@@ -68,7 +68,8 @@ function createGameRenderer(parameters = {}) {
 
         drawBoundaryWalls();
         drawGhostHouses();
-        drawPlayer();
+        drawPlayers();
+        drawLivesBadges();
 
         for (let i = 0; i < gs.ghosts.length; i++) {
             drawGhost(gs.ghosts[i], i);
@@ -163,9 +164,16 @@ function createGameRenderer(parameters = {}) {
         }
     }
 
-    function drawPlayer() {
+    function drawPlayers() {
+        const gs = gameState();
+
+        for (const player of gs.players || [gs.player]) {
+            drawPlayer(player);
+        }
+    }
+
+    function drawPlayer(player) {
         const ctx = state.ctx;
-        const player = gameState().player;
 
         const cx = player.px * CELL + CELL / 2;
         const cy = player.py * CELL + CELL / 2;
@@ -191,12 +199,50 @@ function createGameRenderer(parameters = {}) {
                 Math.sin(performance.now() / 90)
             ) * 0.20;
 
-        ctx.fillStyle = "#ffd43b";
+        ctx.fillStyle = player.color || "#ffd43b";
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         ctx.arc(cx, cy, 11, angle + mouth, angle + Math.PI * 2 - mouth);
         ctx.closePath();
         ctx.fill();
+    }
+
+    // The lives of every Pac-Man are shown over it only when the game
+    // starts and after a life is lost, never during normal play.
+    function drawLivesBadges() {
+        const gs = gameState();
+
+        if (
+            state.editorMode ||
+            performance.now() >= (gs.livesVisibleUntil || 0)
+        ) {
+            return;
+        }
+
+        const ctx = state.ctx;
+
+        for (const player of gs.players || [gs.player]) {
+            const cx = player.px * CELL + CELL / 2;
+            const cy = player.py * CELL + CELL / 2;
+            const label = String(player.lives);
+            const width = 15 + label.length * 6;
+
+            ctx.fillStyle = "rgba(9, 11, 18, 0.85)";
+            ctx.strokeStyle = player.color || "#ffd43b";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.rect(cx - width / 2, cy - 28, width, 15);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 11px system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, cx, cy - 20);
+            ctx.textAlign = "start";
+            ctx.textBaseline = "alphabetic";
+        }
     }
 
     function drawGhost(ghost, index) {

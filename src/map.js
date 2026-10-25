@@ -71,13 +71,36 @@ function createGameMap(parameters = {}) {
         };
     }
 
+    // A map started with a single Pac-Man; the definitions now carry a
+    // list so the editor can add more. Both shapes are accepted and every
+    // definition that leaves this factory is normalised to the list.
+    function getPlayerStarts(definition) {
+        if (
+            Array.isArray(definition.playerStarts) &&
+            definition.playerStarts.length > 0
+        ) {
+            return definition.playerStarts;
+        }
+
+        return [definition.playerStart];
+    }
+
+    function getDeathMode(definition) {
+        return definition.deathMode === "respawn" ? "respawn" : "restart";
+    }
+
     function cloneMapDefinition(definition,
         { includeCalibration = false } = {}) {
         return {
             ...definition,
             tiles: definition.tiles.map(row => [...row]),
             edges: new Set(definition.edges),
-            playerStart: cloneMapPosition(definition.playerStart),
+            playerStarts: getPlayerStarts(definition).map(start => ({
+                ...cloneMapPosition(start),
+                color: start.color || state.BASE_PACMAN_COLORS[0]
+            })),
+            playerStart: undefined,
+            deathMode: getDeathMode(definition),
             ghostStarts: definition.ghostStarts.map(cloneMapPosition),
 
             ...(includeCalibration && definition.calibration !== undefined
@@ -119,11 +142,14 @@ function createGameMap(parameters = {}) {
 
             edges: new Set(),
 
-            playerStart: {
+            playerStarts: [{
                 x: 10,
                 y: 10,
-                direction: { x: 0, y: 0 }
-            },
+                direction: { x: 0, y: 0 },
+                color: "#ffd43b"
+            }],
+
+            deathMode: "restart",
 
             ghostStarts: [
                 { x: 9, y: 8, direction: { x: 1, y: 0 } },
@@ -234,11 +260,14 @@ function createGameMap(parameters = {}) {
                 "h:15:16", "h:15:17"
             ]),
 
-            playerStart: {
+            playerStarts: [{
                 x: 10,
                 y: 10,
-                direction: { x: 0, y: 0 }
-            },
+                direction: { x: 0, y: 0 },
+                color: "#ffd43b"
+            }],
+
+            deathMode: "restart",
 
             ghostStarts: [
                 { x: 9, y: 8, direction: { x: 1, y: 0 } },
@@ -614,7 +643,8 @@ function createGameMap(parameters = {}) {
         return JSON.stringify({
             tiles: definition.tiles,
             edges: [...definition.edges].sort(),
-            playerStart: definition.playerStart,
+            playerStarts: getPlayerStarts(definition),
+            deathMode: getDeathMode(definition),
             ghostStarts: definition.ghostStarts
         });
     }
@@ -710,8 +740,10 @@ function createGameMap(parameters = {}) {
     // Builds the initial search state for a definition, with no
     // dependency on the active map or the live game state.
     function createCalibrationInitialState(definition) {
+        const firstPlayerStart = getPlayerStarts(definition)[0];
+
         const player = model.createPlayerState(
-            definition.playerStart,
+            firstPlayerStart,
             config.PACMAN_SPEED
         );
 
@@ -732,8 +764,8 @@ function createGameMap(parameters = {}) {
             controlledGhostIndex: -1,
             respawnState: {
                 player: {
-                    x: definition.playerStart.x,
-                    y: definition.playerStart.y
+                    x: firstPlayerStart.x,
+                    y: firstPlayerStart.y
                 },
                 ghosts: definition.ghostStarts.map(start => ({
                     x: start.x,
@@ -1196,6 +1228,8 @@ function createGameMap(parameters = {}) {
         createGhostIcon,
         getGhostName,
         getCurrentMapDefinition,
+        getPlayerStarts,
+        getDeathMode,
         getMapRowCount,
         getMapColumnCount,
         wrap,

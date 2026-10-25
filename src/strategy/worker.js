@@ -38,7 +38,8 @@ function computeStrategySignature(definition) {
         id: definition.id,
         tiles: definition.tiles,
         edges: [...(definition.edges || [])].sort(),
-        playerStart: definition.playerStart,
+        playerStarts: definition.playerStarts,
+        deathMode: definition.deathMode,
         ghostStarts: definition.ghostStarts
     });
 }
