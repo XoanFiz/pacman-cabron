@@ -1,13 +1,16 @@
-// The map editor must let the developer remove ghosts and recover the
-// colour they free, so the next added ghost takes it back instead of a
-// new distinct hue. Ghost names must follow the colour, not the
-// position, because ghosts keep their colour when another one goes.
+// The map editor must let the developer add and remove the characters
+// that live in the map. A removed ghost frees its colour for the next
+// one, a new Pac-Man takes the hue farthest from every character
+// (including the colour the next ghost would take), and the last
+// Pac-Man cannot be removed. Each map also chooses what happens when a
+// Pac-Man is caught.
 //
-// The test loads the real src/editor.js and the real getGhostName from
-// src/map.js into a fake DOM and drives the editor through its own user
-// gestures: the edit button, the ghost chips and canvas taps.
+// The test loads the real src/editor.js and the real getGhostName and
+// getPacmanName from src/map.js into a fake DOM and drives the editor
+// through its own gestures: the edit button, the add buttons, the
+// character chips and canvas taps.
 //
-// Usage: node src/tests/editor/ghost-removal.js
+// Usage: node src/tests/editor/characters.js
 
 const fs = require("fs");
 const path = require("path");
@@ -153,6 +156,7 @@ function extractFunction(source, name) {
 }
 
 const getGhostNameSource = extractFunction(read("map.js"), "getGhostName");
+const getPacmanNameSource = extractFunction(read("map.js"), "getPacmanName");
 
 // ------------------------------------------------------------
 // GAME STUBS
@@ -168,17 +172,25 @@ function cloneGhostStart(start) {
 }
 
 function cloneMapDefinition(definition) {
+    const playerStart = definition.playerStart || {
+        x: 1,
+        y: 1,
+        direction: { x: 0, y: 0 }
+    };
+
     return {
         id: definition.id,
         nameKey: definition.nameKey,
         customNumber: definition.customNumber,
         tiles: definition.tiles.map(row => row.slice()),
         edges: new Set(definition.edges),
-        playerStart: {
-            x: definition.playerStart.x,
-            y: definition.playerStart.y,
-            direction: { ...definition.playerStart.direction }
-        },
+        playerStarts: (definition.playerStarts || [playerStart]).map(start => ({
+            x: start.x,
+            y: start.y,
+            color: start.color,
+            direction: { ...(start.direction || { x: 0, y: 0 }) }
+        })),
+        deathMode: definition.deathMode,
         ghostStarts: definition.ghostStarts.map(cloneGhostStart)
     };
 }
@@ -205,7 +217,13 @@ const map = {
         nameKey: "classicMap",
         tiles,
         edges: new Set(),
-        playerStart: { x: 1, y: 1, direction: { ...DIRECTIONS.up } },
+        playerStarts: [{
+            x: 1,
+            y: 1,
+            color: "#ffd43b",
+            direction: { ...DIRECTIONS.up }
+        }],
+        deathMode: "restart",
         ghostStarts: [
             { x: 2, y: 3, color: "#e05252", direction: { ...DIRECTIONS.left } },
             { x: 1, y: 3, color: "#e99b35", direction: { ...DIRECTIONS.left } },
@@ -283,10 +301,22 @@ const map = {
         icon.dataset.color = color;
 
         return icon;
+    },
+    createPacmanIcon(color, className) {
+        const icon = new FakeElement("svg");
+
+        icon.className = className;
+        icon.dataset.color = color;
+
+        return icon;
+    },
+    getDeathMode(definition) {
+        return definition.deathMode === "respawn" ? "respawn" : "restart";
     }
 };
 
 const gs = {
+    players: [],
     player: null,
     ghosts: []
 };
@@ -296,6 +326,15 @@ const state = {
         addGhost: "Add ghost",
         cancelAddGhost: "Cancel adding ghosts",
         addGhostInstructions: "Add ghost instructions",
+        addPacman: "Add Pac-Man",
+        cancelAddPacman: "Cancel adding Pac-Mans",
+        addPacmanInstructions: "Add Pac-Man instructions",
+        pacman: "Pac-Man",
+        pacmanNumber: "Pac-Man {number}",
+        pacmanRequiredError: "At least one Pac-Man must remain",
+        deathMode: "On death",
+        deathModeRestart: "Reset positions",
+        deathModeRespawn: "Respawn, invincible",
         redGhost: "Red ghost",
         orangeGhost: "Orange ghost",
         pinkGhost: "Pink ghost",
@@ -303,16 +342,23 @@ const state = {
         mapEditorInstructions: "Editor instructions"
     },
     BASE_GHOST_COLORS: ["#e05252", "#e99b35", "#d66ad9"],
+    BASE_PACMAN_COLORS: ["#ffd43b"],
     getGhostColor(index) {
         return state.BASE_GHOST_COLORS[index] || "#abcdef";
     },
-    getMostDistinctGhostColor() {
-        return "#010203";
+    getMostDistinctGhostColor(existingColors) {
+        const palette = ["#e99b35", "#010203", "#ffd43b"];
+        const used = existingColors.map(color => String(color).toLowerCase());
+
+        return palette.find(color => !used.includes(color)) || "#abcdef";
     },
     currentGameState: gs,
     canvas: new FakeElement("canvas"),
     editorGhostListElement: new FakeElement("div"),
+    editorPacmanListElement: new FakeElement("div"),
     addGhostButton: new FakeElement("button"),
+    addPacmanButton: new FakeElement("button"),
+    deathModeButton: new FakeElement("button"),
     newMapButton: new FakeElement("button"),
     editorBackButton: new FakeElement("button"),
     editorSaveButton: new FakeElement("button"),
@@ -323,6 +369,7 @@ const state = {
     editorMode: false,
     editorGesture: null,
     addingGhost: false,
+    addingPacman: false,
     selectedCharacter: "pacman",
     showEditorToast(key) {
         state.lastToast = key;
@@ -338,15 +385,19 @@ const rules = {
         map.graph = map.buildGraph(map.currentMap);
         map.strategicSearch.frontier = [];
         map.strategicSearch.root = null;
-        gs.player = {
-            x: map.currentMap.playerStart.x,
-            y: map.currentMap.playerStart.y,
-            px: map.currentMap.playerStart.x,
-            py: map.currentMap.playerStart.y,
+        gs.players = map.currentMap.playerStarts.map(start => ({
+            x: start.x,
+            y: start.y,
+            px: start.x,
+            py: start.y,
             progress: 0,
-            direction: { ...map.currentMap.playerStart.direction },
-            facingDirection: { ...map.currentMap.playerStart.direction }
-        };
+            direction: { ...start.direction },
+            facingDirection: { ...start.direction },
+            nextDirection: { x: 0, y: 0 },
+            lives: 3,
+            color: start.color
+        }));
+        gs.player = gs.players[0];
         gs.ghosts = map.currentMap.ghostStarts.map((start, index) => ({
             x: start.x,
             y: start.y,
@@ -380,7 +431,11 @@ const context = vm.createContext({
 
 vm.runInContext(read("editor.js"), context, { filename: "editor.js" });
 vm.runInContext(getGhostNameSource, context, { filename: "map.js#getGhostName" });
-vm.runInContext("map.getGhostName = getGhostName;", context);
+vm.runInContext(getPacmanNameSource, context, { filename: "map.js#getPacmanName" });
+vm.runInContext(
+    "map.getGhostName = getGhostName; map.getPacmanName = getPacmanName;",
+    context
+);
 
 const editor = vm.runInContext(
     "createGameEditor({ state: __state, map: __map, rules: __rules })",
@@ -413,6 +468,26 @@ function tapCanvas(x, y) {
 function addGhostAt(x, y) {
     if (!state.addingGhost) {
         state.addGhostButton.dispatch("click");
+    }
+
+    tapCanvas(x, y);
+}
+
+function pacmanChips() {
+    return state.editorPacmanListElement.children;
+}
+
+function pacmanNames() {
+    return pacmanChips().map(chip => chip.children[1].textContent);
+}
+
+function addPacmanButtonColor() {
+    return state.addPacmanButton.children[0].dataset.color;
+}
+
+function addPacmanAt(x, y) {
+    if (!state.addingPacman) {
+        state.addPacmanButton.dispatch("click");
     }
 
     tapCanvas(x, y);
@@ -482,9 +557,66 @@ check("ghost added to an empty map", gs.ghosts.length === 1, gs.ghosts.length);
 check("first ghost is red", gs.ghosts[0].color === "#e05252", gs.ghosts[0].color);
 check("list visible again", state.editorGhostListElement.hidden === false);
 
-// Leaving the editor hides the list.
+// Pac-Mans: one chip, its own colour and name, and a colour that avoids
+// both the other characters and the colour the next ghost would take.
+check("one Pac-Man from the map", gs.players.length === 1, gs.players.length);
+check("Pac-Man chip", pacmanChips().length === 1, pacmanChips().length);
+check("Pac-Man name",
+    JSON.stringify(pacmanNames()) === JSON.stringify(["Pac-Man"]),
+    pacmanNames());
+check("Pac-Man keeps its colour", gs.players[0].color === "#ffd43b",
+    gs.players[0].color);
+
+addPacmanAt(2, 2);
+check("Pac-Man added", gs.players.length === 2, gs.players.length);
+check("Pac-Man position",
+    gs.players[1].x === 2 && gs.players[1].y === 2,
+    { x: gs.players[1].x, y: gs.players[1].y });
+check("Pac-Man gets a different colour",
+    gs.players[1].color !== "#ffd43b", gs.players[1].color);
+check("Pac-Man avoids the next ghost colour",
+    gs.players[1].color !== addButtonColor(),
+    { pacman: gs.players[1].color, ghost: addButtonColor() });
+check("second Pac-Man name",
+    JSON.stringify(pacmanNames()) ===
+    JSON.stringify(["Pac-Man", "Pac-Man 2"]),
+    pacmanNames());
+check("draft keeps every Pac-Man start",
+    map.editorDraftMap.playerStarts.length === 2,
+    map.editorDraftMap.playerStarts.length);
+check("draft keeps the colours",
+    JSON.stringify(map.editorDraftMap.playerStarts.map(start => start.color)) ===
+    JSON.stringify(gs.players.map(player => player.color)),
+    map.editorDraftMap.playerStarts.map(start => start.color));
+
+// The last Pac-Man cannot be removed.
+pacmanChips()[1].dispatch("click");
+check("Pac-Man removed", gs.players.length === 1, gs.players.length);
+pacmanChips()[0].dispatch("click");
+check("the last Pac-Man stays", gs.players.length === 1, gs.players.length);
+check("the last Pac-Man complains",
+    state.lastToast === "pacmanRequiredError", state.lastToast);
+
+// Death mode is a choice of the map.
+check("death mode starts as restart",
+    map.editorDraftMap.deathMode === "restart", map.editorDraftMap.deathMode);
+check("death mode button text",
+    state.deathModeButton.textContent === "On death: Reset positions",
+    state.deathModeButton.textContent);
+state.deathModeButton.dispatch("click");
+check("death mode becomes respawn",
+    map.editorDraftMap.deathMode === "respawn", map.editorDraftMap.deathMode);
+check("death mode button pressed",
+    state.deathModeButton.getAttribute("aria-pressed") === "true");
+state.deathModeButton.dispatch("click");
+check("death mode back to restart",
+    map.editorDraftMap.deathMode === "restart", map.editorDraftMap.deathMode);
+
+// Leaving the editor hides the chips.
 state.editorSaveButton.dispatch("click");
 check("editor mode off", state.editorMode === false);
 check("list hidden after leaving", state.editorGhostListElement.hidden === true);
+check("Pac-Man list hidden after leaving",
+    state.editorPacmanListElement.hidden === true);
 
-console.log("editor ghost removal ok");
+console.log("editor character chips ok");

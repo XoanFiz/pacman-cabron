@@ -37,5 +37,16 @@ window.PACMAN_TRANSLATIONS = {
     "orangeGhost":  "Ysbryd oren",
     "won":  "Fe wnaethoch chi ennill!",
     "gameOver":  "Gêm drosodd",
-    "score":  "Sgôr"
+    "score":  "Sgôr",
+    "pause": "Pause",
+    "paused": "Paused",
+    "resume": "Resume",
+    "addPacman": "Add Pac-Man",
+    "cancelAddPacman": "Cancel adding Pac-Mans",
+    "addPacmanInstructions": "Click the new Pac-Man icon outside the map to add Pac-Mans. Click it again to stop; then click an open tile to place each Pac-Man.",
+    "pacmanNumber": "Pac-Man {number}",
+    "pacmanRequiredError": "At least one Pac-Man must remain on the map.",
+    "deathMode": "On death",
+    "deathModeRestart": "Reset positions",
+    "deathModeRespawn": "Respawn, invincible",
 };

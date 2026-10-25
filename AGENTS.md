@@ -20,7 +20,7 @@ comments and commit messages in English.
   `--only <text>` filters by path (for example `--only editor`), and
   `--timeout <seconds>` changes the limit per test.
 - One test: every file under `src/tests` is a standalone script, so
-  `node src/tests/editor/ghost-removal.js` also works.
+  `node src/tests/editor/characters.js` also works.
 - Benchmark: `node src/tests/strategy/bench.js --games 3 --walks 6
   --seed 7 --out tmp/bench.json`; the header of that file documents the
   flags. It plays real games, so it takes minutes.
@@ -106,9 +106,13 @@ comments and commit messages in English.
 
 ## Current state
 
-- Branch `chatgpt-search-engine-refactor0`. Last feature commits
-  `44ce825` (the editor removes ghosts) and `7d5ee6d` (the plan carries a
-  short state key).
+- Branch `chatgpt-search-engine-refactor0`. Recent feature commits:
+  `44ce825` (the editor removes ghosts), `7d5ee6d` (the plan carries a
+  short state key) and `e20018e` (a map carries several Pac-Mans).
+- Multiple Pac-Mans are half in: the map definitions, the editor (add,
+  remove, colours, death mode), the rendering and the per-Pac-Man lives
+  badges work, but the simulation and the search still follow a single
+  Pac-Man, so extra ones do not move yet.
 - Open threads: navigation and oscillation (no level cleared), the
   `pacman-avoid` playout and the `circuit` escapes above.
 

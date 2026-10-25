@@ -21,11 +21,15 @@ function createGameEditor(parameters = {}) {
         state.editorMode = true;
         state.editorGesture = null;
         state.addingGhost = false;
+        state.addingPacman = false;
         window.clearTimeout(state.editorToastTimer);
         state.editorToastElement.hidden = true;
         rules.resetGame();
         updateAddGhostButton();
+        updateAddPacmanButton();
+        updateDeathModeButton();
         renderEditorGhostList();
+        renderEditorPacmanList();
         document.body.classList.add("map-editor-active");
         state.editorToolbarElement.hidden = false;
         state.startScreenElement.hidden = true;
@@ -41,15 +45,107 @@ function createGameEditor(parameters = {}) {
         map.editorDraftMap.nameKey = null;
         map.editorDraftMap.customNumber = map.nextCustomMapNumber++;
         state.addingGhost = false;
+        state.addingPacman = false;
         rules.resetGame();
         updateAddGhostButton();
+        updateAddPacmanButton();
+        updateDeathModeButton();
         renderEditorGhostList();
+        renderEditorPacmanList();
         state.setMapEditorInstructions();
     }
 
     function toggleGhostPlacement() {
         state.addingGhost = !state.addingGhost;
+        state.addingPacman = false;
         updateAddGhostButton();
+        updateAddPacmanButton();
+    }
+
+    function togglePacmanPlacement() {
+        state.addingPacman = !state.addingPacman;
+        state.addingGhost = false;
+        updateAddPacmanButton();
+        updateAddGhostButton();
+    }
+
+    // Two characters of the same colour would be told apart only by their
+    // shape, so a new one takes the hue farthest from every character on
+    // the map, including the colour the next ghost would take.
+    function createEditorPacman(position, color) {
+        const facing = { ...DIRECTIONS.left };
+        const lives = gameState().players[0]
+            ? gameState().players[0].lives
+            : 3;
+
+        return {
+            x: position.x,
+            y: position.y,
+            px: position.x,
+            py: position.y,
+            progress: 0,
+            direction: { ...facing },
+            facingDirection: { ...facing },
+            nextDirection: { ...facing },
+            ready: true,
+            stopped: false,
+            stopTimer: 0,
+            speed: 0,
+            lives,
+            color
+        };
+    }
+
+    function addPacmanAt(position) {
+        const gs = gameState();
+        const currentMap = map.currentMap;
+
+        if (
+            !position ||
+            currentMap.tiles[position.y][position.x] === "#" ||
+            currentMap.tiles[position.y][position.x] === "H" ||
+            gs.players.some(player =>
+                player.x === position.x && player.y === position.y
+            ) ||
+            gs.ghosts.some(ghost =>
+                ghost.x === position.x && ghost.y === position.y
+            )
+        ) {
+            state.showEditorToast("ghostPlacementError");
+            return false;
+        }
+
+        gs.players.push(
+            createEditorPacman(position, nextPacmanColor())
+        );
+
+        const previousTile = currentMap.tiles[position.y][position.x];
+
+        if (previousTile === "." || previousTile === "o") {
+            currentMap.tiles[position.y][position.x] = " ";
+        }
+
+        if (!isEditorMapConnected()) {
+            gs.players.pop();
+
+            if (previousTile !== currentMap.tiles[position.y][position.x]) {
+                currentMap.tiles[position.y][position.x] = previousTile;
+            }
+
+            state.showEditorToast("mapConnectivityError");
+            return false;
+        }
+
+        map.strategicSearch.nodes.clear();
+        map.strategicSearch.frontier = [];
+        map.strategicSearch.root = null;
+        syncEditorDraftMap();
+        updateAddPacmanButton();
+        updateAddGhostButton();
+        renderEditorPacmanList();
+        state.setMapEditorInstructions();
+
+        return true;
     }
 
     function addGhostAt(position) {
@@ -113,17 +209,50 @@ function createGameEditor(parameters = {}) {
         );
     }
 
-    // Removing a ghost frees its colour so the next added ghost takes it
-    // back instead of a new distinct hue.
-    function nextGhostColor(existingColors) {
+    function getPacmanColors() {
+        return gameState().players.map((player, index) =>
+            player.color ||
+            state.BASE_PACMAN_COLORS[index] ||
+            state.BASE_PACMAN_COLORS[0]
+        );
+    }
+
+    // A colour already taken by any character is not free, whichever its
+    // kind: the base colours are tried first and then the hue farthest
+    // from everything on the map.
+    function pickFreeColor(baseColors, existingColors) {
         const used = new Set(
             existingColors.map(color => String(color).toLowerCase())
         );
-        const free = state.BASE_GHOST_COLORS.find(
+        const free = baseColors.find(
             color => !used.has(color.toLowerCase())
         );
 
         return free || state.getMostDistinctGhostColor(existingColors);
+    }
+
+    // Removing a ghost frees its colour so the next added ghost takes it
+    // back instead of a new distinct hue.
+    function nextGhostColor(existingColors) {
+        return pickFreeColor(
+            state.BASE_GHOST_COLORS,
+            [...existingColors, ...getPacmanColors()]
+        );
+    }
+
+    // A new Pac-Man also avoids the colour the next ghost would take, so
+    // the two buttons never preview the same colour.
+    function nextPacmanColor() {
+        const ghostColors = getGhostColors();
+
+        return pickFreeColor(
+            state.BASE_PACMAN_COLORS,
+            [
+                ...getPacmanColors(),
+                ...ghostColors,
+                nextGhostColor(ghostColors)
+            ]
+        );
     }
 
     function removeGhostAt(index) {
@@ -157,7 +286,51 @@ function createGameEditor(parameters = {}) {
         map.strategicSearch.root = null;
         syncEditorDraftMap();
         updateAddGhostButton();
+        updateAddPacmanButton();
         renderEditorGhostList();
+
+        return true;
+    }
+
+    function removePacmanAt(index) {
+        const gs = gameState();
+
+        if (
+            !state.editorMode ||
+            !Number.isInteger(index) ||
+            index < 0 ||
+            index >= gs.players.length
+        ) {
+            return false;
+        }
+
+        if (gs.players.length <= 1) {
+            state.showEditorToast("pacmanRequiredError");
+            return false;
+        }
+
+        gs.players.splice(index, 1);
+        gs.player = gs.players[0];
+
+        if (state.selectedCharacter.startsWith("pacman-")) {
+            const selectedIndex = Number(
+                state.selectedCharacter.slice("pacman-".length)
+            );
+
+            if (selectedIndex === index) {
+                state.selectedCharacter = "pacman";
+            } else if (selectedIndex > index) {
+                state.selectedCharacter = `pacman-${selectedIndex - 1}`;
+            }
+        }
+
+        map.strategicSearch.nodes.clear();
+        map.strategicSearch.frontier = [];
+        map.strategicSearch.root = null;
+        syncEditorDraftMap();
+        updateAddPacmanButton();
+        updateAddGhostButton();
+        renderEditorPacmanList();
 
         return true;
     }
@@ -184,7 +357,7 @@ function createGameEditor(parameters = {}) {
             const button = document.createElement("button");
 
             button.type = "button";
-            button.className = "editor-ghost-chip";
+            button.className = "editor-character-chip";
             button.dataset.ghostIndex = String(index);
             button.title = name;
 
@@ -192,7 +365,7 @@ function createGameEditor(parameters = {}) {
             label.textContent = name;
 
             const remove = document.createElement("span");
-            remove.className = "editor-ghost-chip-remove";
+            remove.className = "editor-character-chip-remove";
             remove.textContent = "\u00d7";
 
             button.append(
@@ -208,6 +381,109 @@ function createGameEditor(parameters = {}) {
 
             list.append(button);
         }
+    }
+
+    function renderEditorPacmanList() {
+        const list = state.editorPacmanListElement;
+        const gs = gameState();
+
+        if (!list) {
+            return;
+        }
+
+        const visible = state.editorMode && gs.players.length > 0;
+
+        list.replaceChildren();
+        list.hidden = !visible;
+
+        if (!visible) {
+            return;
+        }
+
+        for (let index = 0; index < gs.players.length; index++) {
+            const name = map.getPacmanName(index);
+            const button = document.createElement("button");
+
+            button.type = "button";
+            button.className = "editor-character-chip";
+            button.dataset.pacmanIndex = String(index);
+            button.title = name;
+
+            const label = document.createElement("span");
+            label.textContent = name;
+
+            const remove = document.createElement("span");
+            remove.className = "editor-character-chip-remove";
+            remove.textContent = "\u00d7";
+
+            button.append(
+                map.createPacmanIcon(
+                    gs.players[index].color ||
+                    state.BASE_PACMAN_COLORS[0],
+                    "character-figure"
+                ),
+                label,
+                remove
+            );
+
+            button.addEventListener("click", () => removePacmanAt(index));
+
+            list.append(button);
+        }
+    }
+
+    function updateAddPacmanButton() {
+        const color = nextPacmanColor();
+
+        const label = document.createElement("span");
+        label.textContent = state.messages.addPacman;
+
+        state.addPacmanButton.replaceChildren(
+            map.createPacmanIcon(color, "ghost-choice-icon"),
+            label
+        );
+
+        state.addPacmanButton.setAttribute(
+            "aria-pressed",
+            String(state.addingPacman)
+        );
+
+        state.addPacmanButton.setAttribute(
+            "aria-label",
+            state.addingPacman
+                ? state.messages.cancelAddPacman
+                : state.messages.addPacman
+        );
+
+        state.addPacmanButton.title = state.messages.addPacmanInstructions;
+    }
+
+    function updateDeathModeButton() {
+        const respawn = map.getDeathMode(
+            map.getCurrentMapDefinition()
+        ) === "respawn";
+
+        state.deathModeButton.textContent =
+            `${state.messages.deathMode}: ` +
+            (respawn
+                ? state.messages.deathModeRespawn
+                : state.messages.deathModeRestart);
+
+        state.deathModeButton.setAttribute(
+            "aria-pressed",
+            String(respawn)
+        );
+    }
+
+    function toggleDeathMode() {
+        const definition = map.getCurrentMapDefinition();
+
+        definition.deathMode = map.getDeathMode(definition) === "respawn"
+            ? "restart"
+            : "respawn";
+
+        syncEditorDraftMap();
+        updateDeathModeButton();
     }
 
     function syncEditorDraftMap() {
@@ -246,7 +522,9 @@ function createGameEditor(parameters = {}) {
         state.editorMode = false;
         state.editorGesture = null;
         state.addingGhost = false;
+        state.addingPacman = false;
         renderEditorGhostList();
+        renderEditorPacmanList();
         map.updateCharacterChoices();
         window.clearTimeout(state.editorToastTimer);
         state.editorToastElement.hidden = true;
@@ -350,9 +628,16 @@ function createGameEditor(parameters = {}) {
 
     function getEditorEntity(position) {
         const gs = gameState();
+        const playerIndex = gs.players.findIndex(player =>
+            player.x === position.x && player.y === position.y
+        );
 
-        if (gs.player.x === position.x && gs.player.y === position.y) {
-            return { type: "player", entity: gs.player };
+        if (playerIndex >= 0) {
+            return {
+                type: "player",
+                index: playerIndex,
+                entity: gs.players[playerIndex]
+            };
         }
 
         const ghostIndex = gs.ghosts.findIndex(ghost =>
@@ -390,10 +675,11 @@ function createGameEditor(parameters = {}) {
             return false;
         }
 
-        if (
-            gesture.type !== "player" &&
-            gs.player.x === x && gs.player.y === y
-        ) {
+        if (gs.players.some((player, index) =>
+            player.x === x &&
+            player.y === y &&
+            !(gesture.type === "player" && index === gesture.index)
+        )) {
             return false;
         }
 
@@ -439,7 +725,7 @@ function createGameEditor(parameters = {}) {
         const currentMap = map.currentMap;
 
         const targets = [
-            { x: gs.player.x, y: gs.player.y },
+            ...gs.players.map(player => ({ x: player.x, y: player.y })),
             ...gs.ghosts.map(ghost => ({ x: ghost.x, y: ghost.y })),
             ...map.buildGhostHouses(currentMap),
             ...currentMap.tiles.flatMap((row, y) =>
@@ -450,8 +736,9 @@ function createGameEditor(parameters = {}) {
                 ).filter(Boolean)
             )
         ];
-        const reached = new Set([`${gs.player.x},${gs.player.y}`]);
-        const queue = [{ x: gs.player.x, y: gs.player.y }];
+        const origin = gs.players[0] || gs.ghosts[0];
+        const reached = new Set([`${origin.x},${origin.y}`]);
+        const queue = [{ x: origin.x, y: origin.y }];
 
         for (let index = 0; index < queue.length; index++) {
             const current = queue[index];
@@ -563,13 +850,15 @@ function createGameEditor(parameters = {}) {
         const boundary = getEditorBoundary(event);
         const selected = getEditorEntity(position);
 
-        state.editorGesture = state.addingGhost
-            ? { type: "add-ghost", start: position, moved: false }
-            : boundary
-                ? { type: "boundary", edge: boundary, start: position, moved: false }
-                : selected
-                    ? { ...selected, start: position, moved: false }
-                    : { type: "tile", start: position, moved: false };
+        state.editorGesture = state.addingPacman
+            ? { type: "add-pacman", start: position, moved: false }
+            : state.addingGhost
+                ? { type: "add-ghost", start: position, moved: false }
+                : boundary
+                    ? { type: "boundary", edge: boundary, start: position, moved: false }
+                    : selected
+                        ? { ...selected, start: position, moved: false }
+                        : { type: "tile", start: position, moved: false };
     });
 
     state.canvas.addEventListener("pointermove", event => {
@@ -621,6 +910,13 @@ function createGameEditor(parameters = {}) {
             return;
         }
 
+        if (gesture.type === "add-pacman") {
+            if (position.x === gesture.start.x && position.y === gesture.start.y) {
+                addPacmanAt(position);
+            }
+            return;
+        }
+
         if (gesture.type === "tile") {
             if (position.x === gesture.start.x && position.y === gesture.start.y) {
                 cycleEditorTile(position);
@@ -642,6 +938,8 @@ function createGameEditor(parameters = {}) {
     document.getElementById("edit-map").addEventListener("click", enterMapEditor);
     state.newMapButton.addEventListener("click", createNewMap);
     state.addGhostButton.addEventListener("click", toggleGhostPlacement);
+    state.addPacmanButton.addEventListener("click", togglePacmanPlacement);
+    state.deathModeButton.addEventListener("click", toggleDeathMode);
     state.editorBackButton.addEventListener("click", () => leaveMapEditor(false));
     state.editorSaveButton.addEventListener("click", () => leaveMapEditor(true));
     state.mapSelectElement.addEventListener("change", () => {

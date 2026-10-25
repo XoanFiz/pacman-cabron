@@ -37,5 +37,16 @@ window.PACMAN_TRANSLATIONS = {
     "orangeGhost":  "ஆரஞ்சு பேய்",
     "won":  "நீ வென்றாய்!",
     "gameOver":  "ஆட்டம் முடிந்தது",
-    "score":  "மதிப்பெண்"
+    "score":  "மதிப்பெண்",
+    "pause": "Pause",
+    "paused": "Paused",
+    "resume": "Resume",
+    "addPacman": "Add Pac-Man",
+    "cancelAddPacman": "Cancel adding Pac-Mans",
+    "addPacmanInstructions": "Click the new Pac-Man icon outside the map to add Pac-Mans. Click it again to stop; then click an open tile to place each Pac-Man.",
+    "pacmanNumber": "Pac-Man {number}",
+    "pacmanRequiredError": "At least one Pac-Man must remain on the map.",
+    "deathMode": "On death",
+    "deathModeRestart": "Reset positions",
+    "deathModeRespawn": "Respawn, invincible",
 };

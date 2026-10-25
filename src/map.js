@@ -566,6 +566,39 @@ function createGameMap(parameters = {}) {
         return svg;
     }
 
+    function createPacmanIcon(color, className) {
+        const svg = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "svg"
+        );
+
+        svg.setAttribute("viewBox", "0 0 48 48");
+        svg.setAttribute("aria-hidden", "true");
+        svg.classList.add(className);
+
+        const body = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "path"
+        );
+
+        body.setAttribute("d", "M24 24 L41.3 14 A20 20 0 1 0 41.3 34 Z");
+        body.setAttribute("fill", color);
+        svg.append(body);
+
+        return svg;
+    }
+
+    function getPacmanName(index) {
+        if (index === 0) {
+            return state.messages.pacman;
+        }
+
+        return state.messages.pacmanNumber.replace(
+            "{number}",
+            String(index + 1)
+        );
+    }
+
     function getGhostName(index, ghostStarts = map.currentMap.ghostStarts) {
         const standardNames = [
             "redGhost",
@@ -1226,6 +1259,8 @@ function createGameMap(parameters = {}) {
         cloneMapDefinition,
         DIRECTIONS,
         createGhostIcon,
+        createPacmanIcon,
+        getPacmanName,
         getGhostName,
         getCurrentMapDefinition,
         getPlayerStarts,

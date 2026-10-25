@@ -215,7 +215,9 @@
         cursor: pointer;
     }
 
-    #editor-add-ghost[aria-pressed="true"] {
+    #editor-add-pacman[aria-pressed="true"],
+    #editor-add-ghost[aria-pressed="true"],
+    #editor-death-mode[aria-pressed="true"] {
         background: #1b2740;
         border-color: #ffd43b;
         box-shadow: 0 0 12px rgba(255, 212, 59, 0.55);
@@ -226,6 +228,7 @@
         height: 48px;
     }
 
+    #editor-pacman-list,
     #editor-ghost-list {
         display: flex;
         justify-content: center;
@@ -234,29 +237,30 @@
         margin: 0 0 8px;
     }
 
+    #editor-pacman-list[hidden],
     #editor-ghost-list[hidden] {
         display: none;
     }
 
-    .editor-ghost-chip {
+    .editor-character-chip {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         padding: 2px 10px 2px 6px;
     }
 
-    .editor-ghost-chip .character-figure {
+    .editor-character-chip .character-figure {
         width: 24px;
         height: 24px;
     }
 
-    .editor-ghost-chip:hover,
-    .editor-ghost-chip:focus-visible {
+    .editor-character-chip:hover,
+    .editor-character-chip:focus-visible {
         border-color: #ff6b6b;
         color: #ff9a9a;
     }
 
-    .editor-ghost-chip-remove {
+    .editor-character-chip-remove {
         font-size: 1.1em;
         line-height: 1;
     }
@@ -296,10 +300,13 @@
     <div id="map-editor-toolbar" hidden>
         <button id="editor-back" data-i18n="backToCharacters">Back to characters</button>
         <button id="editor-new-map" data-i18n="newMap">New map</button>
+        <button id="editor-add-pacman" aria-pressed="false"></button>
         <button id="editor-add-ghost" aria-pressed="false"></button>
+        <button id="editor-death-mode" aria-pressed="false"></button>
         <button id="editor-save" data-i18n="useMap">Use this map</button>
     </div>
 
+    <div id="editor-pacman-list" role="group" hidden></div>
     <div id="editor-ghost-list" role="group" hidden></div>
 
     <canvas id="canvas"></canvas>
