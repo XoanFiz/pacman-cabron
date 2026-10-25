@@ -107,6 +107,7 @@ function createGameAiController(parameters = {}) {
 
         const world = createWorldSnapshot({
             player: gameState.player,
+            players: gameState.players,
             ghosts: gameState.ghosts,
             pellets: gameState.pellets,
             lives: gameState.lives,

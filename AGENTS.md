@@ -115,9 +115,14 @@ comments and commit messages in English.
   can be caught, and the map's death mode decides between resetting the
   positions and respawning the caught one untouchable. They already move
   inside the event queue, so their arrivals and deaths share the timing
-  of the other actors, but the search still does not branch on them:
-  their direction is the pellet-chasing policy and the ghosts only plan
-  against the Pac-Man the game follows.
+  of the other actors.
+- The pending half is putting them in the search: the state needs a
+  `players` list (the context already carries it), a decision per ready
+  actor, a joint heuristic, and the plan and the key updated. Until that
+  lands their direction is still the pellet-chasing policy and the ghosts
+  only plan against the Pac-Man the game follows. The design decided with
+  the developer: go straight to exploring their decisions (no
+  intermediate step that keeps the policy).
 - Open threads: navigation and oscillation (no level cleared), the
   `pacman-avoid` playout and the `circuit` escapes above.
 

@@ -36,9 +36,14 @@ function createGameModel() {
         };
     }
 
-    function createWorldSnapshot({ player, ghosts, pellets, lives, time }) {
+    // `players` carries every Pac-Man on the map; `player` is kept while
+    // the search still reasons about a single one.
+    function createWorldSnapshot({ player, players, ghosts, pellets, lives, time }) {
+        const worldPlayers = (players || [player]).map(cloneCharacterState);
+
         return {
-            player: cloneCharacterState(player),
+            player: worldPlayers[0],
+            players: worldPlayers,
             ghosts: ghosts.map(cloneCharacterState),
             pellets: new Set(pellets),
             lives,

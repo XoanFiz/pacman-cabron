@@ -1,4 +1,5 @@
 TODO
+Move the companion Pac-Mans into the search: players in the state, a decision per actor, a joint heuristic, and the plan and the key updated so the ghosts stop planning against one Pac-Man.
 Calibration follow-ups
     Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
     Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
