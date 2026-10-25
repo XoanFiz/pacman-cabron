@@ -45,12 +45,6 @@ function createGameInput(parameters = {}) {
         });
     }
 
-    document
-        .querySelector('[data-character="pacman"]')
-        .addEventListener("click", event =>
-            map.selectCharacter(event.currentTarget)
-        );
-
     document.addEventListener("keydown", event => {
         const gs = gameState();
 
