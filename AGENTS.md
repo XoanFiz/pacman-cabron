@@ -125,8 +125,16 @@ comments and commit messages in English.
   counts the per-player counters, and a Pac-Man with no lives left stays
   in the list (the plan refers to it by index) but stops moving and
   deciding. Companions decide through the search like an automated player;
-  the pellet-chasing policy is gone. The state and the heuristic changed,
-  so `CALIBRATION_VERSION` is 7 and every map is calibrated again.
+  the pellet-chasing policy is gone.
+- The search models the map's death mode. With `restart` the catch resets
+  every living Pac-Man and every ghost; with `respawn` only the caught
+  Pac-Man goes back to its start, keeps the others playing, and carries an
+  `invincibleTimer` window that the canonical key sees, that ends as an
+  event and that keeps it out of the danger term while it lasts. The
+  invincibility comes from the live `invincibleUntil` and becomes a
+  relative timer in the state, like a ghost's frightened timer. The state,
+  the transitions and the heuristic changed, so `CALIBRATION_VERSION` is 8
+  and every map is calibrated again.
 - Open threads: navigation and oscillation (no level cleared), the
   `pacman-avoid` playout and the `circuit` escapes above.
 

@@ -17,7 +17,8 @@
 //   {
 //     type, revision,
 //     map,              // map definition; edges serialized as an array
-//     searchContext,    // live characters, pellets, lives, time, ...
+//     searchContext,    // live characters, pellets, lives, time, deathMode,
+//                       // controlledPlayerIndex, ...
 //     readyGhostIndices,
 //     readyPlayerIndices // every Pac-Man that has to decide right now
 //   }

@@ -71,7 +71,9 @@ const CALIBRATION_FINISH_REASON = Object.freeze({
 // its scale changed from ~1e-4 to ~0.3.
 // Version 7: every Pac-Man is in the state and decides in its own node, so
 // the transitions, the key and the joint heuristic differ.
-const CALIBRATION_VERSION = 7;
+// Version 8: the death mode is modelled, so a "respawn" map keeps the other
+// characters in place and gives the caught one an untouchable window.
+const CALIBRATION_VERSION = 8;
 
 // Used by the main thread to build the request and by the worker as the
 // fallback when a field is missing.

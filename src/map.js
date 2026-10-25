@@ -858,6 +858,7 @@ function createGameMap(parameters = {}) {
             time: 0,
             controlledPlayerIndex: 0,
             controlledGhostIndex: -1,
+            deathMode: getDeathMode(definition),
             respawnState: {
                 player: {
                     x: firstPlayerStart.x,

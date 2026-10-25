@@ -150,6 +150,10 @@ function createGameAiController(parameters = {}) {
                 ? Number(state.selectedCharacter.slice("ghost-".length))
                 : -1,
 
+            // The map decides what happens when a Pac-Man is caught:
+            // reset the whole round or respawn only the caught one.
+            deathMode: map.getDeathMode(mapDefinition),
+
             respawnState: {
                 player: {
                     x: controlledStart.x,

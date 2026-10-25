@@ -111,6 +111,7 @@ function createGameStrategy(parameters = {}) {
         EATEN_GHOST_SPEED,
         FRIGHTENED_DURATION,
         GHOST_COLLISION_DISTANCE,
+        RESPAWN_INVINCIBILITY_SECONDS,
         INITIAL_LIVES
     } = config.rules;
 
@@ -1044,6 +1045,22 @@ function createGameStrategy(parameters = {}) {
         return !Number.isFinite(player.lives) || player.lives > 0;
     }
 
+    // A Pac-Man that just respawned is untouchable for a short while: the
+    // search keeps that as a relative timer, like the frightened timer of
+    // a ghost, because the state key does not carry the absolute time.
+    function isPlayerInvincible(player) {
+        return Number.isFinite(player.invincibleTimer) &&
+            player.invincibleTimer > 0;
+    }
+
+    // The map decides what happens on a death: "restart" resets every
+    // character, "respawn" brings only the caught one back untouchable.
+    function normalizeDeathMode(searchContext) {
+        return searchContext?.deathMode === "respawn"
+            ? "respawn"
+            : "restart";
+    }
+
     // The index of the Pac-Man the game follows, the one the human drives
     // when a Pac-Man is the chosen character.
     function getControlledPlayerIndex(searchContext) {
@@ -1124,7 +1141,18 @@ function createGameStrategy(parameters = {}) {
         // the tests and a few helpers still read a single character.
         const players = (
             searchContext.players || [searchContext.player]
-        ).map(cloneSearchCharacter);
+        ).map(player => {
+            const clone = cloneSearchCharacter(player);
+            // The live game keeps the end of the invincibility as an
+            // absolute time; the search carries it as a relative timer,
+            // like a ghost's frightened timer.
+            clone.invincibleTimer = Number.isFinite(player.invincibleUntil)
+                ? Math.max(0, player.invincibleUntil - searchContext.time)
+                : undefined;
+            clone.invincibleUntil = undefined;
+
+            return clone;
+        });
         const controlledPlayerIndex = getControlledPlayerIndex(searchContext);
         const totalLives = sumPlayerLives(players);
         const respawn = searchContext.respawnState || {};
@@ -1155,6 +1183,8 @@ function createGameStrategy(parameters = {}) {
             ),
 
             ghosts: searchContext.ghosts.map(cloneSearchCharacter),
+
+            deathMode: normalizeDeathMode(searchContext),
 
             respawnState: {
                 players: players.map((player, index) => {
@@ -1247,7 +1277,9 @@ function createGameStrategy(parameters = {}) {
                     state.readyPlayers[index]
                 ) + (Number.isFinite(player.lives)
                     ? "," + player.lives
-                    : "")
+                    : "") + (isPlayerInvincible(player)
+                        ? ",i" + Number(player.invincibleTimer.toFixed(5))
+                        : "")
             ),
             state.ghosts.map((ghost, index) =>
                 characterKey(ghost, state.readyGhosts[index])
@@ -1464,7 +1496,9 @@ function createGameStrategy(parameters = {}) {
         // ghosts that are close enough to matter, not about territory.
         // Every Pac-Man contributes: the danger is the worst threat any of
         // them faces and the prey the easiest frightened ghost any of them
-        // can reach, so one value covers the whole team.
+        // can reach, so one value covers the whole team. An untouchable
+        // Pac-Man is no danger at all, but a frightened ghost next to it is
+        // still free prey.
         let danger = 0;
         let prey = 0;
 
@@ -1473,6 +1507,7 @@ function createGameStrategy(parameters = {}) {
                 continue;
             }
 
+            const invincible = isPlayerInvincible(player);
             const distances = getGhostDistances(player, state, radius);
 
             for (const [index, distance] of distances) {
@@ -1480,7 +1515,7 @@ function createGameStrategy(parameters = {}) {
 
                 if (state.ghosts[index].frightened) {
                     prey = Math.max(prey, closeness);
-                } else {
+                } else if (!invincible) {
                     danger = Math.max(danger, closeness);
                 }
             }
@@ -1823,9 +1858,10 @@ function createGameStrategy(parameters = {}) {
     }
 
     // Resolves a collision between one ghost and one Pac-Man. A frightened
-    // ghost is eaten; the lives of the caught Pac-Man go down and, while
-    // somebody is still in the game, the round restarts: every living
-    // Pac-Man and every ghost go back to their starts.
+    // ghost is eaten; the lives of the caught Pac-Man go down. What happens
+    // next depends on the map's death mode: "restart" sends every living
+    // Pac-Man and every ghost back to its start, "respawn" brings only the
+    // caught one back, untouchable for a moment, while the game goes on.
     function resolveSearchCollision(state, next, ghostIndex, playerIndex) {
         if (ghostIndex < 0 || playerIndex < 0) {
             return false;
@@ -1840,6 +1876,12 @@ function createGameStrategy(parameters = {}) {
         }
 
         const caught = next.players[playerIndex] || next.player;
+
+        // An untouchable Pac-Man cannot be caught: the event was skipped
+        // when the next event was computed, so this is only a guard.
+        if (isPlayerInvincible(caught)) {
+            return false;
+        }
 
         if (Number.isFinite(caught.lives)) {
             caught.lives = Math.max(0, caught.lives - 1);
@@ -1859,6 +1901,12 @@ function createGameStrategy(parameters = {}) {
             return true;
         }
 
+        if (next.deathMode === "respawn") {
+            respawnCaughtSearchPlayer(next, playerIndex);
+
+            return false;
+        }
+
         next.players = next.players.map((player, index) => {
             const restored = cloneSearchCharacter(player);
             const start = next.respawnState.players[index] ||
@@ -1873,6 +1921,7 @@ function createGameStrategy(parameters = {}) {
             restored.nextDirection = { x: 0, y: 0 };
             restored.stopped = false;
             restored.stopTimer = 0;
+            restored.invincibleTimer = undefined;
 
             return restored;
         });
@@ -1911,6 +1960,34 @@ function createGameStrategy(parameters = {}) {
         );
 
         return false;
+    }
+
+    // Puts the caught Pac-Man back on its own start cell. Only that one
+    // moves: the rest of the characters keep playing where they are, as
+    // the live "respawn" mode does. The untouchable window is a relative
+    // timer in the search state.
+    function respawnCaughtSearchPlayer(state, playerIndex) {
+        const player = state.players[playerIndex];
+        const start = state.respawnState.players[playerIndex] ||
+            state.respawnState.player;
+
+        player.x = start.x;
+        player.y = start.y;
+        player.px = start.x;
+        player.py = start.y;
+        player.progress = 0;
+        player.direction = { x: 0, y: 0 };
+        player.nextDirection = { x: 0, y: 0 };
+        player.stopped = false;
+        player.stopTimer = 0;
+
+        if (isPlayerActive(player)) {
+            player.invincibleTimer = RESPAWN_INVINCIBILITY_SECONDS;
+            state.readyPlayers[playerIndex] = true;
+        } else {
+            player.invincibleTimer = 0;
+            state.readyPlayers[playerIndex] = false;
+        }
     }
 
     function getSearchCollisionTime(
@@ -2035,6 +2112,12 @@ function createGameStrategy(parameters = {}) {
             ) {
                 considerEvent(Math.max(0, player.stopTimer));
             }
+
+            // The untouchable window ends with an event of its own, like a
+            // ghost's frightened timer.
+            if (isPlayerInvincible(player)) {
+                considerEvent(player.invincibleTimer);
+            }
         }
 
         for (let index = 0; index < state.ghosts.length; index++) {
@@ -2053,7 +2136,10 @@ function createGameStrategy(parameters = {}) {
             ) {
                 const player = state.players[playerIndex];
 
-                if (!isPlayerActive(player)) {
+                if (
+                    !isPlayerActive(player) ||
+                    isPlayerInvincible(player)
+                ) {
                     continue;
                 }
 
@@ -2222,6 +2308,14 @@ function createGameStrategy(parameters = {}) {
                     state.readyPlayers[playerIndex] = true;
                     player.stopTimer =
                         config.rules.STOP_DECISION_INTERVAL;
+                }
+            }
+
+            if (isPlayerInvincible(player)) {
+                player.invincibleTimer -= elapsedTime;
+
+                if (player.invincibleTimer <= 0) {
+                    player.invincibleTimer = 0;
                 }
             }
         }
