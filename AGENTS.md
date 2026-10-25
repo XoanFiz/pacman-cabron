@@ -102,7 +102,29 @@ comments and commit messages in English.
   touched.
 - Keep the useful tools in `develop/`, with a header comment saying what
   they are for; keep `src/tests` for the tests themselves.
-- When you commit, update the "Current state" section below.
+- When you commit, update the "Current state" section below and keep the
+  developer's branch pointing at that commit (see the session integration
+  rules). Write the message in the project style: imperative subject, a
+  blank line, the body with the why, a blank line and `Code changes:`
+  bullets naming the files.
+- This session may run in a git worktree (`.dsh-worktrees/<id>/`, branch
+  `dsh/<id>`) while the developer works on
+  `chatgpt-search-engine-refactor0` in the main checkout. Resolve every
+  path against the session worktree: an absolute path without its prefix
+  edits the developer's checkout, not the worktree.
+- The session tooling integrates the worktree into the developer's branch
+  when the turn ends. It commits uncommitted changes as `Session <id>
+  worktree changes` and merges a diverged session branch as `Merge
+  session <id>`, both with the same tree as the real work, so the
+  descriptive commit can end up under a generic tip. Keep the worktree
+  clean and, before ending a turn (or as soon as the developer says a
+  commit is missing), check `git -C <main checkout> log`. If the branch
+  is not at the session tip but its tree is the same (`git diff --stat`
+  is empty), move it forward to the session tip (`git -C <main> merge
+  --ff-only dsh/<id>`); the integration then stays a fast-forward and
+  the descriptive commits are the last ones. Do it only with a clean main
+  checkout and identical trees, and never rewrite the developer's older
+  commits.
 
 ## Current state
 
