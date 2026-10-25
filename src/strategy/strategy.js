@@ -1111,7 +1111,7 @@ function createGameStrategy(parameters = {}) {
         // I do not include time in the key: the domain evaluation uses the arrival time relative to the state's timestamp, 
         // and the remaining fear time is already represented within each ghost. This allows for the sharing of equivalent 
         // states reached at different absolute times.
-        return JSON.stringify([
+        const text = JSON.stringify([
             [...state.pellets].sort(),
             state.lives,
             state.terminal,
@@ -1123,6 +1123,24 @@ function createGameStrategy(parameters = {}) {
             state.readyPlayer,
             state.readyGhosts
         ]);
+
+        // The plan carries the key of every node and the bridge compares
+        // them on every decision, so the canonical text is hashed: two
+        // FNV-1a passes give 64 bits in a short string. Two different
+        // states with the same key are a mistake the plan could not
+        // survive, and 64 bits keep that out of reach for the few thousand
+        // states a plan holds.
+        let first = 2166136261;
+        let second = (2166136261 ^ 0x9e3779b9) >>> 0;
+
+        for (let index = 0; index < text.length; index++) {
+            const code = text.charCodeAt(index);
+
+            first = Math.imul(first ^ code, 16777619);
+            second = Math.imul(second ^ code, 16777619);
+        }
+
+        return (first >>> 0).toString(36) + "-" + (second >>> 0).toString(36);
     }
 
     function getDeterministicTurnOrder(state) {
