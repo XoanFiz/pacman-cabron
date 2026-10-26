@@ -24,6 +24,9 @@ comments and commit messages in English.
 - Benchmark: `node src/tests/strategy/bench.js --games 3 --walks 6
   --seed 7 --out tmp/bench.json`; the header of that file documents the
   flags. It plays real games, so it takes minutes.
+- Plan latency: `node develop/plan-latency.js restart left 40` plays a
+  two-Pac-Man game with the real worker and prints the plan hits, misses
+  and the miss reasons; use it to measure a plan pipeline change.
 
 ## What lives where
 
@@ -157,6 +160,16 @@ comments and commit messages in English.
   relative timer in the state, like a ghost's frightened timer. The state,
   the transitions and the heuristic changed, so `CALIBRATION_VERSION` is 8
   and every map is calibrated again.
+- The plan pipeline is latency bound: the worker posts the first view of a
+  new anchor and the main thread follows it by state key. With several
+  actors every second has more decision levels, so `getTransmittedPlan`
+  expands with `PLAN_VIEW_EXPAND_MILLISECONDS = 20` (8 ms reached less than
+  the transmitted second in a two-Pac-Man game and left decisions without
+  an action) and the main thread keeps the newest non-empty plan even when
+  the cursor cannot be placed in it: the next decision seeks its node by
+  key, and an older stored plan is not better. A plan log with
+  `key-not-found` or `no-action` means the view ran out (raise the budget)
+  or arrived after the game moved on (look at the anchor rate).
 - Open threads: navigation and oscillation (no level cleared), the
   `pacman-avoid` playout and the `circuit` escapes above.
 

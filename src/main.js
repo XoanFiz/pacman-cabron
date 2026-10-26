@@ -140,33 +140,25 @@
                 }
             } else {
                 // A plan of an anchor the game already left is still a view
-                // of the same tree. It is usable when it contains the state
-                // the game reached: the key finds the node again and the
-                // newer exploration comes with it. Only a plan that cannot
-                // be placed is lost.
+                // of the same tree, and its nodes cover states the game may
+                // reach before the next plan arrives. Keep the newest plan
+                // even when the cursor cannot be placed in it: the next
+                // decision seeks its node by state key and the older plan
+                // (the one already stored) is not better.
                 const node = currentNode();
                 const index = node === null
                     ? -1
                     : findPlanNode(incoming, node.key);
 
-                if (index < 0 && node !== null) {
-                    // Only the first plan of an anchor is a plan the game
-                    // was waiting for: a refresh is just extra work.
-                    if (message.first) {
-                        metrics.lost++;
-                        logProblem("stale-plan-dropped", {
-                            revision: message.revision,
-                            current: revision,
-                            latency: message.latency
-                        });
-                    }
+                // An empty plan carries nothing to follow (a terminal
+                // anchor posts one): keep the previous plan. Among the
+                // non-empty ones, only a newer revision can add coverage.
+                if (!incoming[0] || message.revision <= planRevision) {
+                    metrics.lost++;
 
                     return;
                 }
 
-                // Without a cursor (the previous plan ran out or was
-                // discarded) there is nothing to keep: the plan is stored
-                // and the next decision places it by its state key.
                 planRevision = message.revision;
                 plan = incoming;
                 cursor = index >= 0 ? index : null;
@@ -201,6 +193,7 @@
             },
             getPlanAction(mode, key) {
                 let node = currentNode();
+                let placed = true;
 
                 // The worker rebuilds the plan while it explores, so a node
                 // id can move between posts and a fallback decision can
@@ -213,6 +206,8 @@
                     if (index >= 0) {
                         cursor = index;
                         node = plan[index];
+                    } else {
+                        placed = false;
                     }
                 }
 
@@ -224,6 +219,10 @@
                             ? "empty-plan"
                             : "plan-not-updated")
                         : "plan-exhausted";
+                } else if (!placed) {
+                    // The plan does not carry the state the game reached:
+                    // the view ran out or it belongs to another branch.
+                    reason = "key-not-found";
                 } else if (node.actor !== mode) {
                     reason = "actor-mismatch";
                 } else if (!node.action) {

@@ -3030,9 +3030,17 @@ function createGameStrategy(parameters = {}) {
     // The view never waits for a long expansion: the worker has to answer
     // the anchor before the next decision, so it only expands while it has
     // budget and the rest of the window is carried by the cushion and the
-    // next views. A plan that arrives in time with a few decisions beats a
-    // complete plan that arrives after the decision it answered.
-    const PLAN_VIEW_EXPAND_MILLISECONDS = 8;
+    // next views.
+    //
+    // A plan that arrives in time with a few decisions beats a complete
+    // plan that arrives after the decision it answered, but with several
+    // actors every second is more decision levels, and a view cut too early
+    // leaves the following decisions without an action. Eight milliseconds
+    // covered less than the transmitted second in a game with two Pac-Mans
+    // and three ghosts, so the budget is wide enough to reach the horizon
+    // while the main thread keeps the previous plan alive for the latest
+    // nodes (see the stale plan handling in main.js).
+    const PLAN_VIEW_EXPAND_MILLISECONDS = 20;
 
     function getTransmittedPlan(job) {
         if (!job.root) {
