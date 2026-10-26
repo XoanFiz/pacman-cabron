@@ -366,6 +366,19 @@ function createGameStrategy(parameters = {}) {
     // DOMAIN
     // ============================================================
 
+    // Every Pac-Man owns its own territory: the followed one keeps the
+    // "pacman" label (so a one-Pac-Man map is unchanged) and the
+    // companions use "pacman1", "pacman2"... in player order. The search
+    // still treats every one of them as Pac-Man territory; the label is
+    // what lets the renderer paint each domain with its owner's colour.
+    function getPacmanDomainOwner(index) {
+        return index === 0 ? "pacman" : "pacman" + index;
+    }
+
+    function isPacmanDomainOwner(owner) {
+        return typeof owner === "string" && owner.startsWith("pacman");
+    }
+
     // Creates the initial representation of a cell before any
     // character's arrival time or ownership has been established.
     function createDomainCell() {
@@ -637,23 +650,24 @@ function createGameStrategy(parameters = {}) {
         // PAC-MAN
         // --------------------------------------------------------
 
-        // Every Pac-Man seeds the same "pacman" territory: the wave from
-        // the one that reaches a cell first owns it and the others stop
-        // there, so the pacman domain is the union of their reach.
+        // Every Pac-Man seeds its own territory: the wave from the one
+        // that reaches a cell first owns it and the others stop there, so
+        // the whole domain is still the union of their reach but each
+        // cell remembers which Pac-Man got there first.
         if (includePacman) {
             const players = Array.isArray(player) ? player : [player];
 
-            for (const character of players) {
+            players.forEach((character, index) => {
                 if (!character || !isPlayerActive(character)) {
-                    continue;
+                    return;
                 }
 
                 pushCharacterDomainSeed(
                     character,
                     PACMAN_SPEED,
-                    "pacman"
+                    getPacmanDomainOwner(index)
                 );
-            }
+            });
         }
 
 
@@ -717,7 +731,7 @@ function createGameStrategy(parameters = {}) {
                     currentDomainCell.owner = assessedDomainFact.owner;
                     currentDomainCell.direction = assessedDomainFact.direction;
 
-                    if (assessedDomainFact.owner == "pacman") {
+                    if (isPacmanDomainOwner(assessedDomainFact.owner)) {
                         currentDomainCell.blue = [];
                     }
                 }
@@ -740,7 +754,7 @@ function createGameStrategy(parameters = {}) {
 
                 // Pacman stops expanding as soon as he reaches a power pill.
                 if (
-                    assessedDomainFact.owner === "pacman" &&
+                    isPacmanDomainOwner(assessedDomainFact.owner) &&
                     map.tiles[assessedDomainFact.y][assessedDomainFact.x] === "o" &&
                     (pellets.has(`${assessedDomainFact.x},${assessedDomainFact.y}`))) {
                     continue;
@@ -880,7 +894,7 @@ function createGameStrategy(parameters = {}) {
             for (let x = 0; x < getMapColumnCountForMap(); x++) {
                 if (
                     map.tiles[y][x] !== "#" &&
-                    domain[y][x].owner === "pacman"
+                    isPacmanDomainOwner(domain[y][x].owner)
                 ) {
                     pacmanControlledSquares++;
                 }
@@ -955,7 +969,7 @@ function createGameStrategy(parameters = {}) {
                         ? config.strategy.POWER_PELLET_WEIGHT
                         : 1;
 
-                if (ghostOwner === "pacman") {
+                if (isPacmanDomainOwner(ghostOwner)) {
                     pacmanPelletValue +=
                         pelletValue *
                         pelletWeight *
@@ -1359,7 +1373,7 @@ function createGameStrategy(parameters = {}) {
 
                 const cell = domain[y][x];
 
-                if (cell.owner === "pacman") {
+                if (isPacmanDomainOwner(cell.owner)) {
                     territory++;
                 }
 
@@ -1377,7 +1391,7 @@ function createGameStrategy(parameters = {}) {
                     remainingNormal++;
                 }
 
-                if (cell.owner === "pacman") {
+                if (isPacmanDomainOwner(cell.owner)) {
                     const travelTime = Math.max(
                         0,
                         cell.arrival - state.time
@@ -1476,7 +1490,7 @@ function createGameStrategy(parameters = {}) {
 
                 remaining += weight;
 
-                if (domain[y][x].owner === "pacman") {
+                if (isPacmanDomainOwner(domain[y][x].owner)) {
                     const wait = Math.max(
                         0,
                         domain[y][x].arrival - state.time

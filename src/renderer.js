@@ -355,8 +355,18 @@ function createGameRenderer(parameters = {}) {
 
                 let color;
 
-                if (owner === "pacman") {
-                    color = state.DOMAIN_COLORS.pacman;
+                if (owner.startsWith("pacman")) {
+                    // The territory keeps the colour of the Pac-Man that
+                    // reached it first. The followed one owns the "pacman"
+                    // label, the companions "pacman1", "pacman2"...
+                    const index = owner === "pacman"
+                        ? 0
+                        : Number(owner.slice("pacman".length));
+                    const pacman = (gs.players || [gs.player])[index];
+
+                    color = pacman?.color
+                        ? state.hexToRgb(pacman.color)
+                        : state.DOMAIN_COLORS.pacman;
                 }
 
                 if (owner.startsWith("ghost")) {

@@ -223,8 +223,14 @@ const jointDomain = strategy.calculateDomain(
     true
 );
 
+check("the followed Pac-Man owns its cell with its own label",
+    jointDomain[1][1].owner === "pacman",
+    jointDomain[1][1]);
+check("the companion owns its cell with its own label",
+    jointDomain[3][3].owner === "pacman1",
+    jointDomain[3][3]);
 check("the companion owns the cell below it",
-    jointDomain[2][3].owner === "pacman",
+    jointDomain[2][3].owner === "pacman1",
     jointDomain[2][3]);
 
 const aloneContext = context();
@@ -247,7 +253,7 @@ const aloneDomain = strategy.calculateDomain(
 );
 
 check("without the companion that cell is not Pac-Man's",
-    aloneDomain[2][3].owner !== "pacman",
+    !aloneDomain[2][3].owner.startsWith("pacman"),
     aloneDomain[2][3]);
 
 // The value must see the companion: same ghost and same last pellet, but

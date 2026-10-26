@@ -170,7 +170,7 @@ function countPacmanCells(domain) {
 
     for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
-            if (TILES[y][x] !== "#" && domain[y][x].owner === "pacman") {
+            if (TILES[y][x] !== "#" && domain[y][x].owner.startsWith("pacman")) {
                 owned++;
             }
         }
@@ -208,7 +208,7 @@ function ghostPressure(domain) {
                 { x, y: y + 1 }, { x, y: y - 1 }
             ].some(cell =>
                 TILES[wrap(cell.y, rows)][wrap(cell.x, cols)] !== "#" &&
-                domain[wrap(cell.y, rows)][wrap(cell.x, cols)].owner === "pacman"
+                domain[wrap(cell.y, rows)][wrap(cell.x, cols)].owner.startsWith("pacman")
             );
 
             if (touchesPacman) pressure[index]++;

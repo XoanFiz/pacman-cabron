@@ -134,7 +134,7 @@ function countPacmanCells(searchState) {
     let owned = 0;
     for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
-            if (TILES[y][x] !== "#" && domain[y][x].owner === "pacman") {
+            if (TILES[y][x] !== "#" && domain[y][x].owner.startsWith("pacman")) {
                 owned++;
             }
         }

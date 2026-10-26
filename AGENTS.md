@@ -150,7 +150,10 @@ comments and commit messages in English.
   counts the per-player counters, and a Pac-Man with no lives left stays
   in the list (the plan refers to it by index) but stops moving and
   deciding. Companions decide through the search like an automated player;
-  the pellet-chasing policy is gone.
+  the pellet-chasing policy is gone. The domain labels each Pac-Man's
+  territory with its index (`pacman`, `pacman1`, `pacman2`...): the search
+  keeps reading all of them as Pac-Man territory and the Voronoi view
+  paints each one with its own colour.
 - The search models the map's death mode. With `restart` the catch resets
   every living Pac-Man and every ghost; with `respawn` only the caught
   Pac-Man goes back to its start, keeps the others playing, and carries an
