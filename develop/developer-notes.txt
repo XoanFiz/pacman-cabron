@@ -1,9 +1,11 @@
 TODO
+Calibrate all maps that need calibration
 Calibration follow-ups
     Add focused developer tests for calibration completion, cache hits/misses, invalidation, IndexedDB fallback, and sharing data between sessions.
-    Reuse a cached calibration when the map definition still matches its mapSignature; invalidate stale entries when tiles, edges or starts change.
+        The map signature now invalidates a calibration, a borrowed one is no longer completed and the map measures itself after inheriting, and a stale entry is no longer offered as a reference. Only map.js changed and the suites have not run since.
     Add a schema/migration step for the IndexedDB stores (currently database version 4) and a way to remove custom maps.
     Tune the calibration reference (2 s horizon, 200 states) against step time and calibration quality.
+Take into account collisions in domain calculus.
 Collisions on map warp are not working
 Fix characters traversing walls
 Move many things from map.js to rules.js.
