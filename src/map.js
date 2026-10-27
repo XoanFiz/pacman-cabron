@@ -1163,7 +1163,9 @@ function createGameMap(parameters = {}) {
 
     // Returns the calibration used as a playable fallback: a completed one
     // if any exists, otherwise a calibration that already has tables. The
-    // definition being calibrated is never its own reference.
+    // definition being calibrated is never its own reference, and an entry
+    // whose own map changed since it was measured is not a reference
+    // either: borrowing from it only spreads stale tables.
     function findReferenceCalibration(definition = null) {
         const definitions = getAllDefinitions().filter(other =>
             !definition || other.id !== definition.id
@@ -1176,13 +1178,14 @@ function createGameMap(parameters = {}) {
 
         let best = null;
 
-        for (const definition of definitions) {
-            const calibration = definition.calibration;
+        for (const other of definitions) {
+            const calibration = other.calibration;
             const sampleCount = Number(calibration?.sampleCount) || 0;
 
             if (
                 sampleCount <= 0 ||
                 !isCalibrationVersionCurrent(calibration) ||
+                !isCalibrationSignatureCurrent(other) ||
                 calibration.status === "error" ||
                 Object.keys(calibration.f || {}).length === 0
             ) {
@@ -1190,7 +1193,7 @@ function createGameMap(parameters = {}) {
             }
 
             if (!best || sampleCount > best.sampleCount) {
-                best = { sourceId: definition.id, calibration, sampleCount };
+                best = { sourceId: other.id, calibration, sampleCount };
             }
         }
 
