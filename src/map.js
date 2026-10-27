@@ -742,6 +742,18 @@ function createGameMap(parameters = {}) {
         });
     }
 
+    // The signature is what makes a stored entry reusable: it is the map
+    // definition the tables were measured on. The version guards the whole
+    // payload, but editing the tiles, the edges or the starts of one map
+    // has to invalidate that map alone, and every record already carries
+    // the signature it was written with.
+    function isCalibrationSignatureCurrent(definition) {
+        const calibration = definition?.calibration;
+
+        return Boolean(calibration) &&
+            calibration.mapSignature === getMapSignature(definition);
+    }
+
     function createPendingCalibration(definition) {
         return {
             status: "pending",
@@ -759,13 +771,15 @@ function createGameMap(parameters = {}) {
 
     function isCalibrationCompleted(definition) {
         return definition?.calibration?.status === "completed" &&
-            isCalibrationVersionCurrent(definition.calibration);
+            isCalibrationVersionCurrent(definition.calibration) &&
+            isCalibrationSignatureCurrent(definition);
     }
 
     function hasCalibrationSamples(definition) {
         const calibration = definition?.calibration;
 
         return isCalibrationVersionCurrent(calibration) &&
+            isCalibrationSignatureCurrent(definition) &&
             calibration.status !== "error" &&
             Boolean(calibration.samples) &&
             Object.keys(calibration.samples).length > 0;
@@ -775,6 +789,7 @@ function createGameMap(parameters = {}) {
         const calibration = definition?.calibration;
 
         return isCalibrationVersionCurrent(calibration) &&
+            isCalibrationSignatureCurrent(definition) &&
             calibration.status !== "error" &&
             Number(calibration.sampleCount) > 0 &&
             Object.keys(calibration.f || {}).length > 0;
@@ -785,6 +800,7 @@ function createGameMap(parameters = {}) {
 
         if (
             !isCalibrationVersionCurrent(calibration) ||
+            !isCalibrationSignatureCurrent(definition) ||
             calibration.status === "completed" ||
             calibration.status === "error"
         ) {
@@ -951,6 +967,7 @@ function createGameMap(parameters = {}) {
             .reduce((sum, errors) => sum + errors.length, 0);
         const assumedCalibration = !fresh &&
             isCalibrationVersionCurrent(definition.calibration) &&
+            isCalibrationSignatureCurrent(definition) &&
             definition.calibration?.status !== "error" &&
             definition.calibration?.f
             ? {
@@ -1183,19 +1200,19 @@ function createGameMap(parameters = {}) {
     }
 
     // Inheritance of a reference calibration: keeps the same f/g tables
-    // but records provenance so it is clear it was borrowed.
+    // but records provenance so it is clear it was borrowed. A borrowed
+    // calibration is never "completed": the map still has to measure
+    // itself, and only its own samples can complete it.
     function inheritCalibration(definition, reference) {
-        const completed = reference.calibration?.status === "completed";
-
         definition.calibration = {
             ...cloneCalibration(reference.calibration),
             // Borrowed tables are a fallback, not this map's evidence: keep
             // them out of the resume seed so this map still measures itself.
             samples: undefined,
-            status: completed ? "completed" : "incomplete",
+            status: "incomplete",
+            completedAt: undefined,
             inheritedFrom: reference.sourceId,
-            mapSignature: getMapSignature(definition),
-            ...(completed ? { completedAt: Date.now() } : {})
+            mapSignature: getMapSignature(definition)
         };
     }
 
@@ -1208,14 +1225,27 @@ function createGameMap(parameters = {}) {
 
     // Ensures a single definition ends up with a completed calibration:
     // if it already has one, resolves immediately; otherwise it is
-    // calibrated in the background (or inherits the reference fallback
-    // when `useReference` is set and a reference exists).
+    // calibrated in the background, with the reference fallback borrowed
+    // first when there is one.
     function ensureMapCalibrated(definition) {
         calibrationQueue = calibrationQueue
             .catch(() => undefined)
             .then(async () => {
                 if (isCalibrationCompleted(definition)) {
                     return definition.calibration;
+                }
+
+                // A completed calibration whose map was edited since it was
+                // measured is stale: the tables describe another geometry.
+                if (
+                    definition.calibration?.status === "completed" &&
+                    isCalibrationVersionCurrent(definition.calibration) &&
+                    !isCalibrationSignatureCurrent(definition)
+                ) {
+                    console.log(
+                        `[calibration] ${definition.id}: the map changed ` +
+                        "since its calibration; measuring it again."
+                    );
                 }
 
                 // A map with its own samples resumes its calibration; a map
@@ -1238,7 +1268,11 @@ function createGameMap(parameters = {}) {
                     );
                     void persistMaps();
                     notifyCalibration(definition);
-                    return definition.calibration;
+
+                    // The borrowed tables keep the map playable while it
+                    // measures itself: a fallback is not a calibration, so
+                    // the run starts instead of ending here.
+                    return calibrateMap(definition);
                 }
 
                 return calibrateMap(definition);
