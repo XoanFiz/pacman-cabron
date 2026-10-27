@@ -36,10 +36,27 @@
 //                          playerDirection?: { x, y } },
 //         choices: null | [{ direction: { x, y }, child: id }],
 //         child: null | id,
-//         time                       // game seconds since the anchor
+//         time,                      // game seconds since the anchor
+//         view                       // the frame the main thread renders
 //       }
 //     ]
 //   }
+//
+// `view` is the state of the actors at `time`, so the main thread can play
+// the game by following the plan instead of simulating it: it interpolates
+// each actor between two nodes with the direction and the progress it reads
+// here, and never runs the event queue, the collisions or the decisions.
+// The arrays are positional on purpose: the plan is sent again on every
+// anchor and the payload sits on the latency-critical path.
+//
+//   players: [[x, y, dx, dy, progress, lives, invincibleTimer]]
+//   ghosts:  [[x, y, dx, dy, progress, frightened, frightenedTimer, eaten]]
+//   eaten:   ["x,y"]   pellets the transition into this node ate
+//
+// A node is a step of the search, so the transition into it is one event:
+// `eaten` normally holds one cell, and `lives`/`terminal` say whether the
+// step cost a life or ended the level. The root node carries the anchored
+// state itself and an empty `eaten`.
 //
 // The plan is a tree of decisions: every actor decides in its own node,
 // the AI decision is taken once, and only the human-controlled character

@@ -175,6 +175,15 @@ comments and commit messages in English.
   or arrived after the game moved on (look at the anchor rate).
 - Open threads: navigation and oscillation (no level cleared), the
   `pacman-avoid` playout and the `circuit` escapes above.
+- The plan carries the frame the main thread renders: every node has a
+  `view` with the actors at the node time and the pellets the transition
+  into it ate (layout in `src/strategy/protocol.js`). It is the first half
+  of driving the main thread from the plan instead of from a second
+  simulation, and two things still block that: the worker walks from the
+  anchor to the first decision before transmitting (that leg is not on the
+  wire) and the plan answers about half of the decisions, so a main thread
+  without a local transition would stall. A `view` costs about 370 bytes
+  per node.
 
 ## Agent rules
 

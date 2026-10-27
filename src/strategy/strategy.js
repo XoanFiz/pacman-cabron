@@ -3056,6 +3056,52 @@ function createGameStrategy(parameters = {}) {
     // nodes (see the stale plan handling in main.js).
     const PLAN_VIEW_EXPAND_MILLISECONDS = 20;
 
+    // The main thread follows the plan instead of simulating the game, so
+    // every node carries the actors as they are at its time. The arrays are
+    // positional and documented in strategy/protocol.js; `lives` and
+    // `terminal` are the round outcome the HUD and the death pause read.
+    function getPlanView(treeChild, parentChild) {
+        const state = treeChild.state;
+        const eaten = [];
+
+        if (parentChild && parentChild.state) {
+            for (const cell of parentChild.state.pellets) {
+                if (!state.pellets.has(cell)) {
+                    eaten.push(cell);
+                }
+            }
+        }
+
+        return {
+            players: state.players.map(player => [
+                player.x,
+                player.y,
+                player.direction.x,
+                player.direction.y,
+                Number(player.progress.toFixed(5)),
+                Number.isFinite(player.lives) ? player.lives : null,
+                isPlayerInvincible(player)
+                    ? Number(player.invincibleTimer.toFixed(5))
+                    : 0
+            ]),
+            ghosts: state.ghosts.map(ghost => [
+                ghost.x,
+                ghost.y,
+                ghost.direction.x,
+                ghost.direction.y,
+                Number(ghost.progress.toFixed(5)),
+                ghost.frightened ? 1 : 0,
+                ghost.frightened && Number.isFinite(ghost.frightenedTimer)
+                    ? Number(ghost.frightenedTimer.toFixed(5))
+                    : 0,
+                ghost.eaten ? 1 : 0
+            ]),
+            lives: state.lives,
+            terminal: Boolean(state.terminal),
+            eaten
+        };
+    }
+
     function getTransmittedPlan(job) {
         if (!job.root) {
             return [];
@@ -3095,7 +3141,11 @@ function createGameStrategy(parameters = {}) {
                 choices: null,
                 child: null,
                 time: treeChild.state.time,
-                key: getPlanStateKey(treeChild)
+                key: getPlanStateKey(treeChild),
+                view: getPlanView(
+                    treeChild,
+                    parent >= 0 ? treeNodes[parent] : null
+                )
             });
             pending.push(id);
 

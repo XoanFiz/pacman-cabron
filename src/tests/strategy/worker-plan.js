@@ -180,9 +180,82 @@ setTimeout(() => {
         }
     }
 
+    // The main thread follows the plan instead of simulating the game, so
+    // every node carries the frame it renders. The anchor itself is not a
+    // node (the job advances to the first decision), so the check is the
+    // one that does not need the internal tree: the view has to describe
+    // the same actors as the anchor and to move them with the plan, not
+    // ahead of it.
+    const root = nodes.find(node => node.parent === -1);
+
+    if (!root || !root.view) {
+        console.error("plan root without view");
+        process.exit(1);
+    }
+
+    const brokenView = nodes.find(node =>
+        !node.view ||
+        node.view.players.length !== anchor.searchContext.players.length ||
+        node.view.ghosts.length !== anchor.searchContext.ghosts.length
+    );
+
+    if (brokenView) {
+        console.error("plan node without a usable view", brokenView.id);
+        process.exit(1);
+    }
+
+    if (root.view.eaten.length !== 0) {
+        console.error("plan root view claims pellets it did not eat");
+        process.exit(1);
+    }
+
+    const WIDTH = anchor.map.tiles[0].length;
+    const HEIGHT = anchor.map.tiles.length;
+    const wrapped = (a, b, size) => Math.min(
+        Math.abs(a - b),
+        size - Math.abs(a - b)
+    );
+    const cellDistance = (a, b) =>
+        wrapped(a[0], b[0], WIDTH) + wrapped(a[1], b[1], HEIGHT);
+
+    for (const node of nodes) {
+        const parent = node.parent >= 0 ? planMessage.plan[node.parent] : null;
+
+        // A death resets the positions: the round outcome is the signal.
+        if (!parent || !parent.view ||
+            parent.view.lives !== node.view.lives ||
+            node.view.terminal) {
+            continue;
+        }
+
+        const pairs = [
+            ...node.view.players.map((view, index) =>
+                ["player", index, view, parent.view.players[index]]),
+            ...node.view.ghosts.map((view, index) =>
+                ["ghost", index, view, parent.view.ghosts[index]])
+        ];
+
+        for (const [kind, index, view, previous] of pairs) {
+            // One event moves a character less than one cell; warps are
+            // wrapped before the distance and the slack covers rounding.
+            if (cellDistance(view, previous) > 2) {
+                console.error(
+                    "plan view teleports",
+                    kind,
+                    index,
+                    node.id,
+                    previous.slice(0, 2),
+                    view.slice(0, 2)
+                );
+                process.exit(1);
+            }
+        }
+    }
+
     console.log(JSON.stringify({
         transmitted: nodes.length,
         internal: planMessage.stats.nodes,
+        bytes: JSON.stringify(planMessage.plan).length,
         maxTime: Number((
             Math.max(...nodes.map(node => node.time)) - anchorTime
         ).toFixed(2))
