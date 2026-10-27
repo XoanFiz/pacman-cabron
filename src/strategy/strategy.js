@@ -1796,32 +1796,6 @@ function createGameStrategy(parameters = {}) {
     }
 
     // This funcion needs to be used upon every character individually
-    function moveSearchCharacterToEvent(character, speed, elapsedTime) {
-        if (character.direction.x === 0 && character.direction.y === 0) {
-            return false;
-        }
-
-        character.progress += speed * elapsedTime;
-
-        if (character.progress < 1 - SEARCH_EPSILON) {
-            return false;
-        }
-
-        character.progress = Math.max(0, character.progress - 1);
-
-        character.x = wrap(
-            character.x + character.direction.x,
-            getMapColumnCountForMap()
-        );
-
-        character.y = wrap(
-            character.y + character.direction.y,
-            getMapRowCountForMap()
-        );
-
-        return true;
-    }
-
     // Collects the pellet under every Pac-Man that reached a cell centre
     // during this event and frightens the ghosts when one of them eats a
     // power pellet.
@@ -2307,10 +2281,12 @@ function createGameStrategy(parameters = {}) {
                 continue;
             }
 
-            const arrived = moveSearchCharacterToEvent(
+            const arrived = model.moveCharacterToEvent(
                 player,
                 PACMAN_SPEED,
-                elapsedTime
+                elapsedTime,
+                getMapColumnCountForMap(),
+                getMapRowCountForMap()
             );
 
             state.readyPlayers[playerIndex] = arrived;
@@ -2338,10 +2314,12 @@ function createGameStrategy(parameters = {}) {
             let ghostIndex = 0; ghostIndex < state.ghosts.length; ghostIndex++) {
             const ghost = state.ghosts[ghostIndex];
 
-            const arrived = moveSearchCharacterToEvent(
+            const arrived = model.moveCharacterToEvent(
                 ghost,
                 ghost.speed,
-                elapsedTime
+                elapsedTime,
+                getMapColumnCountForMap(),
+                getMapRowCountForMap()
             );
 
             state.readyGhosts[ghostIndex] = arrived;

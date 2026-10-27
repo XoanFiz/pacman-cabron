@@ -1,4 +1,6 @@
 function createGameModel() {
+    const wrap = (value, size) => ((value % size) + size) % size;
+
     function createPlayerState(start, speed) {
         return {
             x: start.x, y: start.y, px: start.x, py: start.y,
@@ -58,8 +60,42 @@ function createGameModel() {
         };
     }
 
+    // The step every character takes between two events: progress grows
+    // with the speed, and reaching the next cell centre moves the character
+    // to the neighbouring cell, wrapping around the map.
+    //
+    // The live rules and the search share this step on purpose: the search
+    // predicts the game with it, so a second copy that drifted at the
+    // epsilon or at the wrap would make the prediction wrong. The epsilon
+    // is the one the strategy uses to decide that a centre was reached.
+    function moveCharacterToEvent(
+        character,
+        speed,
+        elapsedTime,
+        columns,
+        rows,
+        epsilon = 1e-7
+    ) {
+        if (character.direction.x === 0 && character.direction.y === 0) {
+            return false;
+        }
+
+        character.progress += speed * elapsedTime;
+
+        if (character.progress < 1 - epsilon) {
+            return false;
+        }
+
+        character.progress = Math.max(0, character.progress - 1);
+
+        character.x = wrap(character.x + character.direction.x, columns);
+        character.y = wrap(character.y + character.direction.y, rows);
+
+        return true;
+    }
+
     return {
         createPlayerState, createGhostState, createWorldState,
-        cloneCharacterState, createWorldSnapshot
+        cloneCharacterState, createWorldSnapshot, moveCharacterToEvent
     };
 }

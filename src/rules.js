@@ -22,12 +22,9 @@ function createGameRules(parameters = {}) {
     } = config.rules;
 
     const {
-        SEARCH_EPSILON
-    } = config.strategy;
-
-    const {
         createPlayerState,
-        createGhostState
+        createGhostState,
+        moveCharacterToEvent
     } = model;
 
     const gameState = () => state.currentGameState;
@@ -375,32 +372,6 @@ function createGameRules(parameters = {}) {
         }
     }
 
-    function moveCharacterToEvent(character, speed, elapsedTime) {
-        if (character.direction.x === 0 && character.direction.y === 0) {
-            return false;
-        }
-
-        character.progress += speed * elapsedTime;
-
-        if (character.progress < 1 - SEARCH_EPSILON) {
-            return false;
-        }
-
-        character.progress = Math.max(0, character.progress - 1);
-
-        character.x = map.wrap(
-            character.x + character.direction.x,
-            map.getMapColumnCount(map.currentMap)
-        );
-
-        character.y = map.wrap(
-            character.y + character.direction.y,
-            map.getMapRowCount(map.currentMap)
-        );
-
-        return true;
-    }
-
     function updateGhostFrightenedTimer(ghost, elapsedTime) {
         if (!ghost.frightened) return;
 
@@ -435,6 +406,8 @@ function createGameRules(parameters = {}) {
     function advanceCharactersToEvent(elapsedTime) {
         const gs = gameState();
         const arrivedPlayers = [];
+        const columns = map.getMapColumnCount(map.currentMap);
+        const rows = map.getMapRowCount(map.currentMap);
 
         gs.time += elapsedTime;
 
@@ -446,7 +419,9 @@ function createGameRules(parameters = {}) {
             const arrived = moveCharacterToEvent(
                 player,
                 PACMAN_SPEED,
-                elapsedTime
+                elapsedTime,
+                columns,
+                rows
             );
 
             if (arrived) {
@@ -468,7 +443,9 @@ function createGameRules(parameters = {}) {
             const arrived = moveCharacterToEvent(
                 ghost,
                 ghost.speed,
-                elapsedTime
+                elapsedTime,
+                columns,
+                rows
             );
 
             if (arrived) {
