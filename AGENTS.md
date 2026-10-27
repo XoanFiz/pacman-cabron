@@ -26,7 +26,8 @@ comments and commit messages in English.
   flags. It plays real games, so it takes minutes.
 - Plan latency: `node develop/plan-latency.js restart left 40` plays a
   two-Pac-Man game with the real worker and prints the plan hits, misses
-  and the miss reasons; use it to measure a plan pipeline change.
+  and the miss reasons; use it to measure a plan pipeline change. It takes
+  minutes as well.
 
 ## What lives where
 
@@ -102,7 +103,8 @@ comments and commit messages in English.
   region.
 - Verify with `develop/run-tests.js`: `--fast` for editor, UI, rules or
   docs changes; the full run only when the strategy or the search is
-  touched.
+  touched, and ask before spending it (see the long checks in the agent
+  rules).
 - Keep the useful tools in `develop/`, with a header comment saying what
   they are for; keep `src/tests` for the tests themselves.
 - When you commit, update the "Current state" section below and keep the
@@ -215,6 +217,12 @@ one place:
   `develop/developer-notes.txt`; if a task is done, remove it there.
 - Limit Playwright runs to save tokens: ask the developer to run them,
   or hand over a list of the tests to run.
+- Do not re-run the long checks on every change. `bench.js`,
+  `develop/plan-latency.js` and the `behaviour`, `circuit`,
+  `pacman-avoid` and `trap` batteries play real games and take minutes;
+  `run-tests.js --fast` is seconds. A routine change stops at the fast
+  run, and a long one needs the developer's go-ahead first: say which
+  check, why it matters for this change and what result you expect.
 - Commit style: imperative subject, blank line, body, blank line,
   `Code changes:` bullets naming the files. Stage explicit paths; never
   `git add -A`.
